@@ -1,7 +1,6 @@
 // Begin appWindow.cpp
 
 #include "appWindow.h"
-// qRegisterMetaType<QVector<SnapNode>>("QVector<SnapNode>");
 
 QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     this->resize(m_appWindowWidth, m_appWindowHeight);
@@ -19,8 +18,8 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     m_vVmLayout->setAlignment(Qt::AlignTop);
     m_vSnapLayout = new QVBoxLayout;
 
-    SnapManager snapManager = new SnapManager();
-    m_vmList = snapManager.getVmList();
+    VmDataCollector vmDataCollector;
+    m_vmList = vmDataCollector.getVmList();
 
     m_snapTreeModel = new SnapTreeModel();
 
@@ -187,61 +186,156 @@ void QAppWindow::addVmToFrame(){
 }
 
 void QAppWindow::updSnapTree(){
-    qDebug() << "[II] Update snap tree now!";
-    qDebug() << "[II] Active SnapId:" << m_selectedVmIndex;
+    VMachine activeVm = getActiveVm();
 
-    QString activeVmName = getActiveVmName();
+    qDebug() << "[II] Update snap tree now!";
+    qDebug() << "[II] Selected VM index:" << m_selectedVmIndex;
+
+    VmDataCollector vmDataCollector(this);
+    activeVm = vmDataCollector.getVmInfo(activeVm);
+
+    QVector<ChainNode> result = activeVm.vmStateChain;
+
+    for (int i = 0; i < activeVm.vmStateChain.size(); ++i){
+        qDebug() << result[i].id << result[i].parentId << result[i].name;
+    }
+
+    /***/
+        m_snapTreeView->clearSelection();
+        m_snapTreeModel->setSnapData(result);
+        m_snapTreeView->expandAll();
+    /***/
+
+    qDebug() << "[II] Данные получены (finished)";
 
     QThread* thread = new QThread;
-    SnapManager* snapManager = new SnapManager(activeVmName);
-    snapManager->moveToThread(thread);
+    // Comment to Development
+    // QThread* thread = new QThread;
+    // SnapManager* snapManager = new SnapManager(activeVmName);
+    // snapManager->moveToThread(thread);
 
-    thread->start();
+    // thread->start();
 
-    QObject::connect(thread, &QThread::started,
-                                            snapManager, &SnapManager::process);
+    // QObject::connect(thread, &QThread::started,
+    //                                         snapManager, &SnapManager::process);
 
-    QObject::connect(snapManager, &SnapManager::finished, this,
-        [=](const QVector<SnapNode>& result) {
-            m_snapTreeView->clearSelection();
-            m_snapTreeModel->setSnapData(result);
-            m_snapTreeView->expandAll();
-            qDebug() << "[II] Данные получены (finished)";
+    // QObject::connect(snapManager, &SnapManager::finished, this,
+    //     [=](const QVector<SnapNode>& result) {
+    //         /***/
+    //           m_snapTreeView->clearSelection();
+    //           m_snapTreeModel->setSnapData(result);
+    //           m_snapTreeView->expandAll();
+    //           qDebug() << "[II] Данные получены (finished)";
+    //         /***/
 
-            thread->quit();
-            thread->wait();
+    //         thread->quit();
+    //         thread->wait();
 
-            snapManager->deleteLater();
-            thread->deleteLater();
-        });
-
-
-
-
+    //         snapManager->deleteLater();
+    //         thread->deleteLater();
+    //     });
 }
 
-QString QAppWindow::getActiveVmName(){
-    QString res;
+VMachine QAppWindow::getActiveVm(){
+    VMachine vm;
     if( m_selectedVmIndex != -1){
-        res = m_vmList[m_selectedVmIndex][0];
+        vm = m_vmList[m_selectedVmIndex];
     }
-    return res;
+    return vm;
 }
 
 void QAppWindow::takeSnap(){
+    // Создание и запуск внешней команды
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("LANG", "C");
 
-    SnapManager snapManager;
-    QString activeVmName = getActiveVmName();
-    snapManager.takeSnapshot(activeVmName);
+    QProcess process;
+    process.setProcessEnvironment(env);
+
+    if (m_activeNode.id != -1) {
+        qDebug() << "Info поля узла:" << m_activeNode.imagesFullNames;
+    }
+
+    // Генерация уникального идентификатора (unix time)
+    QString leftId = QString::number(QDateTime::currentSecsSinceEpoch());
+
+    for (int i = 0; i < m_activeNode.imagesFullNames.size(); ++i){
+        // Выбор предка для нового снимка
+        QString parent = m_activeNode.imagesFullNames[i];
+        qDebug() << parent;
+
+        return;
+        // Имя файла создаваемого "snap" снимка.
+        // "Snap" cнимок хранит состояние системы и служит точкой ветвления,
+        //  если это будет необходимо в будущем.
+        QString snapName = parent;
+        if (snapName.endsWith(".qcow2", Qt::CaseInsensitive)) {
+            snapName.chop(6);
+        }
+        snapName = snapName + "-" + leftId + "-snap.qcow2";
+
+        QStringList snapArguments = {"create", "-f", "qcow2", "-b", parent,
+                                                       "-F", "qcow2", snapName};
+
+        process.start("qemu-img", snapArguments);
+
+        if (!process.waitForStarted()){
+            return;
+        }
+
+        if (!process.waitForFinished()){
+            return;
+        }
+
+        QString output = process.readAllStandardOutput();
+
+        QStringList outputLines = output.split('\n', Qt::SkipEmptyParts);
+        for (int i = 0; i < outputLines.size(); ++i){
+            QString line = outputLines[i];
+            qDebug() << i << line;
+        }
+
+        // Имя файла создаваемого "work" снимка.
+        // "Work" служит для накопления текущих изменений
+        QString rightId = QString::number(QDateTime::currentSecsSinceEpoch());
+        QString workName = parent;
+        if (workName.endsWith(".qcow2", Qt::CaseInsensitive)) {
+            workName.chop(6);
+        }
+        workName = workName + "-" + leftId + "-work-" + rightId + ".qcow2";
+
+        QStringList workArguments = {"create", "-f", "qcow2", "-b", snapName,
+                                                       "-F", "qcow2", workName};
+
+        process.start("qemu-img", workArguments);
+
+        if (!process.waitForStarted()){
+            return;
+        }
+
+        if (!process.waitForFinished()){
+            return;
+        }
+
+        QString workOutput = process.readAllStandardOutput();
+
+        QStringList workOutputLines = output.split('\n', Qt::SkipEmptyParts);
+        for (int i = 0; i < workOutputLines.size(); ++i){
+            QString line = workOutputLines[i];
+            qDebug() << i << line;
+        }
+    }
 }
 
 void QAppWindow::onTreeItemClicked(const QModelIndex& index){
     QString text = index.data(Qt::DisplayRole).toString();
     qDebug() << "Клик по строке:" << text;
 
-    const SnapNode& node = m_snapTreeModel->getSnapNodeByIndex(index);
+    const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(index);
+    m_activeNode = m_snapTreeModel->getChainNodeByIndex(index);
     if (node.id != -1) {
-        qDebug() << "Info поля узла:" << node.info;
+        qDebug() << "ImagesFullNames:" << node.imagesFullNames;
+        qDebug() << "   BackFullName:" << node.backFullNames;
     }
 }
 

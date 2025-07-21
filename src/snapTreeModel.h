@@ -3,6 +3,7 @@
 #ifndef SNAPTREEMODEL_H
 #define SNAPTREEMODEL_H
 
+#include "vmDataStructs.h"
 /*
  * Модель данных реализуется посредством следующих пяти функций:
  *
@@ -13,33 +14,25 @@
  *   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole);
  *
  *   // Data example {id, parentId, name}
- *      SnapNode root = { 1, -1,  "Root"};
- *      SnapNode a    = { 2,  1,     "A"};
- *      SnapNode b    = { 3,  1,     "B"};
- *      SnapNode c    = { 4,  1,     "C"};
- *      SnapNode b1   = { 5,  3,   "B.1"};
- *      SnapNode b2   = { 6,  3,   "B.2"};
- *      SnapNode a1   = { 7,  2,   "A.1"};
- *      SnapNode a2   = { 8,  2,   "A.2"};
+ *      ChainNode root = { 1, -1,  "Root"};
+ *      ChainNode a    = { 2,  1,     "A"};
+ *      ChainNode b    = { 3,  1,     "B"};
+ *      ChainNode c    = { 4,  1,     "C"};
+ *      ChainNode b1   = { 5,  3,   "B.1"};
+ *      ChainNode b2   = { 6,  3,   "B.2"};
+ *      ChainNode a1   = { 7,  2,   "A.1"};
+ *      ChainNode a2   = { 8,  2,   "A.2"};
  */
 
 #include <QString>
 #include <QAbstractItemModel>
-
-struct SnapNode {
-    int id;
-    int parentId;
-    QString name;
-    QString info;
-    QString filePath;
-};
 
 class SnapTreeModel : public QAbstractItemModel {
 
     Q_OBJECT
 
     public:
-        SnapTreeModel(const QVector<SnapNode>&, QObject* parent = nullptr);
+        SnapTreeModel(const QVector<ChainNode>&, QObject* parent = nullptr);
         SnapTreeModel(QObject* parent = nullptr);
         ~SnapTreeModel();
 
@@ -50,15 +43,15 @@ class SnapTreeModel : public QAbstractItemModel {
         int columnCount(const QModelIndex& = QModelIndex()) const override;
         QVariant data(const QModelIndex& index,
                                      int role = Qt::DisplayRole) const override;
-        void setSnapData(const QVector<SnapNode>&);
+        void setSnapData(const QVector<ChainNode>&);
 
-        SnapNode getSnapNodeByIndex(const QModelIndex& index);
+        ChainNode getChainNodeByIndex(const QModelIndex& index);
 
     private:
-        QVector<SnapNode> m_nodes;
+        QVector<ChainNode> m_nodes;
 
         int findChildIdByRow(int parentId, int row) const;
-        const SnapNode& findNodeById(int id) const;
+        const ChainNode& findNodeById(int id) const;
         int rowOfChild(int childId, int parentId) const;
 
 };

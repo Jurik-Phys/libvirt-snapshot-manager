@@ -13,6 +13,7 @@
 #include <QDir>
 #include <QThread>
 #include "snapTreeModel.h"
+#include "vmDataCollector.h"
 
 class SnapManager : public QObject {
 
@@ -20,22 +21,22 @@ class SnapManager : public QObject {
 
     public:
         SnapManager(QObject* parent = nullptr);
-        SnapManager(const QString& vmName, QObject* parent = nullptr);
+        SnapManager(const VMachine& vm, QObject* parent = nullptr);
         ~SnapManager();
 
         QVector<QStringList> getVmList();
-        void takeSnapshot(const QString& vmName);
-        void setVmName(const QString&);
-        QVector<SnapNode> getSnapTreeModelData(const QString& vmName);
+        void takeSnapshot(const VMachine& vm);
+        void setVmName(const VMachine&);
+        QVector<ChainNode> getSnapTreeModelData(const VMachine& vm);
     public slots:
         void process();
     signals:
-        void finished(QVector<SnapNode> result);
+        void finished(QVector<ChainNode> result);
 
     private:
-        QString m_vmName;
+        VMachine m_vm;
         QDomElement getVmXml(const QString& vmName);
-        QStringList getFullPathDisks(const QString& vmName);
+        QStringList getFullPathDisks(const VMachine& vm);
         QStringList getFileNameDisks(const QStringList& disksList);
         QStringList getBaseDirsList(const QStringList& disksList);
         QString     getRootDisksChain(const QString& fullPathDisks);

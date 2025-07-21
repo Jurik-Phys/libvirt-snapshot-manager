@@ -5,56 +5,16 @@
 SnapManager::SnapManager(QObject*){
 }
 
-SnapManager::SnapManager(const QString& vmName, QObject*){
-    m_vmName = vmName;
+SnapManager::SnapManager(const VMachine& vm, QObject*){
+    m_vm = vm;
 }
 
 
 SnapManager::~SnapManager(){
 }
 
-QVector<QStringList> SnapManager::getVmList(){
-    QVector<QStringList> res;
 
-    QProcess process;
-
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("LANG", "C");
-    process.setProcessEnvironment(env);
-
-    QString cmd = "virsh list --all";
-    QString     virshCMD = cmd.split(" ")[0];
-    QStringList virshARG = { cmd.split(" ")[1], cmd.split(" ")[2] };
-
-    process.start(virshCMD, virshARG);
-
-    if (!process.waitForStarted())
-        return res;
-
-    if (!process.waitForFinished())
-        return res;
-
-    QString output = process.readAllStandardOutput();
-
-    // Разбиваем на строки и сохраняем
-    QStringList outputLines = output.split('\n', Qt::SkipEmptyParts);
-    for (int i = 0; i < outputLines.size(); ++i){
-        // Skip table header
-        if (i > 1){
-            QString line = outputLines[i].trimmed()
-                                   .replace(QRegularExpression("\\s{2,}"), " ");
-            QString name = line.split(" ", Qt::SkipEmptyParts)[1];
-            QString state = line.split(" ", Qt::SkipEmptyParts)[2] + " " +
-                                        line.split(" ", Qt::SkipEmptyParts)[3];
-            state = state.trimmed();
-            res.append({name, state});
-        }
-    }
-
-    return res;
-}
-
-QDomElement SnapManager::getVmXml(const QString& vmName){
+QDomElement SnapManager::getVmXml(const QString& vm){
     QDomElement res;
 
     QProcess process;
@@ -63,7 +23,7 @@ QDomElement SnapManager::getVmXml(const QString& vmName){
     env.insert("LANG", "C");
     process.setProcessEnvironment(env);
 
-    QString cmd = QString("virsh dumpxml ") + vmName;
+    QString cmd = QString("virsh dumpxml ") + vm;
     QString     virshCMD = cmd.split(" ")[0];
     QStringList virshARG = { cmd.split(" ")[1], cmd.split(" ")[2] };
 
@@ -85,10 +45,10 @@ QDomElement SnapManager::getVmXml(const QString& vmName){
     return res;
 }
 
-QStringList SnapManager::getFullPathDisks(const QString& vmName){
+QStringList SnapManager::getFullPathDisks(const VMachine& vm){
     QStringList res;
 
-    QDomElement vmXml = getVmXml(vmName);
+    QDomElement vmXml = getVmXml(vm.name);
 
     QDomNodeList disks = vmXml.elementsByTagName("disk");
 
@@ -222,10 +182,10 @@ QString SnapManager::getRootDisksChain(const QString& inFile){
 }
 
 
-void SnapManager::takeSnapshot(const QString& vmName){
-    qDebug() << "[II] Take snapshot now for:" << vmName;
+void SnapManager::takeSnapshot(const VMachine& vm){
+    qDebug() << "[II] Take snapshot now for:" << vm.name;
 
-    QStringList disksList = getFullPathDisks(vmName);
+    QStringList disksList = getFullPathDisks(vm);
 
     qDebug() << "[II] VM disks:";
     for (int i = 0; i < disksList.size(); ++i){
@@ -253,9 +213,9 @@ void SnapManager::takeSnapshot(const QString& vmName){
     qDebug() << "[II] Root of chain:" << rootDisksChain;
 }
 
-QVector<SnapNode> SnapManager::getSnapTreeModelData(const QString& vmName){
-    QVector<SnapNode> res;
-    QStringList disksList = getFullPathDisks(vmName);
+QVector<ChainNode> SnapManager::getSnapTreeModelData(const VMachine& vm){
+    QVector<ChainNode> res;
+    QStringList disksList = getFullPathDisks(vm);
 
     // На данном этапе работа с одним диском (текущий диск)
     QString disk = disksList[0];
@@ -315,13 +275,13 @@ QVector<SnapNode> SnapManager::getSnapTreeModelData(const QString& vmName){
     return res;
 }
 
-void SnapManager::setVmName(const QString& vmName){
-    m_vmName = vmName;
+void SnapManager::setVmName(const VMachine& vm){
+    m_vm = vm;
 }
 
 void SnapManager::process(){
-    QVector<SnapNode> result;
-    result = getSnapTreeModelData(m_vmName);
+    QVector<ChainNode> result;
+    result = getSnapTreeModelData(m_vm);
     emit finished(result);
 }
 

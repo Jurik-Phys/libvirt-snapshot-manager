@@ -2,7 +2,7 @@
 
 #include "snapTreeModel.h"
 
-SnapTreeModel::SnapTreeModel(const QVector<SnapNode>& nodes, QObject* parent) :
+SnapTreeModel::SnapTreeModel(const QVector<ChainNode>& nodes, QObject* parent) :
                                                     QAbstractItemModel(parent){
     m_nodes = nodes;
 }
@@ -109,12 +109,12 @@ QModelIndex SnapTreeModel::parent(const QModelIndex& index) const {
     }
 }
 
-const SnapNode& SnapTreeModel::findNodeById(int id) const {
+const ChainNode& SnapTreeModel::findNodeById(int id) const {
     for (int i = 0; i < m_nodes.size(); ++i) {
         if (m_nodes[i].id == id)
             return m_nodes[i];
     }
-    static SnapNode fakeNode{-1, -1, QStringLiteral("<invalid>")};
+    static ChainNode fakeNode{-1, -1, QStringLiteral("<invalid>")};
     return fakeNode;
 }
 
@@ -163,19 +163,19 @@ QVariant SnapTreeModel::data(const QModelIndex& index, int role) const {
     }
 }
 
-void SnapTreeModel::setSnapData(const QVector<SnapNode>& nodes) {
+void SnapTreeModel::setSnapData(const QVector<ChainNode>& nodes) {
     m_nodes = nodes;
 }
 
-SnapNode SnapTreeModel::getSnapNodeByIndex(const QModelIndex& index){
-    SnapNode res;
+ChainNode SnapTreeModel::getChainNodeByIndex(const QModelIndex& index){
+    ChainNode res;
     int nodeId = index.internalId();
     for (int i = 0; i < m_nodes.size(); ++i) {
         if (m_nodes[i].id == nodeId) {
             return m_nodes[i];
         }
     }
-    static SnapNode dummy{-1, -1, QStringLiteral("<invalid>")};
+    static ChainNode dummy{-1, -1, QStringLiteral("<invalid>")};
     return dummy;
 }
 

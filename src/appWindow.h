@@ -15,6 +15,7 @@
 #include "snapManager.h"
 #include "snapTreeModel.h"
 #include "vmWidget.h"
+#include "vmDataCollector.h"
 #include <QTreeView>
 #include <QHeaderView>
 
@@ -28,7 +29,8 @@ class QAppWindow : public QWidget {
 
         void appExit();
         void takeSnap();
-        QString getActiveVmName();
+        VMachine getActiveVm();
+
 
     private:
         const int m_appWindowWidth  = 945;
@@ -45,7 +47,8 @@ class QAppWindow : public QWidget {
         QVBoxLayout*  m_vSnapLayout;
         SnapTreeModel* m_snapTreeModel;
         QTreeView*     m_snapTreeView;
-        QVector<QStringList> m_vmList;
+        QVector<VMachine> m_vmList;
+        ChainNode     m_activeNode;
 
         void setVmBtnFrame();
         void setVmFrame();

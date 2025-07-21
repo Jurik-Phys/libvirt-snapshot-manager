@@ -2,7 +2,7 @@
 
 #include "vmWidget.h"
 
-VmWidget::VmWidget(int idx, QVector<QStringList> vmList, QWidget* parent){
+VmWidget::VmWidget(int idx, const QVector<VMachine>& vmList, QWidget* parent){
     m_idx = idx;
     m_vmList = vmList;
 
@@ -16,10 +16,7 @@ VmWidget::VmWidget(int idx, QVector<QStringList> vmList, QWidget* parent){
 
     // Virtual machine name
     m_vmLabel  = new QLabel(this);
-    // m_vmLabel->setStyleSheet("background-color: gray;");
-    // QString longLine = "ABCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC9876543210";
-    // m_vmLabel->setText(longLine);
-    m_vmLabel->setText("<b>"+m_vmList[m_idx][0]+"</b>");
+    m_vmLabel->setText("<b>"+m_vmList[m_idx].name+"</b>");
 
     // m_vmLabel->setAlignment(Qt::AlignBottom);
     m_vmVTextLayout->addWidget(m_vmLabel);
@@ -27,12 +24,11 @@ VmWidget::VmWidget(int idx, QVector<QStringList> vmList, QWidget* parent){
     // Virtual machine status
     m_vmState = new QLabel(this);
     // m_vmState->setStyleSheet("background-color: orange;");
-    QString state = m_vmList[m_idx][1];
+    QString state = m_vmList[m_idx].state;
     state[0] = state[0].toUpper();
     m_vmState->setText(state);
     // m_vmState->setAlignment(Qt::AlignTop);
     m_vmVTextLayout->addWidget(m_vmState);
-
 
     m_vmHFrameLayout = new QHBoxLayout(this);
     m_vmHFrameLayout->addWidget(m_vmIcon);

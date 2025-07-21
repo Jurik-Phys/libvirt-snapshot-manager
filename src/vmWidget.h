@@ -7,13 +7,14 @@
 #include <QVector>
 #include <QStringList>
 #include <QBoxLayout>
+#include "vmDataStructs.h"
 
 class VmWidget : public QFrame {
 
     Q_OBJECT
 
     public:
-        VmWidget(int, QVector<QStringList>, QWidget* parent = nullptr);
+        VmWidget(int, const QVector<VMachine>&, QWidget* parent = nullptr);
         ~VmWidget();
         void setSelected(bool);
 
@@ -33,7 +34,7 @@ class VmWidget : public QFrame {
         QVBoxLayout* m_vmVTextLayout;
         int m_vmIconSize = 32;
         int m_idx = -1;
-        QVector<QStringList> m_vmList;
+        QVector<VMachine> m_vmList;
         bool m_selected = false;
 
         void setDefaultStyle();
