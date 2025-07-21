@@ -145,6 +145,10 @@ void QAppWindow::setSnapFrame(){
                                             height: 40px;
                                         }
                                     )");
+    QFont font = m_snapTreeView->font();
+    font.setPointSize(12);
+    m_snapTreeView->setFont(font);
+
     m_vRColumnLayout->addWidget(m_snapTreeView);
 
     m_snapTreeView->setModel(m_snapTreeModel);
@@ -191,49 +195,33 @@ void QAppWindow::updSnapTree(){
     qDebug() << "[II] Update snap tree now!";
     qDebug() << "[II] Selected VM index:" << m_selectedVmIndex;
 
-    VmDataCollector vmDataCollector(this);
-    activeVm = vmDataCollector.getVmInfo(activeVm);
-
-    QVector<ChainNode> result = activeVm.vmStateChain;
-
-    for (int i = 0; i < activeVm.vmStateChain.size(); ++i){
-        qDebug() << result[i].id << result[i].parentId << result[i].name;
-    }
-
-    /***/
-        m_snapTreeView->clearSelection();
-        m_snapTreeModel->setSnapData(result);
-        m_snapTreeView->expandAll();
-    /***/
-
-    qDebug() << "[II] Данные получены (finished)";
-
     QThread* thread = new QThread;
-    // Comment to Development
-    // QThread* thread = new QThread;
-    // SnapManager* snapManager = new SnapManager(activeVmName);
-    // snapManager->moveToThread(thread);
+    VmDataCollector* vmDataCollector = new VmDataCollector(activeVm, this);
+    vmDataCollector->moveToThread(thread);
 
-    // thread->start();
+    thread->start();
 
-    // QObject::connect(thread, &QThread::started,
-    //                                         snapManager, &SnapManager::process);
+    QObject::connect(thread, &QThread::started,
+                                    vmDataCollector, &VmDataCollector::process);
 
-    // QObject::connect(snapManager, &SnapManager::finished, this,
-    //     [=](const QVector<SnapNode>& result) {
-    //         /***/
-    //           m_snapTreeView->clearSelection();
-    //           m_snapTreeModel->setSnapData(result);
-    //           m_snapTreeView->expandAll();
-    //           qDebug() << "[II] Данные получены (finished)";
-    //         /***/
+    QObject::connect(vmDataCollector, &VmDataCollector::finished, this,
+        [=](const VMachine& result) {
+                QVector<ChainNode> res = result.vmStateChain;
+                m_snapTreeView->clearSelection();
+                m_snapTreeModel->setSnapData(res);
+                m_snapTreeView->expandAll();
+                qDebug() << "";
+                for (int i = 0; i < result.vmStateChain.size(); ++i){
+                   qDebug() << res[i].id << res[i].parentId << res[i].name;
+                }
+                qDebug() << "[II] Данные получены (finished)";
 
-    //         thread->quit();
-    //         thread->wait();
+                thread->quit();
+                thread->wait();
 
-    //         snapManager->deleteLater();
-    //         thread->deleteLater();
-    //     });
+                vmDataCollector->deleteLater();
+                thread->deleteLater();
+        });
 }
 
 VMachine QAppWindow::getActiveVm(){

@@ -5,24 +5,37 @@
 
 #include <QDir>
 #include <QSet>
+#include <QThread>
 #include <QProcess>
+#include <QtEndian>
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QDomDocument>
-#include <QHash>
+#include <QCryptographicHash>
 #include <QRegularExpression>
 #include "vmDataStructs.h"
 
-class VmDataCollector {
+class VmDataCollector : public QObject {
+
+    Q_OBJECT
 
     public:
         VmDataCollector(QWidget *parent = nullptr);
+        VmDataCollector(const VMachine& vm, QWidget *parent = nullptr);
         ~VmDataCollector();
 
-        VMachine getVmInfo(const VMachine& vm);
+        VMachine getVmInfo();
         QVector<VMachine> getVmList();
 
+    public slots:
+        void process();
+
+    signals:
+        void finished(const VMachine&);
+
     private:
+        VMachine m_vm;
+        VMachine getVmInfo(const VMachine& vm);
         QDomDocument getVmXml(const QString& vmName);
         void setSnapChainData(VMachine& vm);
         bool isVMachineImage(const QString& imageFullName);

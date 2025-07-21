@@ -11,9 +11,7 @@
 #include <QDomDocument>
 #include <QFileInfo>
 #include <QDir>
-#include <QThread>
 #include "snapTreeModel.h"
-#include "vmDataCollector.h"
 
 class SnapManager : public QObject {
 

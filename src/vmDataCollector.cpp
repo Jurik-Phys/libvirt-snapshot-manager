@@ -5,6 +5,11 @@
 VmDataCollector::VmDataCollector(QWidget *parent) : parentWindow(parent){
 }
 
+VmDataCollector::VmDataCollector(const VMachine& vm, QWidget *parent) {
+    parentWindow = parent;
+    m_vm = vm;
+}
+
 VmDataCollector::~VmDataCollector(){
 }
 
@@ -187,11 +192,7 @@ QDomDocument VmDataCollector::getVmXml(const QString& vmName){
     }
 
     QString output = process.readAllStandardOutput();
-
-    // QDomDocument xmlDoc;
     vmXmlDoc.setContent(output);
-
-    // vmXmlDoc = xmlDoc.documentElement();
 
     return vmXmlDoc;
 }
@@ -498,26 +499,36 @@ QString VmDataCollector::getRootFullName(const QString& imageFullName){
 
  QString VmDataCollector::getNodeName(const QString& name, const QString& type){
     QString nodeName;
-    size_t index;
 
-    index = qHash(name) % nodeNameList.size();
+    // Получаем SHA256 хеш от строки (минимизация коллизий в именах)
+    QByteArray hash;
+    hash = QCryptographicHash::hash(name.toUtf8(), QCryptographicHash::Sha256);
+
+    // Берём первые 4 байта (можно больше, но 4 достаточно для uint)
+    quint32 hashValue;
+    hashValue = qFromBigEndian<quint32>
+                            (reinterpret_cast<const uchar *>(hash.constData()));
+
+    // Получаем индекс по модулю размера списка
+    int index = hashValue % nodeNameList.size();
 
     if (type == "snap"){
-        nodeName = "[snap] " + nodeNameList[index];
+        nodeName = nodeNameList[index] + " ~ snap ~";
     }
     else {
-        nodeName = "[work] " + nodeNameList[index];
+        nodeName = nodeNameList[index] + " ~ work ~";
     }
     return nodeName;
 }
 
+void VmDataCollector::process(){
+    VMachine result;
+    result = getVmInfo(m_vm);
+    emit finished(result);
+}
 
-
-
-
-
-// asdf
-
-
+VMachine VmDataCollector::getVmInfo(){
+    return getVmInfo(m_vm);
+}
 
 // End vmDataCollector.cpp

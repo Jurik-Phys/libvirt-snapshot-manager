@@ -9,10 +9,8 @@ SnapManager::SnapManager(const VMachine& vm, QObject*){
     m_vm = vm;
 }
 
-
 SnapManager::~SnapManager(){
 }
-
 
 QDomElement SnapManager::getVmXml(const QString& vm){
     QDomElement res;
