@@ -65,17 +65,18 @@ void QAppWindow::setVmBtnFrame(){
     stopBtn->setFixedWidth(1.5*m_btnSize1);
     stopBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
 
-    QToolButton* takeSnapBtn = new QToolButton(vmBtnFrame);
-    takeSnapBtn->setText("Take");
-    takeSnapBtn->setFixedHeight(m_btnSize1);
-    takeSnapBtn->setFixedWidth(1.5*m_btnSize1);
-    takeSnapBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    QObject::connect(takeSnapBtn, &QToolButton::clicked, this,
-                                                         &QAppWindow::takeSnap);
+    m_takeSnapBtn = new QToolButton(vmBtnFrame);
+    m_takeSnapBtn->setText("Take");
+    m_takeSnapBtn->setFixedHeight(m_btnSize1);
+    m_takeSnapBtn->setFixedWidth(1.5*m_btnSize1);
+    m_takeSnapBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    m_takeSnapBtn->setEnabled(false);
+    QObject::connect(m_takeSnapBtn, &QToolButton::clicked, this,
+                                                       &QAppWindow::doSnapshot);
 
     vmBtnFrameHLayout->addWidget(startBtn);
     vmBtnFrameHLayout->addWidget(stopBtn);
-    vmBtnFrameHLayout->addWidget(takeSnapBtn);
+    vmBtnFrameHLayout->addWidget(m_takeSnapBtn);
 
     m_vLColumnLayout->addWidget(vmBtnFrame);
 }
@@ -206,13 +207,16 @@ void QAppWindow::updSnapTree(){
 
     QObject::connect(vmDataCollector, &VmDataCollector::finished, this,
         [=](const VMachine& result) {
-                QVector<ChainNode> res = result.vmStateChain;
+                QVector<ChainNode> vmSnapshotsChain = result.vmStateChain;
                 m_snapTreeView->clearSelection();
-                m_snapTreeModel->setSnapData(res);
+                m_snapTreeModel->setSnapData(vmSnapshotsChain);
                 m_snapTreeView->expandAll();
-                qDebug() << "";
+                m_currentVmName = result.name;
+                m_mountStorages = result.mountStorages;
                 for (int i = 0; i < result.vmStateChain.size(); ++i){
-                   qDebug() << res[i].id << res[i].parentId << res[i].name;
+                   qDebug() << vmSnapshotsChain[i].id
+                            << vmSnapshotsChain[i].parentId
+                            << vmSnapshotsChain[i].name;
                 }
                 qDebug() << "[II] Данные получены (finished)";
 
@@ -220,6 +224,7 @@ void QAppWindow::updSnapTree(){
                 thread->wait();
 
                 vmDataCollector->deleteLater();
+                this->takeSnapBtnManage();
                 thread->deleteLater();
         });
 }
@@ -232,87 +237,12 @@ VMachine QAppWindow::getActiveVm(){
     return vm;
 }
 
-void QAppWindow::takeSnap(){
-    // Создание и запуск внешней команды
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("LANG", "C");
-
-    QProcess process;
-    process.setProcessEnvironment(env);
-
-    if (m_activeNode.id != -1) {
-        qDebug() << "Info поля узла:" << m_activeNode.imagesFullNames;
-    }
-
-    // Генерация уникального идентификатора (unix time)
-    QString leftId = QString::number(QDateTime::currentSecsSinceEpoch());
-
-    for (int i = 0; i < m_activeNode.imagesFullNames.size(); ++i){
-        // Выбор предка для нового снимка
-        QString parent = m_activeNode.imagesFullNames[i];
-        qDebug() << parent;
-
-        return;
-        // Имя файла создаваемого "snap" снимка.
-        // "Snap" cнимок хранит состояние системы и служит точкой ветвления,
-        //  если это будет необходимо в будущем.
-        QString snapName = parent;
-        if (snapName.endsWith(".qcow2", Qt::CaseInsensitive)) {
-            snapName.chop(6);
-        }
-        snapName = snapName + "-" + leftId + "-snap.qcow2";
-
-        QStringList snapArguments = {"create", "-f", "qcow2", "-b", parent,
-                                                       "-F", "qcow2", snapName};
-
-        process.start("qemu-img", snapArguments);
-
-        if (!process.waitForStarted()){
-            return;
-        }
-
-        if (!process.waitForFinished()){
-            return;
-        }
-
-        QString output = process.readAllStandardOutput();
-
-        QStringList outputLines = output.split('\n', Qt::SkipEmptyParts);
-        for (int i = 0; i < outputLines.size(); ++i){
-            QString line = outputLines[i];
-            qDebug() << i << line;
-        }
-
-        // Имя файла создаваемого "work" снимка.
-        // "Work" служит для накопления текущих изменений
-        QString rightId = QString::number(QDateTime::currentSecsSinceEpoch());
-        QString workName = parent;
-        if (workName.endsWith(".qcow2", Qt::CaseInsensitive)) {
-            workName.chop(6);
-        }
-        workName = workName + "-" + leftId + "-work-" + rightId + ".qcow2";
-
-        QStringList workArguments = {"create", "-f", "qcow2", "-b", snapName,
-                                                       "-F", "qcow2", workName};
-
-        process.start("qemu-img", workArguments);
-
-        if (!process.waitForStarted()){
-            return;
-        }
-
-        if (!process.waitForFinished()){
-            return;
-        }
-
-        QString workOutput = process.readAllStandardOutput();
-
-        QStringList workOutputLines = output.split('\n', Qt::SkipEmptyParts);
-        for (int i = 0; i < workOutputLines.size(); ++i){
-            QString line = workOutputLines[i];
-            qDebug() << i << line;
-        }
-    }
+void QAppWindow::doSnapshot(){
+    SnapManager* snapManager = new SnapManager(this);
+    snapManager->doSnapshot(m_currentVmName, m_mountStorages);
+    snapManager->deleteLater();
+    // *** Обновление дерева снимков состояний виртуальной машины *** //
+    updSnapTree();
 }
 
 void QAppWindow::onTreeItemClicked(const QModelIndex& index){
@@ -322,6 +252,8 @@ void QAppWindow::onTreeItemClicked(const QModelIndex& index){
     const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(index);
     m_activeNode = m_snapTreeModel->getChainNodeByIndex(index);
     if (node.id != -1) {
+        qDebug() << "Текущий узел цепочки сохранения состояний ("
+                                                        + node.imagesType + ")";
         qDebug() << "ImagesFullNames:" << node.imagesFullNames;
         qDebug() << "   BackFullName:" << node.backFullNames;
     }
@@ -331,6 +263,15 @@ void QAppWindow::resizeEvent(QResizeEvent* event) {
     // Fix width alternate color "bug". It's only text width
     m_snapTreeView->header()
                         ->setMinimumSectionSize(width() - m_appWindowWidth/2.3);
+}
+
+void QAppWindow::takeSnapBtnManage(){
+    if (m_mountStorages.size() > 0){
+        m_takeSnapBtn->setEnabled(true);
+    }
+    else {
+        m_takeSnapBtn->setEnabled(false);
+    }
 }
 
 // End appWindow.cpp

@@ -2,10 +2,10 @@
 
 #include "vmDataCollector.h"
 
-VmDataCollector::VmDataCollector(QWidget *parent) : parentWindow(parent){
+VmDataCollector::VmDataCollector(QWidget* parent) : parentWindow(parent){
 }
 
-VmDataCollector::VmDataCollector(const VMachine& vm, QWidget *parent) {
+VmDataCollector::VmDataCollector(const VMachine& vm, QWidget* parent) {
     parentWindow = parent;
     m_vm = vm;
 }
@@ -232,8 +232,8 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
 
                 if (node.imagesType == "work"){
                     // Потомков нет => единственное состояние => выход
-                    node.name.insert(0, "➔ ");
-                    node.name +="  >>> You Are Here! <<<";
+                    node.name ="★★★ You Are Here! ★★★";
+                    // node.name.insert(0, "● ");
                 }
             }
             // Формирование всех остальных узлов в цепочке сохранений
@@ -281,7 +281,7 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
                             // Потомков нет и текущий диск примонтирован к ВМ
                             if (imageFullName
                                         == vm.mountStorages[mntIdx] ){
-                                node.name +="  >>> You Are Here! <<<";
+                                node.name ="↪ ★★★ You Are Here! ★★★";
                             }
                         }
 

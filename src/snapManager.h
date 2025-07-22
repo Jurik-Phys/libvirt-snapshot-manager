@@ -6,40 +6,33 @@
 #include <QString>
 #include <QStringList>
 #include <QRegularExpression>
+#include <QMessageBox>
 #include <QProcess>
 #include <QDebug>
 #include <QDomDocument>
 #include <QFileInfo>
 #include <QDir>
-#include "snapTreeModel.h"
+#include "vmDataStructs.h"
 
 class SnapManager : public QObject {
 
     Q_OBJECT
 
     public:
-        SnapManager(QObject* parent = nullptr);
-        SnapManager(const VMachine& vm, QObject* parent = nullptr);
+        SnapManager(QWidget* parent = nullptr);
         ~SnapManager();
 
-        QVector<QStringList> getVmList();
-        void takeSnapshot(const VMachine& vm);
-        void setVmName(const VMachine&);
-        QVector<ChainNode> getSnapTreeModelData(const VMachine& vm);
-    public slots:
-        void process();
-    signals:
-        void finished(QVector<ChainNode> result);
+        void doSnapshot(const QString& vmName, const QStringList& mntStorages);
 
     private:
         VMachine m_vm;
-        QDomElement getVmXml(const QString& vmName);
-        QStringList getFullPathDisks(const VMachine& vm);
-        QStringList getFileNameDisks(const QStringList& disksList);
-        QStringList getBaseDirsList(const QStringList& disksList);
-        QString     getRootDisksChain(const QString& fullPathDisks);
-        QString     getCoreFileNames(const QStringList& filesList);
-        QString     getBackingFile(const QString& qemuImgOut);
+        QWidget* parentWindow;
+
+        QString getStorageId(const QString& mntStorage);
+        QString getSnapName(const QString& imgName, const QString& id,
+                                                       const QString& parentId);
+        void switchVmMountStorages(const QString& vmName,
+                                               const QStringList& snapStorages);
 };
 
 #endif

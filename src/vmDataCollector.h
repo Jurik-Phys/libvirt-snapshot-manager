@@ -46,7 +46,7 @@ class VmDataCollector : public QObject {
         QVector<VmImageRawInfo> m_vmImagesRawInfo;
         QString getNodeName(const QString& imgFileName, const QString& imgType);
 
-        QWidget *parentWindow;
+        QWidget* parentWindow;
 };
 
 #endif

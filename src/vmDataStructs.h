@@ -3,24 +3,19 @@
 #ifndef VMDATASTRUCT_H
 #define VMDATASTRUCT_H
 
-
 #include <QString>
 #include <QStringList>
 
 // Узел цепочки состояний
-// атомарный элемент QTreeView
+// "атомарный" элемент QTreeView
 struct ChainNode {
     int     id;
     int     parentId;
     QString name;
-    // QString imageLeftId;    // Временной идентификатор состояния
-    QString imagesType;    // Тип текущего состояния [snap|work|root]
-    //   bool isFree;         // Флаг "висящего" (не имеющего потомков состояния)
-    // В одном состоянии (снимке) может быть несолько жёстких дисков,
-    // информацией по всем дискам, соответственно, необходимо управлять
-    QStringList imagesFullNames; // Полное имя образа жёсткого диска
-    QStringList imagesFileNames; // Только имя образа жёсткого диска
-    QStringList backFullNames;   // Полное имя backing (родительского) файла
+    QString imagesType;          // Тип текущего состояния [snap|work|root]
+    QStringList imagesFullNames; // Полные имена образов жёстких дисков узла
+    QStringList imagesFileNames; // Короткие имена образов жёстких дисков
+    QStringList backFullNames;   // Полные имена backing (родительских) файлов
 };
 
 struct VMachine {
@@ -31,9 +26,9 @@ struct VMachine {
     QString     cpu;           // Информация о процессоре
     QString     ram;           // Оперативная память
     QStringList mountStorages; // Примонтированные хранилища данных
-    QStringList rootFullName;  // Полные именa корневый файлов цепочек состояний
+    QStringList rootFullName;  // Полные имена корневых файлов цепочек состояний
     QStringList snapshotsDirs; // Каталоги хранения цепочек сохранения состояний
-    QVector<ChainNode> vmStateChain; // Узлоы цепочки сохранения состояний ВМ
+    QVector<ChainNode> vmStateChain; // Узлы цепочки сохранения состояний ВМ
 };
 
 struct VmImageRawInfo {
