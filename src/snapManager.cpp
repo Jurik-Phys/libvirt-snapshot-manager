@@ -8,32 +8,35 @@ SnapManager::SnapManager(QWidget* parent) : parentWindow(parent){
 SnapManager::~SnapManager(){
 }
 
-void SnapManager::doSnapshot(const QString& name, const QStringList& mntDisks){
+void SnapManager::doSnapshot(const QString& name,
+                                    const QStringList& workDisks, bool silence){
 
-    for (int i = 0; i < mntDisks.size(); ++i){
-        qDebug() << "[II] VM mount storage:" << mntDisks[i];
+    for (int i = 0; i < workDisks.size(); ++i){
+        qDebug() << "[II] VM work storage:" << workDisks[i];
     }
 
-    QMessageBox::StandardButton reply = QMessageBox::question(
+    if (!silence) {
+        QMessageBox::StandardButton reply = QMessageBox::question(
                     parentWindow, "Take Snapshot - " + name,
                         "Do you really want to take a snapshot of '"+ name +"'",
                                             QMessageBox::Yes | QMessageBox::No);
 
-    if (reply == QMessageBox::No) {
-        return;
+        if (reply == QMessageBox::No) {
+            return;
+        }
     }
 
     qDebug() << "[II] Take snapshot " + name;
 
-    // parentId по имени дного из примонтированных дисков
+    // parentId по имени дного из "work" дисков
     // id - число секунд с 1970-ого года
-    QString parentId = getStorageId(mntDisks[0]);
+    QString parentId = getStorageId(workDisks[0]);
     QString id = QString::number(QDateTime::currentSecsSinceEpoch());
 
     // Создание массива имён снапшотов
     QStringList snapshotsFullNames;
-    for (int i = 0; i < mntDisks.size(); ++i){
-        snapshotsFullNames.push_back(getSnapName(mntDisks[i], id, parentId));
+    for (int i = 0; i < workDisks.size(); ++i){
+        snapshotsFullNames.push_back(getSnapName(workDisks[i], id, parentId));
     }
 
     // // Создание и запуск внешней команды
@@ -43,14 +46,14 @@ void SnapManager::doSnapshot(const QString& name, const QStringList& mntDisks){
     QProcess process;
     process.setProcessEnvironment(env);
 
-    // Индексы у mntDisks и snapshotsFullNames согласованы
+    // Индексы у workDisks и snapshotsFullNames согласованы
     for (int n = 0; n < snapshotsFullNames.size(); ++n){
         QString snapName = snapshotsFullNames[n];
         QStringList qemuImgArguments = {
                                             "create",
                                             "-f",
                                             "qcow2",
-                                            "-b", mntDisks[n],
+                                            "-b", workDisks[n],
                                             "-F",
                                             "qcow2",
                                             snapshotsFullNames[n]
@@ -68,6 +71,36 @@ void SnapManager::doSnapshot(const QString& name, const QStringList& mntDisks){
 
     // Смена точки монтирования в VM
     switchVmMountStorages(name, snapshotsFullNames);
+}
+
+void SnapManager::gotoSnapshot(const QString& vmName, const ChainNode& node){
+    qDebug() << "[II] Go to snapshot" << node.name;
+
+    if (node.imagesType == "work"){
+        // *** Для случая "work" достаточно изменить <source></source> *** //
+        switchVmMountStorages(vmName, node.imagesFullNames);
+    }
+    else {
+        // *** В случае "snap" сначала необходимо сделать "work" снапшот *** //
+        doSnapshot(vmName, node.imagesFullNames, true);
+    }
+
+}
+
+void SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
+    qDebug() << "[II] Delete snapshot" << node.name;
+
+    if (node.imagesType == "work"){
+        // Для случая "work" + не активное состояние необходимо
+        // просто удалить соответствующие диски ВМ.
+        for (int i = 0; i < node.imagesFullNames.size(); ++i){
+            qDebug() << "[II] Delete file" << node.imagesFullNames[i];
+            QFile file(node.imagesFullNames[i]);
+            if (file.exists()){
+                file.remove();
+            }
+        }
+    }
 }
 
 QString SnapManager::getStorageId(const QString& imgName){

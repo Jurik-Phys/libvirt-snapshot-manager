@@ -53,11 +53,14 @@ void QAppWindow::setVmBtnFrame(){
 
     QHBoxLayout* vmBtnFrameHLayout = new QHBoxLayout(vmBtnFrame);
 
-    QToolButton* startBtn = new QToolButton(vmBtnFrame);
-    startBtn->setText("Start");
-    startBtn->setFixedHeight(m_btnSize1);
-    startBtn->setFixedWidth(1.5*m_btnSize1);
-    startBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    m_startBtn = new QToolButton(vmBtnFrame);
+    m_startBtn->setText("Start");
+    m_startBtn->setFixedHeight(m_btnSize1);
+    m_startBtn->setFixedWidth(1.5*m_btnSize1);
+    m_startBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    QObject::connect(m_startBtn, &QToolButton::clicked,
+                                                    this, &QAppWindow::startVM);
+    m_startBtn->setEnabled(false);
 
     QToolButton* stopBtn = new QToolButton(vmBtnFrame);
     stopBtn->setText("Stop");
@@ -74,7 +77,7 @@ void QAppWindow::setVmBtnFrame(){
     QObject::connect(m_takeSnapBtn, &QToolButton::clicked, this,
                                                        &QAppWindow::doSnapshot);
 
-    vmBtnFrameHLayout->addWidget(startBtn);
+    vmBtnFrameHLayout->addWidget(m_startBtn);
     vmBtnFrameHLayout->addWidget(stopBtn);
     vmBtnFrameHLayout->addWidget(m_takeSnapBtn);
 
@@ -100,21 +103,25 @@ void QAppWindow::setSnapBtnFrame(){
     snapBtnFrame->setFrameShape(QFrame::StyledPanel);
     snapBtnFrame->setFrameShadow(QFrame::Plain);
     snapBtnFrame->setFixedHeight(m_headFrameHeight);
-    // snapBtnFrame->setFixedWidth(0.6 * m_appWindowWidth);
 
     QHBoxLayout* snapBtnFrameHLayout = new QHBoxLayout(snapBtnFrame);
 
-    QToolButton* gotoBtn = new QToolButton(snapBtnFrame);
-    gotoBtn->setText("Go to");
-    gotoBtn->setFixedHeight(m_btnSize1);
-    gotoBtn->setFixedWidth(1.5*m_btnSize1);
-    gotoBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    m_gotoBtn = new QToolButton(snapBtnFrame);
+    m_gotoBtn->setText("Go to");
+    m_gotoBtn->setFixedHeight(m_btnSize1);
+    m_gotoBtn->setFixedWidth(1.5*m_btnSize1);
+    m_gotoBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    m_gotoBtn->setEnabled(false);
+    QObject::connect(m_gotoBtn, &QToolButton::clicked, this,
+                                                     &QAppWindow::gotoSnapshot);
 
-    QToolButton* deleteBtn = new QToolButton(snapBtnFrame);
-    deleteBtn->setText("Delete");
-    deleteBtn->setFixedHeight(m_btnSize1);
-    deleteBtn->setFixedWidth(1.5*m_btnSize1);
-    deleteBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    m_deleteBtn = new QToolButton(snapBtnFrame);
+    m_deleteBtn->setText("Delete");
+    m_deleteBtn->setFixedHeight(m_btnSize1);
+    m_deleteBtn->setFixedWidth(1.5*m_btnSize1);
+    m_deleteBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    QObject::connect(m_deleteBtn, &QToolButton::clicked, this,
+                                                   &QAppWindow::deleteSnapshot);
 
     QToolButton* exitBtn = new QToolButton(snapBtnFrame);
     exitBtn->setText("Exit");
@@ -123,8 +130,8 @@ void QAppWindow::setSnapBtnFrame(){
     exitBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     QObject::connect(exitBtn, &QToolButton::clicked, this,&QAppWindow::appExit);
 
-    snapBtnFrameHLayout->addWidget(gotoBtn);
-    snapBtnFrameHLayout->addWidget(deleteBtn);
+    snapBtnFrameHLayout->addWidget(m_gotoBtn);
+    snapBtnFrameHLayout->addWidget(m_deleteBtn);
     snapBtnFrameHLayout->addStretch();
     snapBtnFrameHLayout->addWidget(exitBtn);
 
@@ -137,7 +144,10 @@ void QAppWindow::setSnapFrame(){
     m_snapTreeView->header()->setStretchLastSection(false);
     m_snapTreeView->header()
                           ->setSectionResizeMode(QHeaderView::ResizeToContents);
+    m_snapTreeView->header()
+                       ->setMinimumSectionSize(width());
     // m_snapTreeView->setItemsExpandable(false);
+    m_snapTreeView->setExpandsOnDoubleClick(false);
     m_snapTreeView->setAlternatingRowColors(true);
     m_snapTreeView->setRootIsDecorated(true);
     m_snapTreeView->header()->hide();
@@ -147,7 +157,7 @@ void QAppWindow::setSnapFrame(){
                                         }
                                     )");
     QFont font = m_snapTreeView->font();
-    font.setPointSize(12);
+    font.setPointSize(11);
     m_snapTreeView->setFont(font);
 
     m_vRColumnLayout->addWidget(m_snapTreeView);
@@ -155,16 +165,10 @@ void QAppWindow::setSnapFrame(){
     m_snapTreeView->setModel(m_snapTreeModel);
 
     QObject::connect(m_snapTreeView, &QTreeView::clicked,
-                                         this, &QAppWindow::onTreeItemClicked);
+                                          this, &QAppWindow::onTreeItemClicked);
 
-//
-//     QObject::connect(treeView, &QTreeView::clicked, this, [=](const QModelIndex& index) {
-//     const SnapNode& node = snapTreeModel->nodeFromIndex(index);
-//     if (node.id != -1) {
-//         qDebug() << "Info поля узла:" << node.info;
-//     }
-// });
-
+    QObject::connect(m_snapTreeView, &QTreeView::clicked,
+                                              this, &QAppWindow::gotoBtnManage);
 }
 
 void QAppWindow::addVmToFrame(){
@@ -187,6 +191,8 @@ void QAppWindow::addVmToFrame(){
                 });
         QObject::connect(vmWidget, &VmWidget::clicked, this,
                                                       &QAppWindow::updSnapTree);
+        QObject::connect(vmWidget, &VmWidget::clicked, this,
+                                                   &QAppWindow::startBtnManage);
     }
 }
 
@@ -220,6 +226,9 @@ void QAppWindow::updSnapTree(){
                 }
                 qDebug() << "[II] Данные получены (finished)";
 
+                // *** On/Off GoTo button *** //
+                gotoBtnManage();
+
                 thread->quit();
                 thread->wait();
 
@@ -245,6 +254,74 @@ void QAppWindow::doSnapshot(){
     updSnapTree();
 }
 
+void QAppWindow::gotoSnapshot(){
+
+    // *** Доступ к данным через QItemSelectionModel *** //
+    QItemSelectionModel* selectionModel = m_snapTreeView->selectionModel();
+    QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
+
+    // *** Выделение одиночное, в списке максимум один элемент *** //
+    QModelIndex index = selectedIndexes[0];
+
+    // *** Получение данных выделенного узла цепочки сохранения состояний *** //
+    const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(index);
+
+    SnapManager* snapManager = new SnapManager(this);
+    snapManager->gotoSnapshot(m_currentVmName, node );
+    snapManager->deleteLater();
+    m_snapTreeView->clearFocus();
+    updSnapTree();
+}
+
+void QAppWindow::deleteSnapshot(){
+
+    // *** Доступ к данным через QItemSelectionModel *** //
+    QItemSelectionModel* selectionModel = m_snapTreeView->selectionModel();
+    QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
+
+    // *** Выделение одиночное, в списке максимум один элемент *** //
+    QModelIndex index = selectedIndexes[0];
+
+    // *** Получение данных выделенного узла цепочки сохранения состояний *** //
+    const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(index);
+
+    // *** Проверка попытки удаления активного состояния ВМ *** //
+    bool isMount = false;
+    for (int i = 0; i < m_mountStorages.size(); ++i){
+        if (node.imagesFullNames.contains(m_mountStorages[i])){
+            isMount = true;
+        }
+    }
+
+    if (isMount){
+        QMessageBox::critical(this, "Error deleting snapshot",
+                  "The active state of the virtual machine cannot be deleted.");
+        return;
+    }
+
+    SnapManager* snapManager = new SnapManager(this);
+    snapManager->deleteSnapshot(m_currentVmName, node);
+    snapManager->deleteLater();
+    m_snapTreeView->clearFocus();
+    updSnapTree();
+}
+
+void QAppWindow::startVM(){
+    qDebug() << m_currentVmName;
+
+    QProcess process;
+
+    process.start("virt-manager", {"--connect=qemu:///system",
+                                    "--show-domain-console", m_currentVmName});
+    process.waitForStarted();
+    process.waitForFinished();
+
+    process.start("virsh", {"start", m_currentVmName});
+    process.waitForStarted();
+    process.waitForFinished();
+
+}
+
 void QAppWindow::onTreeItemClicked(const QModelIndex& index){
     QString text = index.data(Qt::DisplayRole).toString();
     qDebug() << "Клик по строке:" << text;
@@ -261,8 +338,14 @@ void QAppWindow::onTreeItemClicked(const QModelIndex& index){
 
 void QAppWindow::resizeEvent(QResizeEvent* event) {
     // Fix width alternate color "bug". It's only text width
-    m_snapTreeView->header()
-                        ->setMinimumSectionSize(width() - m_appWindowWidth/2.3);
+    if (this->width() > 945){
+        m_snapTreeView->header()
+                       ->setMinimumSectionSize(width() - m_appWindowWidth/2.2);
+    } else {
+        m_snapTreeView->header()
+                       ->setMinimumSectionSize(width() - m_appWindowWidth/2.3);
+    }
+
 }
 
 void QAppWindow::takeSnapBtnManage(){
@@ -271,6 +354,28 @@ void QAppWindow::takeSnapBtnManage(){
     }
     else {
         m_takeSnapBtn->setEnabled(false);
+    }
+}
+
+void QAppWindow::gotoBtnManage(){
+
+    QItemSelectionModel* selectionModel = m_snapTreeView->selectionModel();
+    QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
+
+    if (selectedIndexes.size() > 0){
+        m_gotoBtn->setEnabled(true);
+    }
+    else {
+        m_gotoBtn->setEnabled(false);
+    }
+}
+
+void QAppWindow::startBtnManage(){
+    if (m_vmList.size() > 0){
+        m_startBtn->setEnabled(true);
+    }
+    else {
+        m_startBtn->setEnabled(false);
     }
 }
 

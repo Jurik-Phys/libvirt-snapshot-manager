@@ -513,10 +513,10 @@ QString VmDataCollector::getRootFullName(const QString& imageFullName){
     int index = hashValue % nodeNameList.size();
 
     if (type == "snap"){
-        nodeName = nodeNameList[index] + " ~ snap ~";
+        nodeName = "❄ " + nodeNameList[index] + " ❄";// + " ~ snap ~";
     }
     else {
-        nodeName = nodeNameList[index] + " ~ work ~";
+        nodeName = nodeNameList[index] + " …";
     }
     return nodeName;
 }

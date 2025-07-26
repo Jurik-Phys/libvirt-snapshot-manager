@@ -29,8 +29,10 @@ class QAppWindow : public QWidget {
 
         void appExit();
         void doSnapshot();
+        void gotoSnapshot();
+        void startVM();
+        void deleteSnapshot();
         VMachine getActiveVm();
-
 
     private:
         const int m_appWindowWidth  = 945;
@@ -52,6 +54,9 @@ class QAppWindow : public QWidget {
         QStringList   m_mountStorages;
         QString       m_currentVmName;
         QToolButton*  m_takeSnapBtn;
+        QToolButton*  m_gotoBtn;
+        QToolButton*  m_startBtn;
+        QToolButton*  m_deleteBtn;
 
         void setVmBtnFrame();
         void setVmFrame();
@@ -61,12 +66,11 @@ class QAppWindow : public QWidget {
         void addVmToFrame();
         void updSnapTree();
         void takeSnapBtnManage();
+        void gotoBtnManage();
+        void startBtnManage();
 
         void onTreeItemClicked(const QModelIndex& index);
         void resizeEvent(QResizeEvent *event) override;
-
-
-
 };
 
 #endif
