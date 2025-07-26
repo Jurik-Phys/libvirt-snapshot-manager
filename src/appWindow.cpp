@@ -22,6 +22,9 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     m_vmList = vmDataCollector.getVmList();
 
     m_snapTreeModel = new SnapTreeModel();
+    m_snapTreeLoadingModel = new SnapTreeModel();
+    ChainNode loadingNode = {1, -1, "Loading snapshot chain. Please wait..."};
+    m_snapTreeLoadingModel->setSnapData({loadingNode});
 
     setVmBtnFrame();
     setVmFrame();
@@ -202,6 +205,8 @@ void QAppWindow::updSnapTree(){
     qDebug() << "[II] Update snap tree now!";
     qDebug() << "[II] Selected VM index:" << m_selectedVmIndex;
 
+    m_snapTreeView->setModel(m_snapTreeLoadingModel);
+
     QThread* thread = new QThread;
     VmDataCollector* vmDataCollector = new VmDataCollector(activeVm, this);
     vmDataCollector->moveToThread(thread);
@@ -214,6 +219,7 @@ void QAppWindow::updSnapTree(){
     QObject::connect(vmDataCollector, &VmDataCollector::finished, this,
         [=](const VMachine& result) {
                 QVector<ChainNode> vmSnapshotsChain = result.vmStateChain;
+                m_snapTreeView->setModel(m_snapTreeModel);
                 m_snapTreeView->clearSelection();
                 m_snapTreeModel->setSnapData(vmSnapshotsChain);
                 m_snapTreeView->expandAll();
@@ -331,8 +337,14 @@ void QAppWindow::onTreeItemClicked(const QModelIndex& index){
     if (node.id != -1) {
         qDebug() << "Текущий узел цепочки сохранения состояний ("
                                                         + node.imagesType + ")";
-        qDebug() << "ImagesFullNames:" << node.imagesFullNames;
-        qDebug() << "   BackFullName:" << node.backFullNames;
+        qDebug() << "ImagesFullNames:";
+        for (int i = 0; i < node.imagesFullNames.size(); ++i){
+            qDebug() << "                " << node.imagesFullNames[i];
+        }
+        qDebug() << "   BackFullName:";
+        for (int i = 0; i < node.backFullNames.size(); ++i){
+            qDebug() << "                " << node.backFullNames[i];
+        }
     }
 }
 

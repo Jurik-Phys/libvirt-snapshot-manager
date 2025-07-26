@@ -38,6 +38,7 @@ class VmDataCollector : public QObject {
         VMachine getVmInfo(const VMachine& vm);
         QDomDocument getVmXml(const QString& vmName);
         void setSnapChainData(VMachine& vm);
+        void setChildrenData(VMachine& vm);
         bool isVMachineImage(const QString& imageFullName);
         void loadVmImagesRawInfoOverQEMU(const QString& dir);
         QString getBackFullNameQEMU(const VmImageRawInfo&);

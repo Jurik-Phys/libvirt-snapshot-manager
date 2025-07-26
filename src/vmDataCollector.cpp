@@ -170,6 +170,10 @@ VMachine VmDataCollector::getVmInfo(const VMachine& vmIn){
     // Построение цепочек сохранённых состояний
     setSnapChainData(vm);
 
+    // Заполнение данных о потомках каждого узла
+    // (необходимо для реализации удаления узла внутри цепочки)
+    setChildrenData(vm);
+
     return vm;
 }
 
@@ -227,13 +231,12 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
                 node.imagesFileNames.push_back(imageFileName);
                 node.backFullNames.push_back("None");
 
-                // Имя звезды в качестве имени узла (по хешу файла)
+                // Имя узла задано на основе хеша + списка словосочетаний
                 node.name = getNodeName(imageFileName, node.imagesType);
 
                 if (node.imagesType == "work"){
                     // Потомков нет => единственное состояние => выход
                     node.name ="★★★ You Are Here! ★★★";
-                    // node.name.insert(0, "● ");
                 }
             }
             // Формирование всех остальных узлов в цепочке сохранений
@@ -271,7 +274,7 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
                             }
                         }
 
-                        // Имя звезды в качестве имени узла (по хешу файла)
+                        // Имя узла по его хешу и списку словосочетаний
                         node.name = getNodeName(imageFileName, node.imagesType);
 
                         // Если точка без потомков (work) и совпадает с точкой
@@ -316,6 +319,22 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
         if (parentId == -1){
             parentId = 1;
         }
+    }
+}
+
+void VmDataCollector::setChildrenData(VMachine &vm){
+    // Установление childrenId
+    for (int i = 0; i < vm.vmStateChain.size(); ++i){
+        QVector<int> childrenId;
+        // Критерий "потомства": parentId узла указывает на id текущего узла.
+        // Узел с таким свойством - потомок, сохраняем его id в векторе
+        // идентификаторов потомства
+        for (int j = i + 1; j < vm.vmStateChain.size(); ++j){
+            if (vm.vmStateChain[i].id == vm.vmStateChain[j].parentId){
+                childrenId.push_back(vm.vmStateChain[j].id);
+            }
+        }
+        vm.vmStateChain[i].childrenId = childrenId;
     }
 }
 

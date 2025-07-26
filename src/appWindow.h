@@ -48,6 +48,7 @@ class QAppWindow : public QWidget {
         QVBoxLayout*  m_vVmLayout;
         QVBoxLayout*  m_vSnapLayout;
         SnapTreeModel* m_snapTreeModel;
+        SnapTreeModel* m_snapTreeLoadingModel;
         QTreeView*     m_snapTreeView;
         QVector<VMachine> m_vmList;
         ChainNode     m_activeNode;
