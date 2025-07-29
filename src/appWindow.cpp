@@ -23,7 +23,8 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
 
     m_snapTreeModel = new SnapTreeModel();
     m_snapTreeLoadingModel = new SnapTreeModel();
-    ChainNode loadingNode = {1, -1, "Loading snapshot chain. Please wait..."};
+    ChainNode loadingNode = {1, -1,
+                          "Loading snapshot chain information. Please wait..."};
     m_snapTreeLoadingModel->setSnapData({loadingNode});
 
     setVmBtnFrame();
@@ -39,9 +40,8 @@ QAppWindow::~QAppWindow(){
 
 void QAppWindow::appExit(){
    QMessageBox::StandardButton reply = QMessageBox::question(
-        this, "Подтверждение выхода", "Вы действительно хотите выйти?",
+        this, "Exit confirmation", "Do you really want to exit?",
                                             QMessageBox::Yes | QMessageBox::No);
-
     if (reply == QMessageBox::Yes) {
         QApplication::quit();
     }
@@ -225,11 +225,11 @@ void QAppWindow::updSnapTree(){
                 m_snapTreeView->expandAll();
                 m_currentVmName = result.name;
                 m_mountStorages = result.mountStorages;
-                for (int i = 0; i < result.vmStateChain.size(); ++i){
-                   qDebug() << vmSnapshotsChain[i].id
-                            << vmSnapshotsChain[i].parentId
-                            << vmSnapshotsChain[i].name;
-                }
+                // for (int i = 0; i < result.vmStateChain.size(); ++i){
+                //    qDebug() << vmSnapshotsChain[i].id
+                //             << vmSnapshotsChain[i].parentId
+                //             << vmSnapshotsChain[i].name;
+                // }
                 qDebug() << "[II] Данные получены (finished)";
 
                 // *** On/Off GoTo button *** //
@@ -300,7 +300,7 @@ void QAppWindow::deleteSnapshot(){
     }
 
     if (isMount){
-        QMessageBox::critical(this, "Error deleting snapshot",
+        QMessageBox::information(this, "Deleting snapshot...",
                   "The active state of the virtual machine cannot be deleted.");
         return;
     }
@@ -337,6 +337,8 @@ void QAppWindow::onTreeItemClicked(const QModelIndex& index){
     if (node.id != -1) {
         qDebug() << "Текущий узел цепочки сохранения состояний ("
                                                         + node.imagesType + ")";
+        qDebug() << "        Node Id:" << node.id;
+        qDebug() << "      Parent Id:" << node.parentId;
         qDebug() << "ImagesFullNames:";
         for (int i = 0; i < node.imagesFullNames.size(); ++i){
             qDebug() << "                " << node.imagesFullNames[i];
@@ -345,6 +347,9 @@ void QAppWindow::onTreeItemClicked(const QModelIndex& index){
         for (int i = 0; i < node.backFullNames.size(); ++i){
             qDebug() << "                " << node.backFullNames[i];
         }
+        // for (int j = 0; j < node.childrenId.size(); ++j){
+        //     qDebug() << "                " << node.childrenId[j];
+        // }
     }
 }
 

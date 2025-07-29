@@ -5,13 +5,17 @@
 #include <QVector>
 #include <QString>
 #include <QStringList>
+#include <QCoreApplication>
 #include <QRegularExpression>
+#include <QProgressDialog>
 #include <QMessageBox>
 #include <QProcess>
 #include <QDebug>
 #include <QDomDocument>
 #include <QFileInfo>
 #include <QDir>
+#include <QEventLoop>
+#include <QTimer>
 #include "vmDataStructs.h"
 
 class SnapManager : public QObject {
@@ -36,6 +40,10 @@ class SnapManager : public QObject {
                                                        const QString& parentId);
         void switchVmMountStorages(const QString& vmName,
                                                const QStringList& snapStorages);
+        void rebaseImages(const QStringList& parentImages,
+                                const QStringList& idImages,
+                                    const QVector<QStringList>& childrenImages);
+        void doNewRoot(const QStringList& idImgs, const QStringList& childImgs);
 };
 
 #endif

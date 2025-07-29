@@ -325,16 +325,17 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
 void VmDataCollector::setChildrenData(VMachine &vm){
     // Установление childrenId
     for (int i = 0; i < vm.vmStateChain.size(); ++i){
-        QVector<int> childrenId;
+        QStringList childrenFullNames;
         // Критерий "потомства": parentId узла указывает на id текущего узла.
-        // Узел с таким свойством - потомок, сохраняем его id в векторе
-        // идентификаторов потомства
+        // Узел с таким свойством - потомок, сохраняем список imagesFullNames
+        // таких списков для всех потомков
         for (int j = i + 1; j < vm.vmStateChain.size(); ++j){
             if (vm.vmStateChain[i].id == vm.vmStateChain[j].parentId){
-                childrenId.push_back(vm.vmStateChain[j].id);
+                childrenFullNames = vm.vmStateChain[j].imagesFullNames;
+                vm.vmStateChain[i].childrenImagesFullNames
+                                                 .push_back(childrenFullNames);
             }
         }
-        vm.vmStateChain[i].childrenId = childrenId;
     }
 }
 

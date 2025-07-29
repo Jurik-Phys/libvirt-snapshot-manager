@@ -16,7 +16,7 @@ struct ChainNode {
     QStringList imagesFullNames; // Полные имена образов жёстких дисков узла
     QStringList imagesFileNames; // Короткие имена образов жёстких дисков
     QStringList backFullNames;   // Полные имена backing (родительских) файлов
-    QVector<int> childrenId;     // Вектор id узлов-потомков
+    QVector<QStringList> childrenImagesFullNames; // Вектор из списка стораджей
 };
 
 struct VMachine {
