@@ -85,13 +85,13 @@ void SnapManager::gotoSnapshot(const QString& vmName, const ChainNode& node){
 
 }
 
-void SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
+bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
 
     if ( node.parentId == -1 ){
         if (node.childrenImagesFullNames.size() > 1 ) {
             QMessageBox::information(parentWindow,"Root chain node deletion...",
                 "Info: The root snapshot can only be removed with one child.");
-                return;
+                return false;
         }
         else {
             // *** Delete confirmation in this specific case (one child)  *** //
@@ -103,7 +103,7 @@ void SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
                         "and temporarily require additional disk space.",
                                             QMessageBox::Yes | QMessageBox::No);
             if (reply == QMessageBox::No) {
-                return;
+                return false;
             }
 
             // Есть корневой узел с одним потомком. Удаление корневого узла,
@@ -112,7 +112,7 @@ void SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
             QStringList idImages = node.imagesFullNames;
             QStringList childImages = node.childrenImagesFullNames.first();
             doNewRoot(idImages, childImages);
-            return;
+            return true;
         }
     }
 
@@ -122,7 +122,7 @@ void SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
                                    "Do you really want to delete the snapshot?",
                                             QMessageBox::Yes | QMessageBox::No);
     if (reply == QMessageBox::No) {
-        return;
+        return false;
     }
 
     if (node.imagesType == "work"){
@@ -157,6 +157,7 @@ void SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
         QVector<QStringList> childrenImages = node.childrenImagesFullNames;
         rebaseImages(parentImages, idImages, childrenImages);
     }
+    return true;
 }
 
 QString SnapManager::getSnapName(const QString& imgName, const QString& id){

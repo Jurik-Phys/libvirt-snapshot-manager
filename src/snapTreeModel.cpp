@@ -182,8 +182,80 @@ ChainNode SnapTreeModel::getChainNodeByIndex(const QModelIndex& index){
 bool SnapTreeModel::removeRows(int row, int count, const QModelIndex& parent){
     bool res;
 
+    // qDebug() << "[II] removeRowsBegin";
+    // for (int i = 0; i < m_nodes.size(); ++i){
+    //     qDebug() << m_nodes[i].id << m_nodes[i].parentId << m_nodes[i].name;
+    // }
 
-    return res;
+    // Узел родителя
+    ChainNode parentNode = getChainNodeByIndex(parent);
+
+    // Уведомление QTreeView о том, что ожидается удаление строк(и)
+    // beginRemoveRows(const QModelIndex &parent, int first, int last)
+    beginRemoveRows(parent, row, row + count - 1);
+
+    // Удаление данных из вектора узлов
+    for (int i = 0; i < count; ++i) {
+        // Надо найти потомка и удалить его из m_nodes;
+        // Признак того, что потомок
+        int childId = findChildIdByRow(parentNode.id, row);
+        for (int i = 0; i < m_nodes.size(); ++i){
+
+            int delNodeId = m_nodes[i].id;
+            int delNodeParentId = m_nodes[i].parentId;
+
+            if ( childId == m_nodes[i].id ){
+                m_nodes.removeAt(i);
+                // После удаления узла, весь список узлов разделяется
+                // на а) верхнюю неизменную часть, б) удаляемый узел
+                // и в) нижнюю часть, в которой необходимо сделать
+                // преобразования id и parentId
+                for (int k = i; k < m_nodes.size(); ++k){
+                    // 1. Для всех узлов необходимо уменьшить id единицу
+                    m_nodes[k].id -=1;
+                    // 2. Если кто-то имел родителем удаляемый узел,
+                    //    то подключем его к родителю удаляемого узла
+                    if (m_nodes[k].parentId == delNodeId){
+                        m_nodes[k].parentId = delNodeParentId;
+                    }
+                    // 3. Если родитель не удаляемый узел, то возможно две
+                    //    ситуации:
+                    //    - родитель в блоке с изменившимися id (низ списка)
+                    //    - родитель в неизменном блоке (верх списка)
+                    //    В первом случае необходимо parentId уменьшить на "1",
+                    //    во втором случае ничего делать не требуется
+                    else {
+                        if (m_nodes[k].parentId > delNodeId){
+                            m_nodes[k].parentId -=1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Проверка родителя, удаляемого узла на изменение типа
+    // Если потомков нет (получен индекс "-1"),
+    // то узел из типа "snap" переходит в "work"
+    // row = 0 соответствует первому потомку
+    int isWork = findChildIdByRow(parentNode.id, 0);
+    if (isWork == -1){ // Потомков нет
+        for (int i = 0; i < m_nodes.size(); ++i){
+            if (m_nodes[i].id == parentNode.id){
+                m_nodes[i].imagesType = "work";
+            }
+        }
+    }
+
+    // qDebug() << "[II] removeRowsEnd";
+    // for (int i = 0; i < m_nodes.size(); ++i){
+    //     qDebug() << m_nodes[i].id << m_nodes[i].parentId << m_nodes[i].name;
+    // }
+
+    // Уведомление QTreeView о завершении операции и изменении данных
+    endRemoveRows();
+
+    return true;
 }
 
 // End snapTreeModel.cpp

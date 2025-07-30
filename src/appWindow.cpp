@@ -305,10 +305,22 @@ void QAppWindow::deleteSnapshot(){
         return;
     }
 
+    // *** Запрет удаления корневого узла при наличии нескольких потомков *** //
+    if (node.childrenImagesFullNames.size() > 1 ) {
+        QMessageBox::information(this,"Root chain node deletion...",
+                "Info: The root snapshot can only be removed with one child.");
+        return;
+    }
+
     // *** Удаление снапшота с диска *** //
-        // SnapManager* snapManager = new SnapManager(this);
-        // snapManager->deleteSnapshot(m_currentVmName, node);
-        // snapManager->deleteLater();
+    // SnapManager* snapManager = new SnapManager(this);
+    // bool doneDelete;
+    // doneDelete = snapManager->deleteSnapshot(m_currentVmName, node);
+    // snapManager->deleteLater();
+
+    // if (doneDelete == false){
+    //     return;
+    // }
 
     // *** Удаление данных о снапшоте из хранилища сырых данных *** //
 
@@ -331,11 +343,15 @@ void QAppWindow::deleteSnapshot(){
 
         QModelIndex parentIndex = index.parent();
         bool ok = m_snapTreeModel->removeRow(index.row(), parentIndex);
-        if (!ok){
-            qDebug() << "[II] Delete false";
-        }
 
-        // m_snapTreeView->clearFocus();
+        // После удаления узла, пересчёта id и parentId для оставшихся,
+        // возникает баг, ветки с id бОльшими, чем удалённый узел схлопываются.
+        // Правильно предотвратить схлопывание не вышло, используется костыль
+        m_snapTreeView->expandAll();
+        m_snapTreeView->clearFocus();
+        m_snapTreeView->selectionModel()->clear();
+
+        qDebug() << "[II] Delete:" << ok;
         // updSnapTree();
 }
 
@@ -362,10 +378,9 @@ void QAppWindow::onTreeItemClicked(const QModelIndex& index){
     const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(index);
     m_activeNode = m_snapTreeModel->getChainNodeByIndex(index);
     if (node.id != -1) {
-        qDebug() << "Текущий узел цепочки сохранения состояний ("
-                                                        + node.imagesType + ")";
         qDebug() << "        Node Id:" << node.id;
         qDebug() << "      Parent Id:" << node.parentId;
+        qDebug() << "    Images Type:" << node.imagesType;
         qDebug() << "ImagesFullNames:";
         for (int i = 0; i < node.imagesFullNames.size(); ++i){
             qDebug() << "                " << node.imagesFullNames[i];

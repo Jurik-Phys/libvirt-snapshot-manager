@@ -45,7 +45,7 @@ class SnapTreeModel : public QAbstractItemModel {
                                      int role = Qt::DisplayRole) const override;
         void setSnapData(const QVector<ChainNode>&);
 
-        ChainNode getChainNodeByIndex(const QModelIndex& index);
+        ChainNode  getChainNodeByIndex(const QModelIndex& index);
 
         // *** Data modification *** //
         bool removeRows(int row, int count, const QModelIndex& parent);
