@@ -179,4 +179,11 @@ ChainNode SnapTreeModel::getChainNodeByIndex(const QModelIndex& index){
     return dummy;
 }
 
+bool SnapTreeModel::removeRows(int row, int count, const QModelIndex& parent){
+    bool res;
+
+
+    return res;
+}
+
 // End snapTreeModel.cpp

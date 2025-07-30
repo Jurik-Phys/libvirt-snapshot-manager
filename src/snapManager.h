@@ -35,9 +35,7 @@ class SnapManager : public QObject {
         VMachine m_vm;
         QWidget* parentWindow;
 
-        QString getStorageId(const QString& mntStorage);
-        QString getSnapName(const QString& imgName, const QString& id,
-                                                       const QString& parentId);
+        QString getSnapName(const QString& imgName, const QString& id);
         void switchVmMountStorages(const QString& vmName,
                                                const QStringList& snapStorages);
         void rebaseImages(const QStringList& parentImages,

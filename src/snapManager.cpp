@@ -28,15 +28,13 @@ void SnapManager::doSnapshot(const QString& name,
 
     qDebug() << "[II] Take snapshot " + name;
 
-    // parentId по имени дного из "work" дисков
     // id - число секунд с 1970-ого года
-    QString parentId = getStorageId(workDisks[0]);
     QString id = QString::number(QDateTime::currentSecsSinceEpoch());
 
     // Создание массива имён снапшотов
     QStringList snapshotsFullNames;
     for (int i = 0; i < workDisks.size(); ++i){
-        snapshotsFullNames.push_back(getSnapName(workDisks[i], id, parentId));
+        snapshotsFullNames.push_back(getSnapName(workDisks[i], id));
     }
 
     // // Создание и запуск внешней команды
@@ -161,41 +159,16 @@ void SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
     }
 }
 
-QString SnapManager::getStorageId(const QString& imgName){
-    QString imageId;
-
-    // Определение id из имени imgName
-    // "0123456789-at-0123456789"
-    QRegularExpression pattern1(R"((\d{10}-at-\d{10}))");
-    QRegularExpressionMatch match1 = pattern1.match(imgName);
-
-    if (!match1.hasMatch()){
-        imageId = "0000000000";
-    } else {
-        QString subString = match1.captured(1);
-        // 0123456789
-        QRegularExpression pattern2(R"((\d{10}))");
-        QRegularExpressionMatch match2 = pattern2.match(subString);
-
-        if (match2.hasMatch()) {
-            imageId = match2.captured(1);
-        }
-    }
-    qDebug() << imageId;
-    return imageId;
-}
-
-QString SnapManager::getSnapName(const QString& imgName, const QString& id,
-                                                       const QString& parentId){
+QString SnapManager::getSnapName(const QString& imgName, const QString& id){
     QString snapName = imgName;
 
     if (snapName.endsWith(".qcow2", Qt::CaseInsensitive)) {
         snapName.chop(6);
     }
 
-    QRegularExpression pattern1(R"((-\d{10}-at-\d{10}))");
+    QRegularExpression pattern1(R"((-id-\d{10}))");
     snapName = snapName.replace(pattern1, "");
-    snapName += "-" + id + "-at-" + parentId + ".qcow2";
+    snapName += "-id-" + id + ".qcow2";
     return snapName;
 }
 

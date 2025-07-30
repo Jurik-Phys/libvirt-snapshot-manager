@@ -47,6 +47,9 @@ class SnapTreeModel : public QAbstractItemModel {
 
         ChainNode getChainNodeByIndex(const QModelIndex& index);
 
+        // *** Data modification *** //
+        bool removeRows(int row, int count, const QModelIndex& parent);
+
     private:
         QVector<ChainNode> m_nodes;
 

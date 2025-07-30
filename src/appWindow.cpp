@@ -305,11 +305,38 @@ void QAppWindow::deleteSnapshot(){
         return;
     }
 
-    SnapManager* snapManager = new SnapManager(this);
-    snapManager->deleteSnapshot(m_currentVmName, node);
-    snapManager->deleteLater();
-    m_snapTreeView->clearFocus();
-    updSnapTree();
+    // *** Удаление снапшота с диска *** //
+        // SnapManager* snapManager = new SnapManager(this);
+        // snapManager->deleteSnapshot(m_currentVmName, node);
+        // snapManager->deleteLater();
+
+    // *** Удаление данных о снапшоте из хранилища сырых данных *** //
+
+    // *** Удаление данных из модели данных, привязанной к QTreeView *** //
+        // 1. Получить текущий индекс (известен ранее "QModelIndex index");
+        // 2. Получить индекс родительского узла ("QModelIndex parentIndex");
+        // 3. Получить row - номер позиции среди детей одного и того же родителя
+        // 3. Вызвать m_snapTreeModel->removeRow(row, parentIndex),
+        //    которая лишь обёртка над removeRows(row, 1, parent).
+        // 4. Метод removeRows() необходимо реализовать самостоятельно,
+        //    где должны быть реализованы:
+        //    - уведомление QTreeView о том, что ожидается удаление строк(и):
+        //        beginRemoveRows(parent, row, row + count - 1);
+        //    - удаление узла из модели данных
+        //    - уведомление QTreeView о завершении операции и изменении данных:
+        //        endRemoveRows();
+
+        qDebug() << "[II] Delete snapshot:";
+        qDebug() << "[II] Index row:" << index.row();
+
+        QModelIndex parentIndex = index.parent();
+        bool ok = m_snapTreeModel->removeRow(index.row(), parentIndex);
+        if (!ok){
+            qDebug() << "[II] Delete false";
+        }
+
+        // m_snapTreeView->clearFocus();
+        // updSnapTree();
 }
 
 void QAppWindow::startVM(){
