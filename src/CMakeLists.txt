@@ -5,6 +5,7 @@ set(SOURCE_LIB  appWindow.cpp
                 snapTreeModel.cpp
                 vmDataCollector.cpp
                 treeItemDelegate.cpp
+                treeLinesStyle.cpp
                 vmWidget.cpp)
 
 add_library(src-lib STATIC ${SOURCE_LIB})

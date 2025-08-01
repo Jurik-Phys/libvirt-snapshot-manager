@@ -349,6 +349,13 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
         }
     }
     progress.setValue(totalFiles);
+    progress.close();
+    progress.deleteLater();
+
+    parentWindow->activateWindow();
+    parentWindow->raise();
+    parentWindow->setFocus();
+
     return true;
 }
 

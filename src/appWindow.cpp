@@ -147,12 +147,7 @@ void QAppWindow::setSnapFrame(){
     m_snapTreeView->header()->setStretchLastSection(false);
     m_snapTreeView->header()
                           ->setSectionResizeMode(QHeaderView::ResizeToContents);
-    m_snapTreeView->header()
-                       ->setMinimumSectionSize(width());
-    // m_snapTreeView->setItemsExpandable(false);
-    m_snapTreeView->setExpandsOnDoubleClick(false);
     m_snapTreeView->setAlternatingRowColors(true);
-    m_snapTreeView->setRootIsDecorated(true);
     m_snapTreeView->header()->hide();
     m_snapTreeView->setStyleSheet(R"(
                                         QTreeView::item {
@@ -162,6 +157,8 @@ void QAppWindow::setSnapFrame(){
     QFont font = m_snapTreeView->font();
     font.setPointSize(10);
     m_snapTreeView->setFont(font);
+    // Установка кастомного стиля, для отображения веток дерева
+    m_snapTreeView->setStyle(new TreeLinesStyle());
 
     m_vRColumnLayout->addWidget(m_snapTreeView);
 
@@ -399,14 +396,8 @@ void QAppWindow::onTreeItemClicked(const QModelIndex& index){
 
 void QAppWindow::resizeEvent(QResizeEvent* event) {
     // Fix width alternate color "bug". It's only text width
-    if (this->width() > 945){
-        m_snapTreeView->header()
-                       ->setMinimumSectionSize(width() - m_appWindowWidth/2.2);
-    } else {
-        m_snapTreeView->header()
-                       ->setMinimumSectionSize(width() - m_appWindowWidth/2.21);
-    }
-
+    m_snapTreeView->header()
+                       ->setMinimumSectionSize(width() - m_appWindowWidth/2.24);
 }
 
 void QAppWindow::takeSnapBtnManage(){

@@ -19,6 +19,7 @@
 #include "treeItemDelegate.h"
 #include <QTreeView>
 #include <QHeaderView>
+#include "treeLinesStyle.h"
 
 class QAppWindow : public QWidget {
 
