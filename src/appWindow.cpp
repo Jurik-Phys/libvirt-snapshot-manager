@@ -24,7 +24,7 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     m_snapTreeModel = new SnapTreeModel();
     m_snapTreeLoadingModel = new SnapTreeModel();
     ChainNode loadingNode = {1, -1,
-                          "Loading snapshot chain information. Please wait..."};
+                          "Loading snapshot chain information. Please wait …"};
     m_snapTreeLoadingModel->setSnapData({loadingNode});
 
     setVmBtnFrame();
@@ -160,12 +160,15 @@ void QAppWindow::setSnapFrame(){
                                         }
                                     )");
     QFont font = m_snapTreeView->font();
-    font.setPointSize(11);
+    font.setPointSize(10);
     m_snapTreeView->setFont(font);
 
     m_vRColumnLayout->addWidget(m_snapTreeView);
 
     m_snapTreeView->setModel(m_snapTreeModel);
+
+    // Установка кастомного делегата для item'ов
+    m_snapTreeView->setItemDelegate(new TreeItemDelegate(m_snapTreeView));
 
     QObject::connect(m_snapTreeView, &QTreeView::clicked,
                                           this, &QAppWindow::onTreeItemClicked);
@@ -209,6 +212,8 @@ void QAppWindow::updSnapTree(){
 
     QThread* thread = new QThread;
     VmDataCollector* vmDataCollector = new VmDataCollector(activeVm, this);
+    QObject::connect(vmDataCollector, &VmDataCollector::errorMsg, this,
+                                                &QAppWindow::showErrorMessage);
     vmDataCollector->moveToThread(thread);
 
     thread->start();
@@ -221,6 +226,7 @@ void QAppWindow::updSnapTree(){
                 QVector<ChainNode> vmSnapshotsChain = result.vmStateChain;
                 m_snapTreeView->setModel(m_snapTreeModel);
                 m_snapTreeView->clearSelection();
+                qDebug() << "[II] run: setSnapData(vmSnapshotsChain)";
                 m_snapTreeModel->setSnapData(vmSnapshotsChain);
                 m_snapTreeView->expandAll();
                 m_currentVmName = result.name;
@@ -289,7 +295,7 @@ void QAppWindow::deleteSnapshot(){
     QModelIndex index = selectedIndexes[0];
 
     // *** Получение данных выделенного узла цепочки сохранения состояний *** //
-    const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(index);
+    const ChainNode node = m_snapTreeModel->getChainNodeByIndex(index);
 
     // *** Проверка попытки удаления активного состояния ВМ *** //
     bool isMount = false;
@@ -306,53 +312,45 @@ void QAppWindow::deleteSnapshot(){
     }
 
     // *** Запрет удаления корневого узла при наличии нескольких потомков *** //
-    if (node.childrenImagesFullNames.size() > 1 ) {
+    if (node.childrenImagesFullNames.size() > 1 && node.parentId == -1 ) {
         QMessageBox::information(this,"Root chain node deletion...",
                 "Info: The root snapshot can only be removed with one child.");
         return;
     }
 
     // *** Удаление снапшота с диска *** //
-    // SnapManager* snapManager = new SnapManager(this);
-    // bool doneDelete;
-    // doneDelete = snapManager->deleteSnapshot(m_currentVmName, node);
-    // snapManager->deleteLater();
+    SnapManager* snapManager = new SnapManager(this);
+    bool doneDelete;
+    doneDelete = snapManager->deleteSnapshot(m_currentVmName, node);
+    snapManager->deleteLater();
 
-    // if (doneDelete == false){
-    //     return;
-    // }
-
-    // *** Удаление данных о снапшоте из хранилища сырых данных *** //
+    if (doneDelete == false){
+        return;
+    }
 
     // *** Удаление данных из модели данных, привязанной к QTreeView *** //
-        // 1. Получить текущий индекс (известен ранее "QModelIndex index");
-        // 2. Получить индекс родительского узла ("QModelIndex parentIndex");
-        // 3. Получить row - номер позиции среди детей одного и того же родителя
-        // 3. Вызвать m_snapTreeModel->removeRow(row, parentIndex),
-        //    которая лишь обёртка над removeRows(row, 1, parent).
-        // 4. Метод removeRows() необходимо реализовать самостоятельно,
-        //    где должны быть реализованы:
-        //    - уведомление QTreeView о том, что ожидается удаление строк(и):
-        //        beginRemoveRows(parent, row, row + count - 1);
-        //    - удаление узла из модели данных
-        //    - уведомление QTreeView о завершении операции и изменении данных:
-        //        endRemoveRows();
+    // 1. Получить текущий индекс (известен ранее "QModelIndex index");
+    // 2. Получить индекс родительского узла ("QModelIndex parentIndex");
+    // 3. Получить row - номер позиции среди детей одного и того же родителя
+    // 3. Вызвать m_snapTreeModel->removeRow(row, parentIndex),
+    //    которая лишь обёртка над removeRows(row, 1, parent).
+    // 4. Метод removeRows() необходимо реализовать самостоятельно,
+    //    где должны быть реализованы:
+    //    - уведомление QTreeView о том, что ожидается удаление строк(и):
+    //        beginRemoveRows(parent, row, row + count - 1);
+    //    - удаление узла из модели данных
+    //    - уведомление QTreeView о завершении операции и изменении данных:
+    //        endRemoveRows();
 
-        qDebug() << "[II] Delete snapshot:";
-        qDebug() << "[II] Index row:" << index.row();
+    QModelIndex parentIndex = index.parent();
+    bool ok = m_snapTreeModel->removeRow(index.row(), parentIndex);
 
-        QModelIndex parentIndex = index.parent();
-        bool ok = m_snapTreeModel->removeRow(index.row(), parentIndex);
-
-        // После удаления узла, пересчёта id и parentId для оставшихся,
-        // возникает баг, ветки с id бОльшими, чем удалённый узел схлопываются.
-        // Правильно предотвратить схлопывание не вышло, используется костыль
-        m_snapTreeView->expandAll();
-        m_snapTreeView->clearFocus();
-        m_snapTreeView->selectionModel()->clear();
-
-        qDebug() << "[II] Delete:" << ok;
-        // updSnapTree();
+    // После удаления узла, пересчёта id и parentId для оставшихся,
+    // возникает баг, ветки с id бОльшими, чем удалённый узел схлопываются.
+    // Правильно предотвратить схлопывание не вышло, используется костыль
+    m_snapTreeView->expandAll();
+    m_snapTreeView->clearFocus();
+    m_snapTreeView->selectionModel()->clear();
 }
 
 void QAppWindow::startVM(){
@@ -368,7 +366,6 @@ void QAppWindow::startVM(){
     process.start("virsh", {"start", m_currentVmName});
     process.waitForStarted();
     process.waitForFinished();
-
 }
 
 void QAppWindow::onTreeItemClicked(const QModelIndex& index){
@@ -389,9 +386,14 @@ void QAppWindow::onTreeItemClicked(const QModelIndex& index){
         for (int i = 0; i < node.backFullNames.size(); ++i){
             qDebug() << "                " << node.backFullNames[i];
         }
-        // for (int j = 0; j < node.childrenId.size(); ++j){
-        //     qDebug() << "                " << node.childrenId[j];
-        // }
+        qDebug() << "   children:" << node.childrenImagesFullNames.size() ;
+        for (int i = 0; i < node.childrenImagesFullNames.size(); ++i){
+            for (int j = 0; j < node.childrenImagesFullNames[i].size(); ++j ){
+                qDebug() << "                "
+                            << node.childrenImagesFullNames[i][j];
+            }
+            qDebug() << "";
+        }
     }
 }
 
@@ -402,7 +404,7 @@ void QAppWindow::resizeEvent(QResizeEvent* event) {
                        ->setMinimumSectionSize(width() - m_appWindowWidth/2.2);
     } else {
         m_snapTreeView->header()
-                       ->setMinimumSectionSize(width() - m_appWindowWidth/2.3);
+                       ->setMinimumSectionSize(width() - m_appWindowWidth/2.21);
     }
 
 }
@@ -436,6 +438,10 @@ void QAppWindow::startBtnManage(){
     else {
         m_startBtn->setEnabled(false);
     }
+}
+
+void QAppWindow::showErrorMessage(const QString& title, const QString& message){
+    QMessageBox::critical(this, title,message);
 }
 
 // End appWindow.cpp

@@ -16,6 +16,7 @@
 #include "snapTreeModel.h"
 #include "vmWidget.h"
 #include "vmDataCollector.h"
+#include "treeItemDelegate.h"
 #include <QTreeView>
 #include <QHeaderView>
 
@@ -33,6 +34,9 @@ class QAppWindow : public QWidget {
         void startVM();
         void deleteSnapshot();
         VMachine getActiveVm();
+
+    public slots:
+        void showErrorMessage(const QString& title, const QString& message);
 
     private:
         const int m_appWindowWidth  = 945;

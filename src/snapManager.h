@@ -38,7 +38,7 @@ class SnapManager : public QObject {
         QString getSnapName(const QString& imgName, const QString& id);
         void switchVmMountStorages(const QString& vmName,
                                                const QStringList& snapStorages);
-        void rebaseImages(const QStringList& parentImages,
+        bool rebaseImages(const QStringList& parentImages,
                                 const QStringList& idImages,
                                     const QVector<QStringList>& childrenImages);
         void doNewRoot(const QStringList& idImgs, const QStringList& childImgs);

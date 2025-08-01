@@ -94,6 +94,18 @@ VMachine VmDataCollector::getVmInfo(const VMachine& vmIn){
                 // Точка монтирования может являться символической ссылкой,
                 // необходимо это проверить и разрешить путь при необходимости
                 QFileInfo file(mountStorage);
+                if (!file.exists()){
+                    qDebug() << "[II] The virtual machine storage isn't "
+                                                   "available:" << mountStorage;
+                    emit errorMsg("File access error …",
+                        "The virtual machine storage is not available:\n"
+                        + QString(" - Base path: ") + QFileInfo(mountStorage)
+                                                            .absolutePath()+"\n"
+                        + QString(" - File name: ") + QFileInfo(mountStorage)
+                                                                   .fileName());
+                    return vm;
+                }
+
                 if (file.isSymLink()){
                     mountStorage = QFileInfo(mountStorage).absolutePath() +"/"+
                                  QFileInfo(file.canonicalFilePath()).fileName();
@@ -214,7 +226,7 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
             if (parentId == -1){
                 node.id = id;
                 node.parentId = parentId;
-                node.imagesType = "work";
+                node.imagesType = "active";
                 // Если у диска есть потомки, то он не может быть изменён
                 // т.е., выполняет роль хранителя состояния, снимка,
                 // его тип "snap". По умолчанию тип состояния "work"
@@ -228,16 +240,10 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
                     }
                 }
                 node.imagesFullNames.push_back(imageFullName);
-                node.imagesFileNames.push_back(imageFileName);
                 node.backFullNames.push_back("None");
 
                 // Имя узла задано на основе хеша + списка словосочетаний
                 node.name = getNodeName(imageFileName, node.imagesType);
-
-                if (node.imagesType == "work"){
-                    // Потомков нет => единственное состояние => выход
-                    node.name ="★★★ You Are Here! ★★★";
-                }
             }
             // Формирование всех остальных узлов в цепочке сохранений
             else {
@@ -280,11 +286,9 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
                         // Если точка без потомков (work) и совпадает с точкой
                         // монтирования к ВМ, то это активная рабочая точка
                         if (node.imagesType == "work"){
-                            node.name.insert(0, "↳ ");
                             // Потомков нет и текущий диск примонтирован к ВМ
-                            if (imageFullName
-                                        == vm.mountStorages[mntIdx] ){
-                                node.name ="↪ ★★★ You Are Here! ★★★";
+                            if (imageFullName == vm.mountStorages[mntIdx] ){
+                                node.imagesType = "active";
                             }
                         }
 
@@ -348,9 +352,9 @@ bool VmDataCollector::isVMachineImage(const QString& imageFullName){
     QFile file(imageFullName);
 
     if (!file.open(QIODevice::ReadOnly)){
-        qDebug() << "[EE] Error open" << imageFullName;
-        QMessageBox::critical(parentWindow, "Ошибка доступа к файлу",
-                              "Проверьте доступность файла:\n" + imageFullName);
+        qDebug() << "[EE] Error access" << imageFullName;
+        emit errorMsg("File access error …",
+                     "Please check your access to the file:\n" + imageFullName);
         return false;
     }
 
@@ -366,6 +370,8 @@ bool VmDataCollector::isVMachineImage(const QString& imageFullName){
 void VmDataCollector::loadVmImagesRawInfoOverQEMU(const QString& snapshotsDir){
     QVector<VmImageRawInfo> vmImagesRawInfo;
 
+    qDebug() << "snapshotsDir:" << snapshotsDir;
+
     // Получение списка всех файлов из каталога цепочки сохранения состояний
     // /* только имена файлов */
     QStringList basePathFiles = QDir(snapshotsDir).entryList(QDir::Files
@@ -376,8 +382,8 @@ void VmDataCollector::loadVmImagesRawInfoOverQEMU(const QString& snapshotsDir){
     // Проверка на доступность (файлы всегда должны быть по логике программы)
     if (basePathFiles.size() == 0){
         qDebug() << "[EE] Error open directory:" << snapshotsDir;
-        QMessageBox::critical(parentWindow, "Ошибка доступа к каталогу",
-                               "Проверьте доступ к каталогу:\n" + snapshotsDir);
+        emit errorMsg("Directory access error …",
+                 "Please check your access to the directory:\n" + snapshotsDir);
         return;
     }
 
@@ -518,7 +524,6 @@ QString VmDataCollector::getRootFullName(const QString& imageFullName){
 }
 
  QString VmDataCollector::getNodeName(const QString& name, const QString& type){
-    QString nodeName;
 
     // Получаем SHA256 хеш от строки (минимизация коллизий в именах)
     QByteArray hash;
@@ -532,13 +537,7 @@ QString VmDataCollector::getRootFullName(const QString& imageFullName){
     // Получаем индекс по модулю размера списка
     int index = hashValue % nodeNameList.size();
 
-    if (type == "snap"){
-        nodeName = "❄ " + nodeNameList[index] + " ❄";// + " ~ snap ~";
-    }
-    else {
-        nodeName = nodeNameList[index] + " …";
-    }
-    return nodeName;
+    return nodeNameList[index];
 }
 
 void VmDataCollector::process(){

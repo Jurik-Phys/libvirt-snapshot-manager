@@ -88,6 +88,7 @@ void SnapManager::gotoSnapshot(const QString& vmName, const ChainNode& node){
 bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
 
     if ( node.parentId == -1 ){
+        qDebug() << node.childrenImagesFullNames.size();
         if (node.childrenImagesFullNames.size() > 1 ) {
             QMessageBox::information(parentWindow,"Root chain node deletion...",
                 "Info: The root snapshot can only be removed with one child.");
@@ -99,7 +100,7 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
             QMessageBox::StandardButton reply = QMessageBox::question(
                                 parentWindow, "Delete confirmation...",
                                 "Do you really want to delete the snapshot?\n\n"
-                       "Warning: Deleting this snapshot may take a long time \n"
+                       "Deleting this snapshot may take a long time \n"
                         "and temporarily require additional disk space.",
                                             QMessageBox::Yes | QMessageBox::No);
             if (reply == QMessageBox::No) {
@@ -135,29 +136,36 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
                file.remove();
             }
         }
+        return true;
     }
     else {
-        // Остаётся случай "snap" у которого есть
-        // a) один родитель
-        // б) один или более потомков(по размеру childrenImagesFullNames
-        qDebug() << "parentId:" << node.parentId;
-        qDebug() << "removeId:" << node.id;
-        qDebug() << "children:" << node.childrenImagesFullNames.size();
-        for (int i = 0; i < node.childrenImagesFullNames.size(); ++i){
-            qDebug() << "Children" << i+1;
-            for (int j = 0; j < node.childrenImagesFullNames[i].size(); ++j){
-                qDebug() << "      " << node.childrenImagesFullNames[i][j];
+        if (node.imagesType == "snap"){
+            // Остаётся случай "snap" у которого есть
+            // a) один родитель (или родителя нет в случае корневого узла)
+            // б) один или более потомков(по размеру childrenImagesFullNames
+            qDebug() << "parentId:" << node.parentId;
+            qDebug() << "removeId:" << node.id;
+            qDebug() << "children:" << node.childrenImagesFullNames.size();
+            for (int i = 0; i < node.childrenImagesFullNames.size(); ++i){
+                qDebug() << "Children" << i+1;
+                for (int j = 0; j<node.childrenImagesFullNames[i].size(); ++j){
+                    qDebug() << "      " << node.childrenImagesFullNames[i][j];
+                }
             }
-        }
 
-        // Задача перебазировать все жёсткие диски потомков (children)
-        // с текущего места (id) на родителя (parentId) текущего узла
-        QStringList parentImages = node.backFullNames;
-        QStringList idImages = node.imagesFullNames;
-        QVector<QStringList> childrenImages = node.childrenImagesFullNames;
-        rebaseImages(parentImages, idImages, childrenImages);
+            // Задача перебазировать все жёсткие диски потомков (children)
+            // с текущего места (id) на родителя (parentId) текущего узла
+            QStringList parentImages = node.backFullNames;
+            QStringList idImages = node.imagesFullNames;
+            QVector<QStringList> childrenImages = node.childrenImagesFullNames;
+            return rebaseImages(parentImages, idImages, childrenImages);
+        }
     }
-    return true;
+
+
+
+
+    return false;
 }
 
 QString SnapManager::getSnapName(const QString& imgName, const QString& id){
@@ -251,7 +259,7 @@ void SnapManager::switchVmMountStorages(const QString& vmName,
     }
 }
 
-void SnapManager::rebaseImages(const QStringList& parentImages,
+bool SnapManager::rebaseImages(const QStringList& parentImages,
     const QStringList& idImages, const QVector<QStringList>& childrenImages){
 
     int totalChildren = childrenImages.size();
@@ -267,7 +275,7 @@ void SnapManager::rebaseImages(const QStringList& parentImages,
                                                         << childrenImages[i][j];
                     QMessageBox::critical(parentWindow, "Permission error...",
                        "Error: The file must be writable:\n" + file.fileName());
-                    return;
+                    return false;
                 }
         }
     }
@@ -337,11 +345,11 @@ void SnapManager::rebaseImages(const QStringList& parentImages,
     for (int k = 0; k < idImages.size(); ++k){
         QFile file(idImages[k]);
         if (file.exists()){
-            qDebug() << "RM" << file.fileName();
             file.remove();
         }
     }
     progress.setValue(totalFiles);
+    return true;
 }
 
 void SnapManager::doNewRoot(const QStringList& idImgs,
@@ -402,7 +410,6 @@ void SnapManager::doNewRoot(const QStringList& idImgs,
             while (!process.waitForFinished(100)) {
                 QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
             }
-        // progress.setValue(100*(i+1);
     }
 
     // *** Really move snapshot files *** //

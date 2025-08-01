@@ -14,7 +14,6 @@ struct ChainNode {
     QString name;                // Словосочетание по хешу
     QString imagesType;          // Тип текущего состояния [snap|work|root]
     QStringList imagesFullNames; // Полные имена образов жёстких дисков узла
-    QStringList imagesFileNames; // Короткие имена образов жёстких дисков
     QStringList backFullNames;   // Полные имена backing (родительских) файлов
     QVector<QStringList> childrenImagesFullNames; // Вектор из списка стораджей
 };

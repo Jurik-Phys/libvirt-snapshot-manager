@@ -167,7 +167,7 @@ void SnapTreeModel::setSnapData(const QVector<ChainNode>& nodes) {
     m_nodes = nodes;
 }
 
-ChainNode SnapTreeModel::getChainNodeByIndex(const QModelIndex& index){
+ChainNode SnapTreeModel::getChainNodeByIndex(const QModelIndex& index) const {
     ChainNode res;
     int nodeId = index.internalId();
     for (int i = 0; i < m_nodes.size(); ++i) {
@@ -190,6 +190,9 @@ bool SnapTreeModel::removeRows(int row, int count, const QModelIndex& parent){
     // Узел родителя
     ChainNode parentNode = getChainNodeByIndex(parent);
 
+
+
+
     // Уведомление QTreeView о том, что ожидается удаление строк(и)
     // beginRemoveRows(const QModelIndex &parent, int first, int last)
     beginRemoveRows(parent, row, row + count - 1);
@@ -205,7 +208,26 @@ bool SnapTreeModel::removeRows(int row, int count, const QModelIndex& parent){
             int delNodeParentId = m_nodes[i].parentId;
 
             if ( childId == m_nodes[i].id ){
+                // При удалении потомка, у родителя в векторе
+                // "childrenImagesFullNames" необходимо удалить
+                // списки дисков удаляемого потомка
+                QStringList childImagesList = m_nodes[i].imagesFullNames;
+                for (int j = 0; j < m_nodes.size(); ++j){
+                    if (parentNode.id == m_nodes[j].id){
+                        m_nodes[j].childrenImagesFullNames
+                                                    .removeOne(childImagesList);
+                    }
+                }
+                qDebug() << "Remvoe from m_nodes:" << m_nodes[i].name;
                 m_nodes.removeAt(i);
+
+                // Индекс в m_nodes родителя, удаляемого узла;
+                int parentIdx = -1;
+                for (int n = 0; n < m_nodes.size(); ++n){
+                    if ( parentNode.id == m_nodes[n].id){
+                        parentIdx = n;
+                    }
+                }
                 // После удаления узла, весь список узлов разделяется
                 // на а) верхнюю неизменную часть, б) удаляемый узел
                 // и в) нижнюю часть, в которой необходимо сделать
@@ -213,10 +235,44 @@ bool SnapTreeModel::removeRows(int row, int count, const QModelIndex& parent){
                 for (int k = i; k < m_nodes.size(); ++k){
                     // 1. Для всех узлов необходимо уменьшить id единицу
                     m_nodes[k].id -=1;
-                    // 2. Если кто-то имел родителем удаляемый узел,
-                    //    то подключем его к родителю удаляемого узла
+
+                    // 2. Если кто-то имел родителем удаляемый узел т.е.,
+                    //    у него в поле parentId был записан id удаляемого узла,
+                    //    то подключем его к родителю удаляемого узла т.е.,
+                    //    вносим изменения в его поле parentId
                     if (m_nodes[k].parentId == delNodeId){
+                        // *** Изменение parentId потомка удаляемого узла *** /
                         m_nodes[k].parentId = delNodeParentId;
+
+                        qDebug() << "[II]      ParentIdx:" << parentIdx;
+                        qDebug() << "[II] New parent for:" << m_nodes[k].name;
+                        qDebug() << "[II] New parent  Id:"<<m_nodes[k].parentId;
+
+                        if (parentIdx != -1){
+                            qDebug() << "[II]     New parent:"
+                                                     << m_nodes[parentIdx].name;
+                            // m_nodes[k] - потомок удаляемого узла, его данные
+                            // в виде imagesFullNames необходимо добавить в
+                            // вектор "childrenImagesFullNames" нового родителя
+                            m_nodes[parentIdx].childrenImagesFullNames
+                                         .push_back(m_nodes[k].imagesFullNames);
+
+                            // У потомка удаляемого узла необходимо изменить
+                            // поле "backFullNames" т.к.,  теперь он будет
+                            // потомком другого родителя
+                            m_nodes[k].backFullNames = m_nodes[parentIdx]
+                                                               .imagesFullNames;
+                        }
+                        else{
+                            qDebug() << "[II]     New parent: None";
+                            // Нового родителя нет т.к., узел корневой,
+                            // добавлять информацию о потомках некому,
+                            // зато необходимо очистить backFullNames;
+                            for (int j = 0; j < m_nodes[k].backFullNames.size();
+                                                                           ++j){
+                                m_nodes[k].backFullNames[j] = "None";
+                            }
+                        }
                     }
                     // 3. Если родитель не удаляемый узел, то возможно две
                     //    ситуации:

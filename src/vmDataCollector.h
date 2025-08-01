@@ -21,7 +21,7 @@ class VmDataCollector : public QObject {
 
     public:
         VmDataCollector(QWidget *parent = nullptr);
-        VmDataCollector(const VMachine& vm, QWidget *parent = nullptr);
+        VmDataCollector(const VMachine& vm, QWidget* parent = nullptr);
         ~VmDataCollector();
 
         VMachine getVmInfo();
@@ -32,6 +32,7 @@ class VmDataCollector : public QObject {
 
     signals:
         void finished(const VMachine&);
+        void errorMsg(const QString& title, const QString& message);
 
     private:
         VMachine m_vm;
