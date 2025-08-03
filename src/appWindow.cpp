@@ -273,11 +273,12 @@ void QAppWindow::doSnapshot(){
     m_snapTreeView->expandAll();
 
     // *** Выделение и переход к новому узлу *** //
-    QModelIndex newItemIdx = m_snapTreeModel->index(index.row(), 0, index);
-    m_snapTreeView->selectionModel()->setCurrentIndex(newItemIdx,
+    // QModelIndex newItemIdx = m_snapTreeModel->index(index.row(), 0, index);
+    index = m_snapTreeModel->getActiveStateIndex();
+    m_snapTreeView->selectionModel()->setCurrentIndex(index,
                                            QItemSelectionModel::ClearAndSelect);
     m_snapTreeView->setFocus();
-    m_snapTreeView->scrollTo(newItemIdx, QAbstractItemView::PositionAtCenter);
+    m_snapTreeView->scrollTo(index, QAbstractItemView::PositionAtCenter);
 
     // *** Отключение кнопок Goto и Delete *** //
     m_deleteBtn->setEnabled(false);
@@ -285,6 +286,7 @@ void QAppWindow::doSnapshot(){
 }
 
 void QAppWindow::gotoSnapshot(){
+    QStringList snapFullNames;
 
     // *** Доступ к данным через QItemSelectionModel *** //
     QItemSelectionModel* selectionModel = m_snapTreeView->selectionModel();
@@ -297,10 +299,32 @@ void QAppWindow::gotoSnapshot(){
     const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(index);
 
     SnapManager* snapManager = new SnapManager(this);
-    snapManager->gotoSnapshot(m_currentVmName, node );
+    snapFullNames = snapManager->gotoSnapshot(m_currentVmName, node );
+    m_mountStorages = snapFullNames;
     snapManager->deleteLater();
     m_snapTreeView->clearFocus();
-    updSnapTree();
+
+    // *** Отображение изменений в QTreeView *** //
+    if (node.imagesType == "work"){
+        m_snapTreeModel->setActive(index);
+    }
+    else {
+        qDebug() << index.row();
+        m_snapTreeModel->setSnapImagesFullName(snapFullNames);
+        bool ok = m_snapTreeModel->insertRowAt(index.row(), index);
+
+        // *** Выделение и переход к новому узлу *** //
+        QModelIndex newNodeIndex = m_snapTreeModel->getActiveStateIndex();
+        m_snapTreeView->selectionModel()->setCurrentIndex(newNodeIndex,
+                                           QItemSelectionModel::ClearAndSelect);
+        m_snapTreeView->setFocus();
+        m_snapTreeView->scrollTo(newNodeIndex,
+                                           QAbstractItemView::PositionAtCenter);
+    }
+
+    // *** Отключение кнопок Goto и Delete *** //
+    m_deleteBtn->setEnabled(false);
+    m_gotoBtn->setEnabled(false);
 }
 
 void QAppWindow::deleteSnapshot(){
@@ -369,6 +393,10 @@ void QAppWindow::deleteSnapshot(){
     m_snapTreeView->expandAll();
     m_snapTreeView->clearFocus();
     m_snapTreeView->selectionModel()->clear();
+
+    // *** Выдленых элементов QTreeView нет, отключение кнопок *** //
+    m_deleteBtn->setEnabled(false);
+    m_gotoBtn->setEnabled(false);
 }
 
 void QAppWindow::startVM(){

@@ -48,10 +48,12 @@ class SnapTreeModel : public QAbstractItemModel {
 
         ChainNode getChainNodeByIndex(const QModelIndex& index) const;
         QModelIndex getActiveStateIndex();
+        void setActive(const QModelIndex& index);
 
         // *** Data modification *** //
         bool removeRows(int row, int count, const QModelIndex& parent);
         bool insertRows(int row, int count, const QModelIndex& parent);
+        bool insertRowAt(int row, const QModelIndex& parent);
 
         void setSnapImagesFullName(QStringList imagesFullNames);
     private:

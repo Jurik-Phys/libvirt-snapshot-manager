@@ -66,18 +66,22 @@ QStringList SnapManager::doSnapshot(const QString& name,
     return snapshotsFullNames;
 }
 
-void SnapManager::gotoSnapshot(const QString& vmName, const ChainNode& node){
-    qDebug() << "[II] Go to snapshot" << node.name;
+QStringList SnapManager::gotoSnapshot(const QString& vmName,
+                                                         const ChainNode& node){
+    QStringList res;
 
     if (node.imagesType == "work"){
         // *** Для случая "work" достаточно изменить <source></source> *** //
         switchVmMountStorages(vmName, node.imagesFullNames);
+        res = node.imagesFullNames;
     }
     else {
         // *** В случае "snap" сначала необходимо сделать "work" снапшот *** //
-        doSnapshot(vmName, node.imagesFullNames, true);
+        res = doSnapshot(vmName, node.imagesFullNames, true);
     }
 
+    // *** Фактически возвращения списка подключенных к ВМ хранилищ *** //
+    return res;
 }
 
 bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
@@ -91,11 +95,10 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
         }
         else {
             // *** Delete confirmation in this specific case (one child)  *** //
-            qDebug() << "[II] Delete snapshot" << node.name;
             QMessageBox::StandardButton reply = QMessageBox::question(
                                 parentWindow, "Delete confirmation...",
                                 "Do you really want to delete the snapshot?\n\n"
-                       "Deleting this snapshot may take a long time \n"
+                       "Deleting root snapshot may take a long time \n"
                         "and temporarily require additional disk space.",
                                             QMessageBox::Yes | QMessageBox::No);
             if (reply == QMessageBox::No) {
@@ -112,7 +115,6 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
         }
     }
 
-    qDebug() << "[II] Delete snapshot" << node.name;
     QMessageBox::StandardButton reply = QMessageBox::question(
                                 parentWindow, "Delete confirmation...",
                                    "Do you really want to delete the snapshot?",
@@ -146,9 +148,6 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
             return rebaseImages(parentImages, idImages, childrenImages);
         }
     }
-
-
-
 
     return false;
 }
@@ -266,42 +265,42 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
     }
 
     // Настройка диалога перебазирования файлов
-    QProgressDialog progress("", "", -1, 100*totalFiles, parentWindow);
-    progress.setWindowTitle("Rebasing snapshot chain...");
-    progress.setCancelButton(nullptr);
-    progress.setMinimumWidth(445);
-    progress.setWindowModality(Qt::WindowModal);
-    progress.show();
+    m_progress = new QProgressDialog("", "", -1, 100*totalFiles, parentWindow);
+    m_progress->setWindowTitle("Rebasing snapshot chain...");
+    m_progress->setCancelButton(nullptr);
+    m_progress->setMinimumWidth(445);
+    m_progress->setWindowModality(Qt::WindowModal);
+    m_progress->show();
     QString partInfo, info;
-
-    QProcess process;
     int doneFiles = 0;
+
+    // Обновление процента обработки текущего файла в реальном времени
     for (int i = 0; i < totalChildren; ++i){ // Node loop
         for (int j = 0; j < childImages; ++j){ // Images loop
+
             // *** Вывод информации во всплывающее окно *** //
             partInfo = QString("Updating snapshot structure\n DANGER: "
             "Manually canceling this process may corrupt or cause data loss!\n"
                                     "Please wait...\n"
                             "Processing file %1 of %2 (%4%) \n '%3'")
-                               .arg(doneFiles+1).arg(totalFiles)
+                               .arg(doneFiles+1, 3)
+                               .arg(totalFiles,  3)
                                .arg(QFileInfo(childrenImages[i][j]).fileName());
-            info = partInfo.arg("0.00");
-            progress.setLabelText(info);
+            info = partInfo.arg(0, 3, 10, QChar('0'));
+            m_progress->setLabelText(info);
 
             // *** Debug rebase *** //
-            // QEventLoop loop;
-            // QTimer::singleShot(1000, &loop, &QEventLoop::quit);
-            // loop.exec();
+            // QEventLoop loopT;
+            // QTimer::singleShot(500, &loopT, &QEventLoop::quit);
+            // loopT.exec();
 
-            QStringList qemuArgs = {"rebase","-p","-f", "qcow2", "-F", "qcow2",
-                                   "-b", parentImages[j], childrenImages[i][j]};
+            QProcess process;
 
-            // *** Do rebase *** //
-            process.start("qemu-img", qemuArgs);
-            process.waitForStarted();
-            qDebug() << "[II] [snapManager.cpp] [rebaseImages] qemu-img start";
+            QEventLoop loop;
 
-            // Обновление процента обработки текущего файла в реальном времени
+            QObject::connect(&process, &QProcess::finished, &loop,
+                                                             &QEventLoop::quit);
+
             QObject::connect(&process, &QProcess::readyReadStandardOutput,
                 [&](){
                     QString output = process.readAllStandardOutput();
@@ -312,17 +311,20 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
 
                     if (match.hasMatch()) {
                         QString valueStr = match.captured(1); // "12.01"
-                        info = partInfo.arg(valueStr);
-                        progress.setLabelText(info);
-                        progress.setValue(100*doneFiles
-                                                  + qRound(valueStr.toFloat()));
+                        int value  = qRound(valueStr.toFloat());
+                        info = partInfo.arg(value, 3, 10, QChar('0'));
+                        m_progress->setLabelText(info);
+                        m_progress->setValue(100*doneFiles + value);
                     }
                 });
 
-            // *** Simple unfreeze interface *** //
-            while (!process.waitForFinished(200)) {
-                QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
-            }
+            QStringList qemuArgs = {"rebase","-p", "-f", "qcow2", "-F", "qcow2",
+                                   "-b", parentImages[j], childrenImages[i][j]};
+
+            process.start("qemu-img", qemuArgs);
+
+            loop.exec();
+
             doneFiles++;
         }
     }
@@ -334,55 +336,41 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
             file.remove();
         }
     }
-    progress.setValue(totalFiles);
-    progress.close();
-    progress.deleteLater();
-
-    parentWindow->activateWindow();
-    parentWindow->raise();
-    parentWindow->setFocus();
+    m_progress->setValue(totalFiles);
+    m_progress->close();
 
     return true;
 }
 
 void SnapManager::doNewRoot(const QStringList& idImgs,
                                                 const QStringList& childImgs){
-    QProgressDialog progress("", "", -1, childImgs.size()*100, parentWindow);
-    progress.setWindowTitle("Data transfer...");
-    progress.setCancelButton(nullptr);
-    progress.setMinimumWidth(445);
-    progress.setWindowModality(Qt::WindowModal);
-    progress.show();
+    m_progress = new QProgressDialog("", "", -1, childImgs.size()*100,
+                                                                  parentWindow);
+    m_progress->setWindowTitle("Data transfer...");
+    m_progress->setCancelButton(nullptr);
+    m_progress->setMinimumWidth(445);
+    m_progress->setWindowModality(Qt::WindowModal);
+    m_progress->show();
     QString partInfo, info;
 
-    qDebug() << "[II] doNewRoot";
-    QProcess process;
     for (int i = 0; i < idImgs.size(); ++i){
-        qDebug() << idImgs[i];
         // *** Вывод информации во всплывающее окно *** //
         partInfo = QString("Moving required data to the new snapshot tree root\n"
             "DANGER: Manually canceling this process may corrupt or cause data "
             "loss!\n Please wait...\n"
                             "Processing file %1 of %2 (%4%) \n '%3'")
-                            .arg(i+1).arg(idImgs.size())
-                            .arg(QFileInfo(childImgs[i]).fileName());
-        info = partInfo.arg("0.00");
-        progress.setLabelText(info);
+                               .arg(i+1, 3)
+                               .arg(idImgs.size(),  3)
+                               .arg(QFileInfo(childImgs[i]).fileName());
+        info = partInfo.arg(0, 3, 10, QChar('0'));
+        m_progress->setLabelText(info);
 
-        // *** Debug rebase *** //
-        // QEventLoop loop;
-        // QTimer::singleShot(8000, &loop, &QEventLoop::quit);
-        // loop.exec();
+        QProcess process;
+        QEventLoop loop;
 
+        QObject::connect(&process, &QProcess::finished, &loop,
+                                                             &QEventLoop::quit);
 
-        QStringList qemuArgs = {"convert", "-O", "qcow2", "-p",
-            childImgs[i], childImgs[i] + ".temp-copy.qcow2" };
-
-        // *** Do rebase *** //
-        process.start("qemu-img", qemuArgs);
-        process.waitForStarted();
-
-        // Обновление процента обработки текущего файла в реальном времени
         QObject::connect(&process, &QProcess::readyReadStandardOutput,
             [&](){
                 QString output = process.readAllStandardOutput();
@@ -393,16 +381,19 @@ void SnapManager::doNewRoot(const QStringList& idImgs,
 
                 if (match.hasMatch()) {
                     QString valueStr = match.captured(1); // "12.01"
-                    info = partInfo.arg(valueStr);
-                    progress.setLabelText(info);
-                    progress.setValue(100*i + qRound(valueStr.toFloat()));
+                    int value  = qRound(valueStr.toFloat());
+                    info = partInfo.arg(value, 3, 10, QChar('0'));
+                    m_progress->setLabelText(info);
+                    m_progress->setValue(100*i + value);
                 }
             });
 
-            // *** Simple unfreeze interface *** //
-            while (!process.waitForFinished(100)) {
-                QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
-            }
+        QStringList qemuArgs = {"convert", "-O", "qcow2", "-p",
+                              childImgs[i], childImgs[i] + ".temp-copy.qcow2" };
+
+        process.start("qemu-img", qemuArgs);
+
+        loop.exec();
     }
 
     // *** Really move snapshot files *** //
@@ -410,14 +401,12 @@ void SnapManager::doNewRoot(const QStringList& idImgs,
         // Delete old root node
         QFile file(idImgs[k]);
         if (file.exists()){
-            qDebug() << "RM" << file.fileName();
             file.remove();
         }
 
         // Delete old child
         QFile fileOldChildImg(childImgs[k]);
         if (fileOldChildImg.exists()){
-            qDebug() << "RM" << fileOldChildImg.fileName();
             fileOldChildImg.remove();
         }
 

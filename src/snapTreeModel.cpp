@@ -190,6 +190,7 @@ bool SnapTreeModel::removeRows(int row, int count, const QModelIndex& parent){
     // Узел родителя
     ChainNode parentNode = getChainNodeByIndex(parent);
 
+    QModelIndex grandParent = parent.parent();
     // Уведомление QTreeView о том, что ожидается удаление строк(и)
     // beginRemoveRows(const QModelIndex &parent, int first, int last)
     beginRemoveRows(parent, row, row + count - 1);
@@ -198,12 +199,12 @@ bool SnapTreeModel::removeRows(int row, int count, const QModelIndex& parent){
     for (int i = 0; i < count; ++i) {
         // Надо найти потомка и удалить его из m_nodes;
         // Признак того, что потомок
-        int childId = findChildIdByRow(parentNode.id, row);
         for (int i = 0; i < m_nodes.size(); ++i){
 
             int delNodeId = m_nodes[i].id;
             int delNodeParentId = m_nodes[i].parentId;
 
+            int childId = findChildIdByRow(parentNode.id, row);
             if ( childId == m_nodes[i].id ){
                 // При удалении потомка, у родителя в векторе
                 // "childrenImagesFullNames" необходимо удалить
@@ -224,6 +225,7 @@ bool SnapTreeModel::removeRows(int row, int count, const QModelIndex& parent){
                         parentIdx = n;
                     }
                 }
+
                 // После удаления узла, весь список узлов разделяется
                 // на а) верхнюю неизменную часть, б) удаляемый узел
                 // и в) нижнюю часть, в которой необходимо сделать
@@ -297,7 +299,6 @@ bool SnapTreeModel::removeRows(int row, int count, const QModelIndex& parent){
     //     qDebug() << m_nodes[i].id << m_nodes[i].parentId << m_nodes[i].name;
     // }
 
-    // Уведомление QTreeView о завершении операции и изменении данных
     endRemoveRows();
 
     return true;
@@ -344,6 +345,60 @@ bool SnapTreeModel::insertRows(int row, int count, const QModelIndex& index){
     return true;
 }
 
+bool SnapTreeModel::insertRowAt(int row, const QModelIndex& parentIndex){
+    qDebug() << "[II] insertRowAt";
+
+    ChainNode node = getChainNodeByIndex(parentIndex);
+
+    // *** Поиск интекса idx узла в m_nodes *** //
+    int parentNodeIdx = -1;
+    for (int i = 0; i < m_nodes.size(); ++i) {
+        if (m_nodes[i].id == node.id) {
+            parentNodeIdx = i;
+        }
+    }
+
+    // *** Поиск интекса idx узла в m_nodes с imagesType == active *** //
+    int activeIndex = -1;
+    for (int i = 0; i < m_nodes.size(); ++i) {
+        if (m_nodes[i].imagesType == "active") {
+            activeIndex = i;
+        }
+    }
+
+    beginInsertRows(parentIndex, row, row - 1);
+        // *** Изменение параметров активного узла в данный момент *** //
+        m_nodes[activeIndex].imagesType = "work";
+
+        // *** Изменение параметров активного узла в данный момент *** //
+        m_nodes[parentNodeIdx].childrenImagesFullNames
+                                              .push_back(m_snapImagesFullNames);
+        // *** Формирование узла, его параметров *** //
+        ChainNode newNode;
+        // id
+        newNode.id = m_nodes[m_nodes.size() - 1].id + 1;
+        // parentId
+        newNode.parentId = m_nodes[parentNodeIdx].id;
+        // imagesType
+        newNode.imagesType = "active";
+        // imagesFullNames
+        newNode.imagesFullNames = m_snapImagesFullNames;
+        // backFullNames
+        for (int i = 0; i < m_snapImagesFullNames.size(); ++i){
+            newNode.backFullNames
+                            .push_back(m_nodes[parentNodeIdx].imagesFullNames[i]);
+        }
+        // name
+        VmDataCollector vmDataCollector;
+        QString file = QFileInfo(m_snapImagesFullNames.last()).fileName();
+        newNode.name = vmDataCollector.getNodeName(file, newNode.imagesType);
+        // *** Добавление нового узла в данные модели *** //
+        m_nodes.push_back(newNode);
+    endInsertRows();
+
+    return true;
+}
+
 void SnapTreeModel::setSnapImagesFullName(QStringList imagesFullNames){
     m_snapImagesFullNames = imagesFullNames;
 }
@@ -372,6 +427,32 @@ QModelIndex SnapTreeModel::getActiveStateIndex(){
     // *** Создание индекса данного узла *** //
     res  = createIndex(row, 0, activeNode.id);
     return res;
+}
+
+void SnapTreeModel::setActive(const QModelIndex& newActiveIndex){
+
+    // *** Поиск id узла с imagesType == active и его сброс до "work" *** //
+    QModelIndex prevActiveIndex = getActiveStateIndex();
+
+    int activeNodeId = -1;
+    for (int i = 0; i < m_nodes.size(); ++i) {
+        if (m_nodes[i].imagesType == "active") {
+            m_nodes[i].imagesType = "work";
+            break;
+        }
+    }
+    emit dataChanged(prevActiveIndex, prevActiveIndex, {Qt::DisplayRole});
+
+    ChainNode node = getChainNodeByIndex(newActiveIndex);
+    // *** Поиск узла и установка флага "active" *** //
+    for (int i = 0; i < m_nodes.size(); ++i){
+        if (m_nodes[i].id == node.id){
+            m_nodes[i].imagesType = "active";
+            break;
+        }
+    }
+
+    emit dataChanged(newActiveIndex, newActiveIndex, {Qt::DisplayRole});
 }
 
 // End snapTreeModel.cpp

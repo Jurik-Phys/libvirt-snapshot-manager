@@ -28,12 +28,13 @@ class SnapManager : public QObject {
 
         QStringList doSnapshot(const QString& vmName, const QStringList& mntStorages,
                                                 bool silenceFlag = false);
-        void gotoSnapshot(const QString& vmName, const ChainNode& node);
+        QStringList gotoSnapshot(const QString& vmName, const ChainNode& node);
         bool deleteSnapshot(const QString& vmName, const ChainNode& node);
 
     private:
         VMachine m_vm;
         QWidget* parentWindow;
+        QProgressDialog* m_progress;
 
         QString getSnapName(const QString& imgName, const QString& id);
         void switchVmMountStorages(const QString& vmName,
