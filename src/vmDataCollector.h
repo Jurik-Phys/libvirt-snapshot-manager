@@ -26,6 +26,7 @@ class VmDataCollector : public QObject {
 
         VMachine getVmInfo();
         QVector<VMachine> getVmList();
+        QString getNodeName(const QString& imgFileName, const QString& imgType);
 
     public slots:
         void process();
@@ -46,7 +47,6 @@ class VmDataCollector : public QObject {
         QString getBackFullNameFast(const QString& fullFileName);
         QString getRootFullName(const QString& fileFullName);
         QVector<VmImageRawInfo> m_vmImagesRawInfo;
-        QString getNodeName(const QString& imgFileName, const QString& imgType);
 
         QWidget* parentWindow;
 };

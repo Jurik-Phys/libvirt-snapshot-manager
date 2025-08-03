@@ -26,7 +26,7 @@ class SnapManager : public QObject {
         SnapManager(QWidget* parent = nullptr);
         ~SnapManager();
 
-        void doSnapshot(const QString& vmName, const QStringList& mntStorages,
+        QStringList doSnapshot(const QString& vmName, const QStringList& mntStorages,
                                                 bool silenceFlag = false);
         void gotoSnapshot(const QString& vmName, const ChainNode& node);
         bool deleteSnapshot(const QString& vmName, const ChainNode& node);

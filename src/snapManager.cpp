@@ -8,12 +8,8 @@ SnapManager::SnapManager(QWidget* parent) : parentWindow(parent){
 SnapManager::~SnapManager(){
 }
 
-void SnapManager::doSnapshot(const QString& name,
+QStringList SnapManager::doSnapshot(const QString& name,
                                     const QStringList& workDisks, bool silence){
-
-    for (int i = 0; i < workDisks.size(); ++i){
-        qDebug() << "[II] VM work storage:" << workDisks[i];
-    }
 
     if (!silence) {
         QMessageBox::StandardButton reply = QMessageBox::question(
@@ -22,11 +18,9 @@ void SnapManager::doSnapshot(const QString& name,
                                             QMessageBox::Yes | QMessageBox::No);
 
         if (reply == QMessageBox::No) {
-            return;
+            return QStringList();
         }
     }
-
-    qDebug() << "[II] Take snapshot " + name;
 
     // id - число секунд с 1970-ого года
     QString id = QString::number(QDateTime::currentSecsSinceEpoch());
@@ -59,16 +53,17 @@ void SnapManager::doSnapshot(const QString& name,
         process.start("qemu-img", qemuImgArguments);
 
         if (!process.waitForStarted()){
-            return;
+            return QStringList();
         }
 
         if (!process.waitForFinished()){
-            return;
+            return QStringList();
         }
     }
 
     // Смена точки монтирования в VM
     switchVmMountStorages(name, snapshotsFullNames);
+    return snapshotsFullNames;
 }
 
 void SnapManager::gotoSnapshot(const QString& vmName, const ChainNode& node){
@@ -130,7 +125,6 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
         // Для случая "work" + не активное состояние необходимо
         // просто удалить соответствующие диски ВМ.
         for (int i = 0; i < node.imagesFullNames.size(); ++i){
-            qDebug() << "[II] Delete file" << node.imagesFullNames[i];
             QFile file(node.imagesFullNames[i]);
             if (file.exists()){
                file.remove();
@@ -143,15 +137,6 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
             // Остаётся случай "snap" у которого есть
             // a) один родитель (или родителя нет в случае корневого узла)
             // б) один или более потомков(по размеру childrenImagesFullNames
-            qDebug() << "parentId:" << node.parentId;
-            qDebug() << "removeId:" << node.id;
-            qDebug() << "children:" << node.childrenImagesFullNames.size();
-            for (int i = 0; i < node.childrenImagesFullNames.size(); ++i){
-                qDebug() << "Children" << i+1;
-                for (int j = 0; j<node.childrenImagesFullNames[i].size(); ++j){
-                    qDebug() << "      " << node.childrenImagesFullNames[i][j];
-                }
-            }
 
             // Задача перебазировать все жёсткие диски потомков (children)
             // с текущего места (id) на родителя (parentId) текущего узла
@@ -314,6 +299,7 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
             // *** Do rebase *** //
             process.start("qemu-img", qemuArgs);
             process.waitForStarted();
+            qDebug() << "[II] [snapManager.cpp] [rebaseImages] qemu-img start";
 
             // Обновление процента обработки текущего файла в реальном времени
             QObject::connect(&process, &QProcess::readyReadStandardOutput,
@@ -334,8 +320,8 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
                 });
 
             // *** Simple unfreeze interface *** //
-            while (!process.waitForFinished(100)) {
-                QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+            while (!process.waitForFinished(200)) {
+                QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
             }
             doneFiles++;
         }

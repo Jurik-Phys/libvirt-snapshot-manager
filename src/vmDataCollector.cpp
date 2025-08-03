@@ -370,8 +370,6 @@ bool VmDataCollector::isVMachineImage(const QString& imageFullName){
 void VmDataCollector::loadVmImagesRawInfoOverQEMU(const QString& snapshotsDir){
     QVector<VmImageRawInfo> vmImagesRawInfo;
 
-    qDebug() << "snapshotsDir:" << snapshotsDir;
-
     // Получение списка всех файлов из каталога цепочки сохранения состояний
     // /* только имена файлов */
     QStringList basePathFiles = QDir(snapshotsDir).entryList(QDir::Files

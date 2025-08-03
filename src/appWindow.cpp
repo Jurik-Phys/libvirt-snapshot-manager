@@ -123,6 +123,7 @@ void QAppWindow::setSnapBtnFrame(){
     m_deleteBtn->setFixedHeight(m_btnSize1);
     m_deleteBtn->setFixedWidth(1.5*m_btnSize1);
     m_deleteBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    m_deleteBtn->setEnabled(false);
     QObject::connect(m_deleteBtn, &QToolButton::clicked, this,
                                                    &QAppWindow::deleteSnapshot);
 
@@ -171,7 +172,7 @@ void QAppWindow::setSnapFrame(){
                                           this, &QAppWindow::onTreeItemClicked);
 
     QObject::connect(m_snapTreeView, &QTreeView::clicked,
-                                              this, &QAppWindow::gotoBtnManage);
+                                              this, &QAppWindow::gotoAndDelBtnManage);
 }
 
 void QAppWindow::addVmToFrame(){
@@ -223,11 +224,11 @@ void QAppWindow::updSnapTree(){
                 QVector<ChainNode> vmSnapshotsChain = result.vmStateChain;
                 m_snapTreeView->setModel(m_snapTreeModel);
                 m_snapTreeView->clearSelection();
-                qDebug() << "[II] run: setSnapData(vmSnapshotsChain)";
                 m_snapTreeModel->setSnapData(vmSnapshotsChain);
                 m_snapTreeView->expandAll();
                 m_currentVmName = result.name;
                 m_mountStorages = result.mountStorages;
+
                 // for (int i = 0; i < result.vmStateChain.size(); ++i){
                 //    qDebug() << vmSnapshotsChain[i].id
                 //             << vmSnapshotsChain[i].parentId
@@ -236,7 +237,7 @@ void QAppWindow::updSnapTree(){
                 qDebug() << "[II] Данные получены (finished)";
 
                 // *** On/Off GoTo button *** //
-                gotoBtnManage();
+                gotoAndDelBtnManage();
 
                 thread->quit();
                 thread->wait();
@@ -256,11 +257,31 @@ VMachine QAppWindow::getActiveVm(){
 }
 
 void QAppWindow::doSnapshot(){
+    QStringList  snapFullNames;
     SnapManager* snapManager = new SnapManager(this);
-    snapManager->doSnapshot(m_currentVmName, m_mountStorages);
+    snapFullNames = snapManager->doSnapshot(m_currentVmName, m_mountStorages);
+    m_mountStorages = snapFullNames;
     snapManager->deleteLater();
+
     // *** Обновление дерева снимков состояний виртуальной машины *** //
-    updSnapTree();
+    // *** Получение индекса модели данных активного состояния VM *** //
+    QModelIndex index = m_snapTreeModel->getActiveStateIndex();
+    m_snapTreeModel->setSnapImagesFullName(snapFullNames);
+    bool ok = m_snapTreeModel->insertRow(index.row(), index);
+
+    // *** Не сворачивать QTreeView *** //
+    m_snapTreeView->expandAll();
+
+    // *** Выделение и переход к новому узлу *** //
+    QModelIndex newItemIdx = m_snapTreeModel->index(index.row(), 0, index);
+    m_snapTreeView->selectionModel()->setCurrentIndex(newItemIdx,
+                                           QItemSelectionModel::ClearAndSelect);
+    m_snapTreeView->setFocus();
+    m_snapTreeView->scrollTo(newItemIdx, QAbstractItemView::PositionAtCenter);
+
+    // *** Отключение кнопок Goto и Delete *** //
+    m_deleteBtn->setEnabled(false);
+    m_gotoBtn->setEnabled(false);
 }
 
 void QAppWindow::gotoSnapshot(){
@@ -409,15 +430,27 @@ void QAppWindow::takeSnapBtnManage(){
     }
 }
 
-void QAppWindow::gotoBtnManage(){
+void QAppWindow::gotoAndDelBtnManage(){
 
     QItemSelectionModel* selectionModel = m_snapTreeView->selectionModel();
     QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
 
     if (selectedIndexes.size() > 0){
-        m_gotoBtn->setEnabled(true);
+        QModelIndex index = selectedIndexes[0];
+        const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(index);
+        // *** "active" нельзя удалить и нельзя в него перейти *** //
+        if (node.imagesType != "active"){
+            m_deleteBtn->setEnabled(true);
+            m_gotoBtn->setEnabled(true);
+        }
+        else {
+            m_deleteBtn->setEnabled(false);
+            m_gotoBtn->setEnabled(false);
+        }
+
     }
     else {
+        m_deleteBtn->setEnabled(false);
         m_gotoBtn->setEnabled(false);
     }
 }

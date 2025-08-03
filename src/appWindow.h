@@ -72,7 +72,7 @@ class QAppWindow : public QWidget {
         void addVmToFrame();
         void updSnapTree();
         void takeSnapBtnManage();
-        void gotoBtnManage();
+        void gotoAndDelBtnManage();
         void startBtnManage();
 
         void onTreeItemClicked(const QModelIndex& index);

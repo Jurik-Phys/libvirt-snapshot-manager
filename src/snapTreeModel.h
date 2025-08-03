@@ -4,6 +4,7 @@
 #define SNAPTREEMODEL_H
 
 #include "vmDataStructs.h"
+#include "vmDataCollector.h"
 /*
  * Модель данных реализуется посредством следующих пяти функций:
  *
@@ -46,12 +47,16 @@ class SnapTreeModel : public QAbstractItemModel {
         void setSnapData(const QVector<ChainNode>&);
 
         ChainNode getChainNodeByIndex(const QModelIndex& index) const;
+        QModelIndex getActiveStateIndex();
 
         // *** Data modification *** //
         bool removeRows(int row, int count, const QModelIndex& parent);
+        bool insertRows(int row, int count, const QModelIndex& parent);
 
+        void setSnapImagesFullName(QStringList imagesFullNames);
     private:
         QVector<ChainNode> m_nodes;
+        QStringList m_snapImagesFullNames;
 
         int findChildIdByRow(int parentId, int row) const;
         const ChainNode& findNodeById(int id) const;
