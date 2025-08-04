@@ -271,6 +271,9 @@ void QAppWindow::doSnapshot(){
     snapFullNames = snapManager->doSnapshot(m_currentVmName, m_mountStorages);
     m_mountStorages = snapFullNames;
     snapManager->deleteLater();
+    if (snapFullNames.size() == 0){
+        return;
+    }
 
     // *** Обновление дерева снимков состояний виртуальной машины *** //
     // *** Получение индекса модели данных активного состояния VM *** //
