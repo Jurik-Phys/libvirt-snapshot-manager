@@ -35,11 +35,16 @@ QStringList SnapManager::doSnapshot(const QString& name,
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     env.insert("LANG", "C");
 
-    QProcess process;
-    process.setProcessEnvironment(env);
 
     // Индексы у workDisks и snapshotsFullNames согласованы
     for (int n = 0; n < snapshotsFullNames.size(); ++n){
+        QEventLoop loop;
+        QProcess process;
+        process.setProcessEnvironment(env);
+
+        QObject::connect(&process, &QProcess::finished, &loop,
+                                                             &QEventLoop::quit);
+
         QString snapName = snapshotsFullNames[n];
         QStringList qemuImgArguments = {
                                             "create",
@@ -50,15 +55,10 @@ QStringList SnapManager::doSnapshot(const QString& name,
                                             "qcow2",
                                             snapshotsFullNames[n]
                                         };
+
         process.start("qemu-img", qemuImgArguments);
 
-        if (!process.waitForStarted()){
-            return QStringList();
-        }
-
-        if (!process.waitForFinished()){
-            return QStringList();
-        }
+        loop.exec();
     }
 
     // Смена точки монтирования в VM
