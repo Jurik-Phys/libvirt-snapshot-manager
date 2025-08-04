@@ -18,6 +18,8 @@ class VmWidget : public QFrame {
         ~VmWidget();
         void setSelected(bool);
 
+        static void setLoadingFlag(bool);
+
     signals:
         void clicked(VmWidget*);
 
@@ -41,6 +43,8 @@ class VmWidget : public QFrame {
         void setHoverStyle();
         void setSelectedStyle();
         void updateStyle();
+
+        static bool m_isLoading;
 };
 
 #endif

@@ -270,7 +270,17 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
     m_progress->setCancelButton(nullptr);
     m_progress->setMinimumWidth(445);
     m_progress->setWindowModality(Qt::WindowModal);
+    // *** Окно иногда появляется не в центре родительского окна *** //
+    //        Возможно, принудительное задание позиции поможет       //
+    //         (Интересно, как оно будет работать в Wayland)         //
+    QRect parentGeom = parentWindow->geometry();
+    QSize dlgSize = m_progress->size();
+    int x = parentGeom.x() + (parentGeom.width() - dlgSize.width()) / 2;
+    int y = parentGeom.y() + (parentGeom.height() - dlgSize.height()) / 2 - 60;
+    m_progress->move(x, y);
+    // ************************************************************* //
     m_progress->show();
+    // QApplication::processEvents();
     QString partInfo, info;
     int doneFiles = 0;
 

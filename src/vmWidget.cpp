@@ -2,6 +2,8 @@
 
 #include "vmWidget.h"
 
+bool VmWidget::m_isLoading = false;
+
 VmWidget::VmWidget(int idx, const QVector<VMachine>& vmList, QWidget* parent){
     m_idx = idx;
     m_vmList = vmList;
@@ -51,9 +53,11 @@ void VmWidget::leaveEvent(QEvent* e) {
 }
 
 void VmWidget::mousePressEvent(QMouseEvent* e) {
-    m_selected = true;
-    updateStyle();
-    emit clicked(this);
+    if (!m_isLoading){
+        m_selected = true;
+        updateStyle();
+        emit clicked(this);
+    }
 }
 
 void VmWidget::setDefaultStyle() {
@@ -80,6 +84,10 @@ void VmWidget::updateStyle(){
     else {
         setDefaultStyle();
     }
+}
+
+void VmWidget::setLoadingFlag(bool isLoad){
+    m_isLoading = isLoad;
 }
 
 // End vmWidget.cpp

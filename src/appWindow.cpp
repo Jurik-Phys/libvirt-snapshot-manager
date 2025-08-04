@@ -180,7 +180,7 @@ void QAppWindow::addVmToFrame(){
         VmWidget* vmWidget = new VmWidget(i, m_vmList, this);
         m_vVmLayout->addWidget(vmWidget);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
-                [this, vmWidget](){
+            [this, vmWidget](){
                 int nMax = m_vVmLayout->count();
                 for (int n = 0; n < nMax; ++n) {
                     QLayoutItem* item = m_vVmLayout->itemAt(n);
@@ -192,7 +192,7 @@ void QAppWindow::addVmToFrame(){
                         m_selectedVmIndex = n;
                     }
                 }
-                });
+            });
         QObject::connect(vmWidget, &VmWidget::clicked, this,
                                                       &QAppWindow::updSnapTree);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
@@ -201,6 +201,12 @@ void QAppWindow::addVmToFrame(){
 }
 
 void QAppWindow::updSnapTree(){
+    QObject* s = sender();
+    VmWidget* vmWidget = qobject_cast<VmWidget *>(s);
+    if (vmWidget) {
+        vmWidget->setLoadingFlag(true);
+    }
+
     VMachine activeVm = getActiveVm();
 
     qDebug() << "[II] Update snap tree now!";
@@ -245,6 +251,9 @@ void QAppWindow::updSnapTree(){
                 vmDataCollector->deleteLater();
                 this->takeSnapBtnManage();
                 thread->deleteLater();
+
+                // *** Снятие флага продолжения загрузки *** //
+                vmWidget->setLoadingFlag(false);
         });
 }
 

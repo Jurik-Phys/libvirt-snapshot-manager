@@ -5,7 +5,6 @@
 #include <QVector>
 #include <QString>
 #include <QStringList>
-#include <QCoreApplication>
 #include <QRegularExpression>
 #include <QProgressDialog>
 #include <QMessageBox>
