@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 set(SOURCE_LIB  appWindow.cpp
                 snapManager.cpp
                 snapTreeModel.cpp
+                snapTreeView.cpp
                 vmDataCollector.cpp
                 treeItemDelegate.cpp
                 treeLinesStyle.cpp

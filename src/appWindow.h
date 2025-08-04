@@ -12,12 +12,12 @@
 #include <QScrollArea>
 #include <QBoxLayout>
 #include <QToolButton>
-#include "snapManager.h"
-#include "snapTreeModel.h"
 #include "vmWidget.h"
+#include "snapManager.h"
+#include "snapTreeView.h"
+#include "snapTreeModel.h"
 #include "vmDataCollector.h"
 #include "treeItemDelegate.h"
-#include <QTreeView>
 #include <QHeaderView>
 #include "treeLinesStyle.h"
 
@@ -54,7 +54,7 @@ class QAppWindow : public QWidget {
         QVBoxLayout*  m_vSnapLayout;
         SnapTreeModel* m_snapTreeModel;
         SnapTreeModel* m_snapTreeLoadingModel;
-        QTreeView*     m_snapTreeView;
+        SnapTreeView*  m_snapTreeView;
         QVector<VMachine> m_vmList;
         ChainNode     m_activeNode;
         QStringList   m_mountStorages;

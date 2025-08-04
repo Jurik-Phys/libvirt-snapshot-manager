@@ -144,7 +144,7 @@ void QAppWindow::setSnapBtnFrame(){
 
 void QAppWindow::setSnapFrame(){
 
-    m_snapTreeView = new QTreeView();
+    m_snapTreeView = new SnapTreeView();
     m_snapTreeView->header()->setStretchLastSection(false);
     m_snapTreeView->header()
                           ->setSectionResizeMode(QHeaderView::ResizeToContents);
@@ -168,11 +168,19 @@ void QAppWindow::setSnapFrame(){
     // Установка кастомного делегата для item'ов
     m_snapTreeView->setItemDelegate(new TreeItemDelegate(m_snapTreeView));
 
-    QObject::connect(m_snapTreeView, &QTreeView::clicked,
+    QObject::connect(m_snapTreeView, &SnapTreeView::clicked,
                                           this, &QAppWindow::onTreeItemClicked);
 
-    QObject::connect(m_snapTreeView, &QTreeView::clicked,
+    QObject::connect(m_snapTreeView, &SnapTreeView::clicked,
                                               this, &QAppWindow::gotoAndDelBtnManage);
+    QObject::connect(m_snapTreeView, &SnapTreeView::doSnapshot,
+                                              this, &QAppWindow::doSnapshot);
+    QObject::connect(m_snapTreeView, &SnapTreeView::deleteSnapshot,
+                                             this, &QAppWindow::deleteSnapshot);
+    QObject::connect(m_snapTreeView, &SnapTreeView::gotoSnapshot,
+                                             this, &QAppWindow::gotoSnapshot);
+    QObject::connect(m_snapTreeView, &SnapTreeView::startVM,
+                                                    this, &QAppWindow::startVM);
 }
 
 void QAppWindow::addVmToFrame(){
@@ -281,7 +289,7 @@ void QAppWindow::doSnapshot(){
     m_snapTreeModel->setSnapImagesFullName(snapFullNames);
     bool ok = m_snapTreeModel->insertRow(index.row(), index);
 
-    // *** Не сворачивать QTreeView *** //
+    // *** Не сворачивать SnapTreeView *** //
     m_snapTreeView->expandAll();
 
     // *** Выделение и переход к новому узлу *** //
@@ -316,7 +324,7 @@ void QAppWindow::gotoSnapshot(){
     snapManager->deleteLater();
     m_snapTreeView->clearFocus();
 
-    // *** Отображение изменений в QTreeView *** //
+    // *** Отображение изменений в SnapTreeView *** //
     if (node.imagesType == "work"){
         m_snapTreeModel->setActive(index);
     }
@@ -382,7 +390,7 @@ void QAppWindow::deleteSnapshot(){
         return;
     }
 
-    // *** Удаление данных из модели данных, привязанной к QTreeView *** //
+    // *** Удаление данных из модели данных, привязанной к SnapTreeView *** //
     // 1. Получить текущий индекс (известен ранее "QModelIndex index");
     // 2. Получить индекс родительского узла ("QModelIndex parentIndex");
     // 3. Получить row - номер позиции среди детей одного и того же родителя
@@ -390,10 +398,10 @@ void QAppWindow::deleteSnapshot(){
     //    которая лишь обёртка над removeRows(row, 1, parent).
     // 4. Метод removeRows() необходимо реализовать самостоятельно,
     //    где должны быть реализованы:
-    //    - уведомление QTreeView о том, что ожидается удаление строк(и):
+    //    - уведомление SnapTreeView о том, что ожидается удаление строк(и):
     //        beginRemoveRows(parent, row, row + count - 1);
     //    - удаление узла из модели данных
-    //    - уведомление QTreeView о завершении операции и изменении данных:
+    //    - уведомление SnapTreeView о завершении операции и изменении данных:
     //        endRemoveRows();
 
     QModelIndex parentIndex = index.parent();
@@ -406,7 +414,7 @@ void QAppWindow::deleteSnapshot(){
     m_snapTreeView->clearFocus();
     m_snapTreeView->selectionModel()->clear();
 
-    // *** Выдленых элементов QTreeView нет, отключение кнопок *** //
+    // *** Выдленых элементов SnapTreeView нет, отключение кнопок *** //
     m_deleteBtn->setEnabled(false);
     m_gotoBtn->setEnabled(false);
 }
