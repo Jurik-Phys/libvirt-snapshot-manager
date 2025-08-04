@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(libvirt-ext-snap-gui)
+project(manager-for-external-snapshots-for-libvirt)
 
 set(CMAKE_CXX_STANDART 17)
 set(CMAKE_CXX_STANDART_REQUIRED ON)
@@ -15,6 +15,6 @@ set(SOURCE_EXE main.cpp)
 
 add_subdirectory(src)
 
-add_executable(libvirt-snapshots-manager ${SOURCE_EXE})
+add_executable(libvirt-snapshot-manager ${SOURCE_EXE})
 
-target_link_libraries(libvirt-snapshots-manager PRIVATE src-lib Qt6::Widgets Qt6::Xml)
+target_link_libraries(libvirt-snapshot-manager PRIVATE src-lib Qt6::Widgets Qt6::Xml)

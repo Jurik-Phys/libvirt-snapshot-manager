@@ -4,7 +4,7 @@
 
 QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     this->resize(m_appWindowWidth, m_appWindowHeight);
-    this->setWindowTitle("LibVirt External Snapshots GUI Manager");
+    this->setWindowTitle("Graphical Manager for External Snapshots (libvirt)");
 
     QHBoxLayout* hAppLayout = new QHBoxLayout(this);
 
