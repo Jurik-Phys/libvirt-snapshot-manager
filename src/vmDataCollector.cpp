@@ -3,6 +3,9 @@
 #include "vmDataCollector.h"
 
 VmDataCollector::VmDataCollector(QWidget* parent) : parentWindow(parent){
+    m_getListTimer = new QTimer(this);
+    QObject::connect(m_getListTimer, &QTimer::timeout,
+                                          this, &VmDataCollector::vmListSender);
 }
 
 VmDataCollector::VmDataCollector(const VMachine& vm, QWidget* parent) {
@@ -16,38 +19,71 @@ VmDataCollector::~VmDataCollector(){
 // Вектор из {name, state}
 QVector<VMachine> VmDataCollector::getVmList(){
     QVector<VMachine> vmList;
+    QVector<VMachine> uuidVmList;
 
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     env.insert("LANG", "C");
 
     QProcess process;
     process.setProcessEnvironment(env);
-    process.start("virsh", {"list", "--all"});
 
-    if (!process.waitForStarted()){
-        return vmList;
-    }
+    QEventLoop loop;
 
-    if (!process.waitForFinished()){
-        return vmList;
-    }
+    bool stepOneDone = false;
+    QObject::connect(&process, &QProcess::finished,
+        [&](int, QProcess::ExitStatus){
+            // Разбор вывода в finished, а не в readyReadStandardOutput т.к.,
+            // вторая команда для получения uuid выдаёт информацию порциями,
+            // что может привести к пропускам в данных, если не использовать
+            // буфер для наколпения вывода. Данный способ проще в реализации.
+            QString output = process.readAllStandardOutput();
+            if (!stepOneDone){
+                stepOneDone = true;
 
-    QString output = process.readAllStandardOutput();
-
-    // Разбиваем на строки и сохраняем
-    QStringList outputLines = output.split('\n', Qt::SkipEmptyParts);
-    for (int i = 0; i < outputLines.size(); ++i){
-        // Skip table header
-        if (i > 1){
-            VMachine vm;
-            QString line = outputLines[i].trimmed()
+                // Разбиваем на строки и сохраняем реузльтат первой команды
+                QStringList outputLines = output.split('\n',Qt::SkipEmptyParts);
+                for (int i = 0; i < outputLines.size(); ++i){
+                    // Skip table header
+                    if (i > 1){
+                        VMachine vm;
+                        QString line = outputLines[i].trimmed()
                                    .replace(QRegularExpression("\\s{2,}"), " ");
-            vm.name  = line.split(" ")[1];
-            vm.state = line.split(" ")[2] + " " + line.split(" ")[3];
-            vmList.append(vm);
-        }
-    }
+                        QStringList parts = line.split(" ");
+                        if (parts.size() >=3){
+                            vm.name  = parts[1];
+                            vm.state = parts.mid(2).join(" ");
+                        }
+                        vmList.append(vm);
+                    }
+                }
 
+                // Запуск второго этапа получени uuid виртуальных машин
+                process.start("virsh", {"list", "--all", "--uuid", "--name"});
+            }
+            else{
+                // *** Обработка всего стандартного вывода второй команды *** //
+                QStringList outputLines = output.split('\n',Qt::SkipEmptyParts);
+                for (int i = 0; i < outputLines.size(); ++i){
+                    QStringList line = outputLines[i].split(" ");
+                    VMachine vm;
+                    vm.name = line[1];
+                    vm.uuid = line[0];
+                    uuidVmList.append(vm);
+                }
+
+                // *** Слияние информации об uuid виртуальных машин *** //
+                for (int i = 0; i < vmList.size(); ++i){
+                    if (vmList[i].name == uuidVmList[i].name){
+                        vmList[i].uuid = uuidVmList[i].uuid;
+                    }
+                }
+
+                loop.quit();
+            }
+        });
+
+    process.start("virsh", {"list", "--all"});
+    loop.exec();
     return vmList;
 }
 
@@ -546,6 +582,20 @@ void VmDataCollector::process(){
 
 VMachine VmDataCollector::getVmInfo(){
     return getVmInfo(m_vm);
+}
+
+void VmDataCollector::vmListStartTimer(){
+    // TODO Увеличить задержку для прода
+    m_getListTimer->start(1000);
+}
+
+void VmDataCollector::vmListStopTimer(){
+    qDebug() << "II Stop timer";
+    m_getListTimer->stop();
+}
+
+void VmDataCollector::vmListSender(){
+    emit vmListReady(getVmList());
 }
 
 // End vmDataCollector.cpp

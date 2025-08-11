@@ -18,8 +18,21 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     m_vVmLayout->setAlignment(Qt::AlignTop);
     m_vSnapLayout = new QVBoxLayout;
 
-    VmDataCollector vmDataCollector;
-    m_vmList = vmDataCollector.getVmList();
+    // VmDataCollector vmDataCollector;
+    // m_vmList = vmDataCollector.getVmList();
+    VmDataCollector* vmDataCollector = new VmDataCollector();
+    m_vmList = vmDataCollector->getVmList();
+
+    QThread* getVmListThread = new QThread();
+    vmDataCollector->moveToThread(getVmListThread);
+    QObject::connect(getVmListThread, &QThread::started,
+                           vmDataCollector, &VmDataCollector::vmListStartTimer);
+    QObject::connect(vmDataCollector, &VmDataCollector::vmListReady,
+                                              this, &QAppWindow::onVmListReady);
+    QObject::connect(this, &QAppWindow::vmListProcessingStarted,
+                            vmDataCollector, &VmDataCollector::vmListStopTimer);
+
+    getVmListThread->start();
 
     m_snapTreeModel = new SnapTreeModel();
     m_snapTreeLoadingModel = new SnapTreeModel();
@@ -514,6 +527,95 @@ void QAppWindow::startBtnManage(){
 
 void QAppWindow::showErrorMessage(const QString& title, const QString& message){
     QMessageBox::critical(this, title,message);
+}
+
+void QAppWindow::onVmListReady(const QVector<VMachine> newVmList){
+
+    int runningCounter = 0;
+    for (int i = 0; i < newVmList.size(); ++i){
+        if (newVmList[i].state == "running"){
+            runningCounter++;
+        }
+    }
+    qDebug() << "[II] vmList received:" << newVmList.size()
+        << ";" << runningCounter << " vs " << newVmList.size() - runningCounter;
+
+    QVector<VMachine> toAddVmList; // список VM для добавления программу
+    QVector<VMachine> toDelVmList; // список для удаления из списка в программе
+    QVector<VMachine> toModVmList; // список VM с изменившимся статусом
+
+    toModVmList = getToModVmList(m_vmList, newVmList);
+    toAddVmList = getToAddVmList(m_vmList, newVmList);
+    toDelVmList = getToDelVmList(m_vmList, newVmList);
+
+    qDebug() << "[II] toModVmList.size()" << toModVmList.size();
+    qDebug() << "[II] toAddVmList.size()" << toAddVmList.size();
+    qDebug() << "[II] toDelVmList.size()" << toDelVmList.size();
+
+    // *** Cбор данных прекращается до окончания их обработки *** //
+    if ( toModVmList.size() > 0 || toAddVmList.size() > 0
+                                                    || toDelVmList.size() > 0 ){
+        emit vmListProcessingStarted();
+        // *** Работа со списком VM *** //
+    }
+
+    emit vmListProcessingCompleted();
+    // m_vmList = newVmList;
+}
+
+QVector<VMachine> QAppWindow::getToModVmList(const QVector<VMachine>& appList,
+                                               const QVector<VMachine>& inList){
+    QVector<VMachine> res;
+
+    // *** Измениться могут только те VM, о которых уже знает программа *** //
+    for (int i = 0; i < appList.size(); ++i){
+        for (int j = 0; j < inList.size(); ++j){
+            if (appList[i].uuid == inList[j].uuid){
+                // *** Существующая VM найдена в полученном векторе VM *** //
+                // ***   (проверка на изменение статуса или имени VM)  *** //
+                if (appList[i].state != inList[j].state
+                                          || appList[i].name != inList[j].name){
+                    res.push_back(inList[j]);
+                }
+            }
+        }
+    }
+
+    return res;
+}
+
+QVector<VMachine> QAppWindow::getToAddVmList(const QVector<VMachine>& appList,
+                                               const QVector<VMachine>& inList){
+    QVector<VMachine> res;
+    for (int i = 0; i < inList.size(); ++i){
+        size_t entryCounter = 0;
+        for (int j = 0; j < appList.size(); ++j){
+            if (inList[i].uuid == appList[j].uuid){
+                entryCounter++;
+            }
+        }
+        if (entryCounter == 0){
+            res.push_back(inList[i]);
+        }
+    }
+    return res;
+}
+
+QVector<VMachine> QAppWindow::getToDelVmList(const QVector<VMachine>& appList,
+                                               const QVector<VMachine>& inList){
+    QVector<VMachine> res;
+    for (int i = 0; i < appList.size(); ++i){
+        size_t entryCounter = 0;
+        for (int j = 0; j < inList.size(); ++j){
+            if (appList[i].uuid == inList[j].uuid){
+                entryCounter++;
+            }
+        }
+        if (entryCounter == 0){
+            res.push_back(appList[i]);
+        }
+    }
+    return res;
 }
 
 // End appWindow.cpp

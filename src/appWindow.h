@@ -36,8 +36,13 @@ class QAppWindow : public QWidget {
         void deleteSnapshot();
         VMachine getActiveVm();
 
+    signals:
+        void vmListProcessingStarted();
+        void vmListProcessingCompleted();
+
     public slots:
         void showErrorMessage(const QString& title, const QString& message);
+        void onVmListReady(const QVector<VMachine> vmList);
 
     private:
         const int m_appWindowWidth  = 945;
@@ -77,6 +82,13 @@ class QAppWindow : public QWidget {
 
         void onTreeItemClicked(const QModelIndex& index);
         void resizeEvent(QResizeEvent *event) override;
+
+        QVector<VMachine> getToAddVmList(const QVector<VMachine>& appList,
+                                         const QVector<VMachine>& inList);
+        QVector<VMachine> getToDelVmList(const QVector<VMachine>& appList,
+                                         const QVector<VMachine>& inList);
+        QVector<VMachine> getToModVmList(const QVector<VMachine>& appList,
+                                         const QVector<VMachine>& inList);
 };
 
 #endif
