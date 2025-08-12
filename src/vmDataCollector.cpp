@@ -73,11 +73,13 @@ QVector<VMachine> VmDataCollector::getVmList(){
 
                 // *** Слияние информации об uuid виртуальных машин *** //
                 for (int i = 0; i < vmList.size(); ++i){
-                    if (vmList[i].name == uuidVmList[i].name){
-                        vmList[i].uuid = uuidVmList[i].uuid;
+                    // *** Очерёдность виртуальных машин не гарантирована *** //
+                    for (int j = 0; j < vmList.size(); ++j){
+                        if (vmList[i].name == uuidVmList[j].name){
+                            vmList[i].uuid = uuidVmList[j].uuid;
+                        }
                     }
                 }
-
                 loop.quit();
             }
         });
@@ -590,7 +592,6 @@ void VmDataCollector::vmListStartTimer(){
 }
 
 void VmDataCollector::vmListStopTimer(){
-    qDebug() << "II Stop timer";
     m_getListTimer->stop();
 }
 

@@ -31,6 +31,8 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
                                               this, &QAppWindow::onVmListReady);
     QObject::connect(this, &QAppWindow::vmListProcessingStarted,
                             vmDataCollector, &VmDataCollector::vmListStopTimer);
+    QObject::connect(this, &QAppWindow::vmListProcessingCompleted,
+                           vmDataCollector, &VmDataCollector::vmListStartTimer);
 
     getVmListThread->start();
 
@@ -197,8 +199,37 @@ void QAppWindow::setSnapFrame(){
 }
 
 void QAppWindow::addVmToFrame(){
+    QStringList vmNameList;
+    QVector<int> vmIdx;
+
+    // *** Получение списка имён виртуальных машин *** //
+    for (int k = 0; k < m_vmList.size(); ++k){
+        vmNameList.push_back(m_vmList[k].name);
+    }
+    // *** Сортировка списка виртуальных машин *** //
+    vmNameList.sort(Qt::CaseInsensitive);
+
+    // *** Получение вектора индексов виртуальных машин *** //
+    for (int i = 0; i < vmNameList.size(); ++i){
+        for (int j = 0; j < m_vmList.size(); ++j){
+            if (m_vmList[j].name == vmNameList[i]){
+                vmIdx.push_back(j);
+            }
+        }
+    }
+
+    // *** Временный вектор отсортированных виртуальных машин *** //
+    QVector<VMachine> tmpVmList;
     for (int i = 0; i < m_vmList.size(); ++i){
-        VmWidget* vmWidget = new VmWidget(i, m_vmList, this);
+        tmpVmList.push_back(m_vmList[vmIdx[i]]);
+    }
+
+    // *** Список виртуальных машин отсортирован по алфавиту *** //
+    m_vmList = tmpVmList;
+
+    // *** Непосредственная вставка *** //
+    for (int i = 0; i < m_vmList.size(); ++i){
+        VmWidget* vmWidget = new VmWidget(m_vmList[i], this);
         m_vVmLayout->addWidget(vmWidget);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
             [this, vmWidget](){
@@ -218,6 +249,90 @@ void QAppWindow::addVmToFrame(){
                                                       &QAppWindow::updSnapTree);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
                                                    &QAppWindow::startBtnManage);
+    }
+}
+
+void QAppWindow::addVmToFrame(const QVector<VMachine>& toAddvmList){
+    for (int i = 0; i < toAddvmList.size(); ++i){
+        // *** Индекс вставки VM *** //
+        int indexWidget = getInsertWidgetIndex(m_vmList, toAddvmList[i]);
+        // *** Новую VM надо добавить не только на форму, но и в список *** //
+        m_vmList.insert(indexWidget, toAddvmList[i]);
+
+        VmWidget* vmWidget = new VmWidget(toAddvmList[i], this);
+        m_vVmLayout->insertWidget(indexWidget, vmWidget);
+        QObject::connect(vmWidget, &VmWidget::clicked, this,
+            [this, vmWidget](){
+                int nMax = m_vVmLayout->count();
+                for (int n = 0; n < nMax; ++n) {
+                    QLayoutItem* item = m_vVmLayout->itemAt(n);
+                    VmWidget* widget = static_cast<VmWidget*>(item->widget());
+                    if (widget != vmWidget){
+                        widget->setSelected(false);
+                    }
+                    else {
+                        m_selectedVmIndex = n;
+                    }
+                }
+            });
+        QObject::connect(vmWidget, &VmWidget::clicked, this,
+                                                     &QAppWindow::updSnapTree);
+        QObject::connect(vmWidget, &VmWidget::clicked, this,
+                                                  &QAppWindow::startBtnManage);
+    }
+}
+
+void QAppWindow::delVmFromFrame(const QVector<VMachine>& toDelVmList){
+    for (int i = 0; i < toDelVmList.size(); ++i){
+        // *** Индексы в m_vmList и в m_vVmLayout совпадают *** //
+        int rmIdx =getDeleteWidgetIndex(m_vmList, toDelVmList[i]);
+
+        QLayoutItem* item = m_vVmLayout->itemAt(rmIdx);
+        if (item) {
+            QWidget* widget = item->widget();
+            if (widget) {
+                m_vVmLayout->removeWidget(widget);
+                widget->deleteLater();
+                // *** Удаление из списка виртуальных машин *** //
+                m_vmList.removeAt(rmIdx);
+            }
+        }
+    }
+}
+
+void QAppWindow::modVmIntoFrame(const QVector<VMachine>& toModVmList){
+    for (int i = 0; i < toModVmList.size(); ++i){
+        int modIdx = getModifyWidgetIndex(m_vmList, toModVmList[i]);
+        QLayoutItem* item = m_vVmLayout->itemAt(modIdx);
+        if (item) {
+            VmWidget* widget = static_cast<VmWidget*>(item->widget());
+            if (widget) {
+                widget->setProperties(toModVmList[i]);
+
+                // *** Изменение свойств в списке виртуальных машин *** //
+                if (m_vmList[modIdx].name  != toModVmList[i].name){
+                    // *** Изменяем имя виртуальной машины в списке машин *** //
+                    m_vmList[modIdx].name  = toModVmList[i].name;
+
+                    // *** Определение нового индекса (имя же изменилось) *** //
+                    QStringList vmNameList;
+                    for (int i = 0; i < m_vmList.size(); ++i){
+                        vmNameList.push_back(m_vmList[i].name);
+                    }
+                    vmNameList.sort(Qt::CaseInsensitive);
+                    int newModIdx = vmNameList.indexOf(toModVmList[i].name);
+
+                    // *** Перемещение в списке виртуальных машин *** //
+                    m_vmList.move(modIdx, newModIdx);
+
+                    // *** Перемещение в виджетах *** //
+                    m_vVmLayout->removeWidget(widget);
+                    m_vVmLayout->insertWidget(newModIdx, widget);
+                }
+                // Обновление статуса в списке виртуальных машин;
+                m_vmList[modIdx].state = toModVmList[i].state;
+            }
+        }
     }
 }
 
@@ -433,18 +548,36 @@ void QAppWindow::deleteSnapshot(){
 }
 
 void QAppWindow::startVM(){
-    qDebug() << m_currentVmName;
+    // *** Запуск ВМ, необходимо предупреждение *** //
+    QLayoutItem* item = m_vVmLayout->itemAt(m_selectedVmIndex);
+    m_vmList[m_selectedVmIndex].state = "Waiting to start, please wait …";
+    if (item) {
+        VmWidget* widget = static_cast<VmWidget*>(item->widget());
+        if (widget) {
+            widget->setProperties(m_vmList[m_selectedVmIndex]);
+        }
+    }
 
     QProcess process;
+    QEventLoop loop;
 
+    bool stepOneDone = false;
+    QObject::connect(&process, &QProcess::finished,
+                    [&](int, QProcess::ExitStatus){
+                        if (!stepOneDone){
+                            stepOneDone = true;
+
+                            // Запуск второго этапа старта виртуальной машины
+                            process.start("virsh", {"start", m_currentVmName});
+                        }
+                        else{
+                            loop.quit();
+                        }
+                    });
+    // *** Первый этап запуска ВМ *** //
     process.start("virt-manager", {"--connect=qemu:///system",
                                     "--show-domain-console", m_currentVmName});
-    process.waitForStarted();
-    process.waitForFinished();
-
-    process.start("virsh", {"start", m_currentVmName});
-    process.waitForStarted();
-    process.waitForFinished();
+    loop.exec();
 }
 
 void QAppWindow::onTreeItemClicked(const QModelIndex& index){
@@ -531,15 +664,6 @@ void QAppWindow::showErrorMessage(const QString& title, const QString& message){
 
 void QAppWindow::onVmListReady(const QVector<VMachine> newVmList){
 
-    int runningCounter = 0;
-    for (int i = 0; i < newVmList.size(); ++i){
-        if (newVmList[i].state == "running"){
-            runningCounter++;
-        }
-    }
-    qDebug() << "[II] vmList received:" << newVmList.size()
-        << ";" << runningCounter << " vs " << newVmList.size() - runningCounter;
-
     QVector<VMachine> toAddVmList; // список VM для добавления программу
     QVector<VMachine> toDelVmList; // список для удаления из списка в программе
     QVector<VMachine> toModVmList; // список VM с изменившимся статусом
@@ -548,19 +672,30 @@ void QAppWindow::onVmListReady(const QVector<VMachine> newVmList){
     toAddVmList = getToAddVmList(m_vmList, newVmList);
     toDelVmList = getToDelVmList(m_vmList, newVmList);
 
-    qDebug() << "[II] toModVmList.size()" << toModVmList.size();
-    qDebug() << "[II] toAddVmList.size()" << toAddVmList.size();
-    qDebug() << "[II] toDelVmList.size()" << toDelVmList.size();
+    // qDebug() << "\n[II] toModVmList.size()" << toModVmList.size();
+    // qDebug() << "[II] toAddVmList.size()" << toAddVmList.size();
+    // qDebug() << "[II] toDelVmList.size()" << toDelVmList.size();
 
     // *** Cбор данных прекращается до окончания их обработки *** //
     if ( toModVmList.size() > 0 || toAddVmList.size() > 0
                                                     || toDelVmList.size() > 0 ){
         emit vmListProcessingStarted();
+
         // *** Работа со списком VM *** //
+        if (toAddVmList.size() > 0){
+            addVmToFrame(toAddVmList);
+        }
+
+        if (toDelVmList.size() > 0){
+            delVmFromFrame(toDelVmList);
+        }
+
+        if (toModVmList.size() >0 ){
+            modVmIntoFrame(toModVmList);
+        }
     }
 
     emit vmListProcessingCompleted();
-    // m_vmList = newVmList;
 }
 
 QVector<VMachine> QAppWindow::getToModVmList(const QVector<VMachine>& appList,
@@ -616,6 +751,41 @@ QVector<VMachine> QAppWindow::getToDelVmList(const QVector<VMachine>& appList,
         }
     }
     return res;
+}
+
+int QAppWindow::getInsertWidgetIndex(const QVector<VMachine>& appList,
+                                                          const VMachine& inVm){
+    QStringList vmNameList;
+
+    for (int i = 0; i < appList.size(); ++i){
+        vmNameList.push_back(appList[i].name);
+    }
+
+    vmNameList.push_back(inVm.name);
+    vmNameList.sort(Qt::CaseInsensitive);
+    return vmNameList.indexOf(inVm.name);
+}
+
+int QAppWindow::getDeleteWidgetIndex(const QVector<VMachine>& appList,
+                                                          const VMachine& inVm){
+    QStringList vmNameList;
+
+    for (int i = 0; i < appList.size(); ++i){
+        vmNameList.push_back(appList[i].name);
+    }
+
+    return vmNameList.indexOf(inVm.name);
+}
+
+int QAppWindow::getModifyWidgetIndex(const QVector<VMachine>& appList,
+                                                          const VMachine& inVm){
+    QStringList uuidVmList;
+
+    for (int i = 0; i < appList.size(); ++i){
+        uuidVmList.push_back(appList[i].uuid);
+    }
+
+    return uuidVmList.indexOf(inVm.uuid);
 }
 
 // End appWindow.cpp

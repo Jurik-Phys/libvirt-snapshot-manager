@@ -14,11 +14,12 @@ class VmWidget : public QFrame {
     Q_OBJECT
 
     public:
-        VmWidget(int, const QVector<VMachine>&, QWidget* parent = nullptr);
+        VmWidget(const VMachine&, QWidget* parent = nullptr);
         ~VmWidget();
         void setSelected(bool);
 
         static void setLoadingFlag(bool);
+        void setProperties(const VMachine&);
 
     signals:
         void clicked(VmWidget*);
@@ -30,13 +31,11 @@ class VmWidget : public QFrame {
 
     private:
         QFrame* m_vmIcon;
-        QLabel* m_vmLabel;
+        QLabel* m_vmName;
         QLabel* m_vmState;
         QHBoxLayout* m_vmHFrameLayout;
         QVBoxLayout* m_vmVTextLayout;
         int m_vmIconSize = 32;
-        int m_idx = -1;
-        QVector<VMachine> m_vmList;
         bool m_selected = false;
 
         void setDefaultStyle();
@@ -45,6 +44,9 @@ class VmWidget : public QFrame {
         void updateStyle();
 
         static bool m_isLoading;
+
+        void setName(const QString&  vmName);
+        void setState(const QString& vmState);
 };
 
 #endif

@@ -4,10 +4,7 @@
 
 bool VmWidget::m_isLoading = false;
 
-VmWidget::VmWidget(int idx, const QVector<VMachine>& vmList, QWidget* parent){
-    m_idx = idx;
-    m_vmList = vmList;
-
+VmWidget::VmWidget(const VMachine& inVm, QWidget* parent){
     m_vmIcon   = new QFrame(this);
 
     m_vmIcon->setStyleSheet("background-color: red;");
@@ -17,19 +14,17 @@ VmWidget::VmWidget(int idx, const QVector<VMachine>& vmList, QWidget* parent){
     m_vmVTextLayout->setSpacing(0);
 
     // Virtual machine name
-    m_vmLabel  = new QLabel(this);
-    m_vmLabel->setText("<b>"+m_vmList[m_idx].name+"</b>");
+    m_vmName  = new QLabel(this);
+    setName(inVm.name);
 
-    // m_vmLabel->setAlignment(Qt::AlignBottom);
-    m_vmVTextLayout->addWidget(m_vmLabel);
+    // m_vmName->setAlignment(Qt::AlignBottom);
+    m_vmVTextLayout->addWidget(m_vmName);
 
     // Virtual machine status
     m_vmState = new QLabel(this);
     // m_vmState->setStyleSheet("background-color: orange;");
-    QString state = m_vmList[m_idx].state;
-    state[0] = state[0].toUpper();
-    m_vmState->setText(state);
-    // m_vmState->setAlignment(Qt::AlignTop);
+    setState(inVm.state);
+
     m_vmVTextLayout->addWidget(m_vmState);
 
     m_vmHFrameLayout = new QHBoxLayout(this);
@@ -88,6 +83,27 @@ void VmWidget::updateStyle(){
 
 void VmWidget::setLoadingFlag(bool isLoad){
     m_isLoading = isLoad;
+}
+
+void VmWidget::setProperties(const VMachine& inVm){
+    setName(inVm.name);
+    setState(inVm.state);
+}
+
+void VmWidget::setName(const QString& vmName){
+    m_vmName->setText("<b>" + vmName + "</b>");
+}
+
+void VmWidget::setState(const QString& inVmState){
+    QString vmState = inVmState;
+    vmState[0] = vmState[0].toUpper();
+
+    if (vmState == "Running" || vmState == "Paused"){
+        m_vmState->setText(vmState + " | view-only snapshots");
+    }
+    else {
+        m_vmState->setText(vmState);
+    }
 }
 
 // End vmWidget.cpp

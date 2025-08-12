@@ -75,6 +75,9 @@ class QAppWindow : public QWidget {
         void setSnapFrame();
 
         void addVmToFrame();
+        void addVmToFrame(const QVector<VMachine>&);
+        void delVmFromFrame(const QVector<VMachine>&);
+        void modVmIntoFrame(const QVector<VMachine>&);
         void updSnapTree();
         void takeSnapBtnManage();
         void gotoAndDelBtnManage();
@@ -89,6 +92,12 @@ class QAppWindow : public QWidget {
                                          const QVector<VMachine>& inList);
         QVector<VMachine> getToModVmList(const QVector<VMachine>& appList,
                                          const QVector<VMachine>& inList);
+        int getInsertWidgetIndex(const QVector<VMachine>& appList,
+                                                          const VMachine& inVm);
+        int getDeleteWidgetIndex(const QVector<VMachine>& appList,
+                                                          const VMachine& inVm);
+        int getModifyWidgetIndex(const QVector<VMachine>& appList,
+                                                          const VMachine& inVm);
 };
 
 #endif
