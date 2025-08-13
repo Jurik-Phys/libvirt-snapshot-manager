@@ -33,12 +33,15 @@ class QAppWindow : public QWidget {
         void doSnapshot();
         void gotoSnapshot();
         void startVM();
+        void openVM();
+        void togglePauseVM();
         void deleteSnapshot();
         VMachine getActiveVm();
 
     signals:
         void vmListProcessingStarted();
         void vmListProcessingCompleted();
+        void selectVmChanged();
 
     public slots:
         void showErrorMessage(const QString& title, const QString& message);
@@ -47,9 +50,10 @@ class QAppWindow : public QWidget {
     private:
         const int m_appWindowWidth  = 945;
         const int m_appWindowHeight = 750;
-        const int m_headFrameHeight = 94;
+        const int m_headFrameHeight = 90;
 
-        const int m_btnSize1 = 64;
+        const int m_btnHeight = 64;
+        const int m_btnWidth = 1.2*m_btnHeight;
         const int m_vmIconSize = 48;
         int m_selectedVmIndex = -1;
 
@@ -67,7 +71,13 @@ class QAppWindow : public QWidget {
         QToolButton*  m_takeSnapBtn;
         QToolButton*  m_gotoBtn;
         QToolButton*  m_startBtn;
+        QToolButton*  m_stopBtn;
         QToolButton*  m_deleteBtn;
+        QToolButton*  m_pauseBtn;
+        QToolButton*  m_openBtn;
+        QMenu*  m_fullStopBtnMenu;
+        QMenu*  m_onlyForceStopBtnMenu;
+        QList<QAction*> m_defaulActionList;
 
         void setVmBtnFrame();
         void setVmFrame();
@@ -79,9 +89,12 @@ class QAppWindow : public QWidget {
         void delVmFromFrame(const QVector<VMachine>&);
         void modVmIntoFrame(const QVector<VMachine>&);
         void updSnapTree();
-        void takeSnapBtnManage();
-        void gotoAndDelBtnManage();
-        void startBtnManage();
+        void btnManageGoDel();
+        void btnManageStart();
+        void btnManagePause();
+        void btnManageStop();
+        void btnManageTake();
+        void snapTreeViewManage();
 
         void onTreeItemClicked(const QModelIndex& index);
         void resizeEvent(QResizeEvent *event) override;
@@ -98,6 +111,11 @@ class QAppWindow : public QWidget {
                                                           const VMachine& inVm);
         int getModifyWidgetIndex(const QVector<VMachine>& appList,
                                                           const VMachine& inVm);
+        void menuRebootVM();
+        void menuShutDownVM();
+        void menuForceRebootVM();
+        void menuForceShutdownVM();
+        void menuStopBtnSelect();
 };
 
 #endif

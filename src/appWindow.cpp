@@ -73,33 +73,91 @@ void QAppWindow::setVmBtnFrame(){
 
     m_startBtn = new QToolButton(vmBtnFrame);
     m_startBtn->setText("Start");
-    m_startBtn->setFixedHeight(m_btnSize1);
-    m_startBtn->setFixedWidth(1.5*m_btnSize1);
+    m_startBtn->setFixedHeight(m_btnHeight);
+    m_startBtn->setFixedWidth(m_btnWidth);
     m_startBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     QObject::connect(m_startBtn, &QToolButton::clicked,
                                                     this, &QAppWindow::startVM);
     m_startBtn->setEnabled(false);
 
-    QToolButton* stopBtn = new QToolButton(vmBtnFrame);
-    stopBtn->setText("Stop");
-    stopBtn->setFixedHeight(m_btnSize1);
-    stopBtn->setFixedWidth(1.5*m_btnSize1);
-    stopBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    m_pauseBtn = new QToolButton(vmBtnFrame);
+    m_pauseBtn->setText("Pause");
+    m_pauseBtn->setFixedHeight(m_btnHeight);
+    m_pauseBtn->setFixedWidth(m_btnWidth);
+    m_pauseBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    m_pauseBtn->setEnabled(false);
+    QObject::connect(m_pauseBtn, &QToolButton::clicked,
+                                              this, &QAppWindow::togglePauseVM);
 
-    m_takeSnapBtn = new QToolButton(vmBtnFrame);
-    m_takeSnapBtn->setText("Take");
-    m_takeSnapBtn->setFixedHeight(m_btnSize1);
-    m_takeSnapBtn->setFixedWidth(1.5*m_btnSize1);
-    m_takeSnapBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    m_takeSnapBtn->setEnabled(false);
-    QObject::connect(m_takeSnapBtn, &QToolButton::clicked, this,
-                                                       &QAppWindow::doSnapshot);
+    m_stopBtn = new QToolButton(vmBtnFrame);
+    m_stopBtn->setText("Stop");
+    m_stopBtn->setFixedHeight(m_btnHeight);
+    m_stopBtn->setFixedWidth(m_btnWidth);
+    m_stopBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    m_stopBtn->setPopupMode(QToolButton::InstantPopup);
+    m_stopBtn->setEnabled(false);
+
+    // *** Два варианта меню для кнопки stop *** //
+    m_fullStopBtnMenu = new QMenu(m_stopBtn);
+    QAction* actReboot = m_fullStopBtnMenu->addAction("Reboot");
+    QAction* actShutdown = m_fullStopBtnMenu->addAction("Shutdown");
+    QAction* actForceReboot = m_fullStopBtnMenu->addAction("Force reboot");
+    QAction* actForceShutdown = m_fullStopBtnMenu->addAction("Force shutdown");
+
+    m_onlyForceStopBtnMenu = new QMenu(m_stopBtn);
+    m_onlyForceStopBtnMenu->addAction(actForceReboot);
+    m_onlyForceStopBtnMenu->addAction(actForceShutdown);
+
+    m_defaulActionList.push_back(actShutdown);
+    m_defaulActionList.push_back(actForceShutdown);
+
+    QObject::connect(actReboot, &QAction::triggered,
+                                               this, &QAppWindow::menuRebootVM);
+    QObject::connect(actShutdown, &QAction::triggered,
+                                             this, &QAppWindow::menuShutDownVM);
+    QObject::connect(actForceReboot, &QAction::triggered,
+                                          this, &QAppWindow::menuForceRebootVM);
+    QObject::connect(actForceShutdown, &QAction::triggered,
+                                        this, &QAppWindow::menuForceShutdownVM);
+
+    QFrame* vLine = new QFrame(vmBtnFrame);
+    vLine->setFrameShape(QFrame::VLine);
+    vLine->setFrameShadow(QFrame::Plain);
+    vLine->setFixedWidth(3);
+    vLine->setFixedHeight(m_btnHeight + 0.05*m_btnHeight);
+    QColor borderColor = vmBtnFrame->palette().color(QPalette::Mid);
+    vLine->setStyleSheet(QString("color: %1;").arg(borderColor.name()));
+
+    m_openBtn = new QToolButton(vmBtnFrame);
+    m_openBtn->setText("Open");
+    m_openBtn->setFixedHeight(m_btnHeight);
+    m_openBtn->setFixedWidth(m_btnWidth);
+    m_openBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    QObject::connect(m_openBtn, &QToolButton::clicked, this,
+                                                           &QAppWindow::openVM);
 
     vmBtnFrameHLayout->addWidget(m_startBtn);
-    vmBtnFrameHLayout->addWidget(stopBtn);
-    vmBtnFrameHLayout->addWidget(m_takeSnapBtn);
+    vmBtnFrameHLayout->addWidget(m_pauseBtn);
+    vmBtnFrameHLayout->addWidget(m_stopBtn);
+    vmBtnFrameHLayout->addWidget(vLine);
+    vmBtnFrameHLayout->addWidget(m_openBtn);
 
     m_vLColumnLayout->addWidget(vmBtnFrame);
+
+    QObject::connect(this, &QAppWindow::selectVmChanged,
+                                             this, &QAppWindow::btnManageStart);
+    QObject::connect(this, &QAppWindow::selectVmChanged,
+                                             this, &QAppWindow::btnManageStop);
+    QObject::connect(this, &QAppWindow::selectVmChanged,
+                                             this, &QAppWindow::btnManagePause);
+    QObject::connect(this, &QAppWindow::selectVmChanged,
+                                             this, &QAppWindow::btnManageGoDel);
+    QObject::connect(this, &QAppWindow::selectVmChanged,
+                                             this, &QAppWindow::btnManageTake);
+    QObject::connect(this, &QAppWindow::selectVmChanged,
+                                         this, &QAppWindow::snapTreeViewManage);
+    QObject::connect(this, &QAppWindow::selectVmChanged,
+                                         this, &QAppWindow::menuStopBtnSelect);
 }
 
 void QAppWindow::setVmFrame(){
@@ -110,7 +168,7 @@ void QAppWindow::setVmFrame(){
     container->setLayout(m_vVmLayout);
     vmFrame->setWidget(container);
 
-    vmFrame->setStyleSheet("background-color: white;");
+    vmFrame->viewport()->setStyleSheet("background-color: white;");
     vmFrame->setFixedWidth(m_appWindowWidth/2.5);
 
     m_vLColumnLayout->addWidget(vmFrame);
@@ -126,8 +184,8 @@ void QAppWindow::setSnapBtnFrame(){
 
     m_gotoBtn = new QToolButton(snapBtnFrame);
     m_gotoBtn->setText("Go to");
-    m_gotoBtn->setFixedHeight(m_btnSize1);
-    m_gotoBtn->setFixedWidth(1.5*m_btnSize1);
+    m_gotoBtn->setFixedHeight(m_btnHeight);
+    m_gotoBtn->setFixedWidth(m_btnWidth);
     m_gotoBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     m_gotoBtn->setEnabled(false);
     QObject::connect(m_gotoBtn, &QToolButton::clicked, this,
@@ -135,26 +193,45 @@ void QAppWindow::setSnapBtnFrame(){
 
     m_deleteBtn = new QToolButton(snapBtnFrame);
     m_deleteBtn->setText("Delete");
-    m_deleteBtn->setFixedHeight(m_btnSize1);
-    m_deleteBtn->setFixedWidth(1.5*m_btnSize1);
+    m_deleteBtn->setFixedHeight(m_btnHeight);
+    m_deleteBtn->setFixedWidth(m_btnWidth);
     m_deleteBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     m_deleteBtn->setEnabled(false);
     QObject::connect(m_deleteBtn, &QToolButton::clicked, this,
                                                    &QAppWindow::deleteSnapshot);
+    QFrame* vLine = new QFrame(snapBtnFrame);
+    vLine->setFrameShape(QFrame::VLine);
+    vLine->setFrameShadow(QFrame::Plain);
+    vLine->setFixedWidth(3);
+    vLine->setFixedHeight(m_btnHeight + 0.05*m_btnHeight);
+    QColor borderColor = snapBtnFrame->palette().color(QPalette::Mid);
+    vLine->setStyleSheet(QString("color: %1;").arg(borderColor.name()));
+
+    m_takeSnapBtn = new QToolButton(snapBtnFrame);
+    m_takeSnapBtn->setText("Take");
+    m_takeSnapBtn->setFixedHeight(m_btnHeight);
+    m_takeSnapBtn->setFixedWidth(m_btnWidth);
+    m_takeSnapBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    m_takeSnapBtn->setEnabled(false);
+    QObject::connect(m_takeSnapBtn, &QToolButton::clicked, this,
+                                                       &QAppWindow::doSnapshot);
 
     QToolButton* exitBtn = new QToolButton(snapBtnFrame);
     exitBtn->setText("Exit");
-    exitBtn->setFixedHeight(m_btnSize1);
-    exitBtn->setFixedWidth(1.5*m_btnSize1);
+    exitBtn->setFixedHeight(m_btnHeight);
+    exitBtn->setFixedWidth(m_btnWidth);
     exitBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     QObject::connect(exitBtn, &QToolButton::clicked, this,&QAppWindow::appExit);
 
     snapBtnFrameHLayout->addWidget(m_gotoBtn);
     snapBtnFrameHLayout->addWidget(m_deleteBtn);
+    snapBtnFrameHLayout->addWidget(vLine);
+    snapBtnFrameHLayout->addWidget(m_takeSnapBtn);
     snapBtnFrameHLayout->addStretch();
     snapBtnFrameHLayout->addWidget(exitBtn);
 
     m_vRColumnLayout->addWidget(snapBtnFrame);
+
 }
 
 void QAppWindow::setSnapFrame(){
@@ -187,7 +264,7 @@ void QAppWindow::setSnapFrame(){
                                           this, &QAppWindow::onTreeItemClicked);
 
     QObject::connect(m_snapTreeView, &SnapTreeView::clicked,
-                                              this, &QAppWindow::gotoAndDelBtnManage);
+                                              this, &QAppWindow::btnManageGoDel);
     QObject::connect(m_snapTreeView, &SnapTreeView::doSnapshot,
                                               this, &QAppWindow::doSnapshot);
     QObject::connect(m_snapTreeView, &SnapTreeView::deleteSnapshot,
@@ -196,6 +273,9 @@ void QAppWindow::setSnapFrame(){
                                              this, &QAppWindow::gotoSnapshot);
     QObject::connect(m_snapTreeView, &SnapTreeView::startVM,
                                                     this, &QAppWindow::startVM);
+
+    // *** Отключение всплывающего меню  *** //
+    m_snapTreeView->setContextMenuPolicy(Qt::NoContextMenu);
 }
 
 void QAppWindow::addVmToFrame(){
@@ -248,7 +328,15 @@ void QAppWindow::addVmToFrame(){
         QObject::connect(vmWidget, &VmWidget::clicked, this,
                                                       &QAppWindow::updSnapTree);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
-                                                   &QAppWindow::startBtnManage);
+                                                   &QAppWindow::btnManageStart);
+        QObject::connect(vmWidget, &VmWidget::clicked, this,
+                                                   &QAppWindow::btnManagePause);
+        QObject::connect(vmWidget, &VmWidget::clicked, this,
+                                                   &QAppWindow::btnManageStop);
+        QObject::connect(vmWidget, &VmWidget::clicked, this,
+                                               &QAppWindow::snapTreeViewManage);
+        QObject::connect(vmWidget, &VmWidget::clicked, this,
+                                                &QAppWindow::menuStopBtnSelect);
     }
 }
 
@@ -278,7 +366,15 @@ void QAppWindow::addVmToFrame(const QVector<VMachine>& toAddvmList){
         QObject::connect(vmWidget, &VmWidget::clicked, this,
                                                      &QAppWindow::updSnapTree);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
-                                                  &QAppWindow::startBtnManage);
+                                                  &QAppWindow::btnManageStart);
+        QObject::connect(vmWidget, &VmWidget::clicked, this,
+                                                   &QAppWindow::btnManagePause);
+        QObject::connect(vmWidget, &VmWidget::clicked, this,
+                                                   &QAppWindow::btnManageStop);
+        QObject::connect(vmWidget, &VmWidget::clicked, this,
+                                               &QAppWindow::snapTreeViewManage);
+        QObject::connect(vmWidget, &VmWidget::clicked, this,
+                                                &QAppWindow::menuStopBtnSelect);
     }
 }
 
@@ -303,6 +399,13 @@ void QAppWindow::delVmFromFrame(const QVector<VMachine>& toDelVmList){
 void QAppWindow::modVmIntoFrame(const QVector<VMachine>& toModVmList){
     for (int i = 0; i < toModVmList.size(); ++i){
         int modIdx = getModifyWidgetIndex(m_vmList, toModVmList[i]);
+
+        // *** Изменения произошли в выделенной сейчас ВМ ? *** //
+        bool isSelectVM = false;
+        if ( modIdx == m_selectedVmIndex ){
+            isSelectVM = true;
+        }
+
         QLayoutItem* item = m_vVmLayout->itemAt(modIdx);
         if (item) {
             VmWidget* widget = static_cast<VmWidget*>(item->widget());
@@ -313,6 +416,8 @@ void QAppWindow::modVmIntoFrame(const QVector<VMachine>& toModVmList){
                 if (m_vmList[modIdx].name  != toModVmList[i].name){
                     // *** Изменяем имя виртуальной машины в списке машин *** //
                     m_vmList[modIdx].name  = toModVmList[i].name;
+                    // *** Перезапись статуса ВМ на случай его изменения *** //
+                    m_vmList[modIdx].state = toModVmList[i].state;
 
                     // *** Определение нового индекса (имя же изменилось) *** //
                     QStringList vmNameList;
@@ -328,9 +433,22 @@ void QAppWindow::modVmIntoFrame(const QVector<VMachine>& toModVmList){
                     // *** Перемещение в виджетах *** //
                     m_vVmLayout->removeWidget(widget);
                     m_vVmLayout->insertWidget(newModIdx, widget);
+
+                    // *** Фиксация изменения индекса выделенной ВМ *** //
+                    if (isSelectVM){
+                        m_selectedVmIndex = newModIdx;
+                    }
                 }
-                // Обновление статуса в списке виртуальных машин;
-                m_vmList[modIdx].state = toModVmList[i].state;
+                else {
+                    // Обновление статуса в списке виртуальных машин;
+                    m_vmList[modIdx].state = toModVmList[i].state;
+                }
+
+                // *** Сигнал об изменениях в выделенной ВМ *** //
+                // *** Управление кнопками (start|pause|stop|take) *** //
+                if (isSelectVM){
+                    emit selectVmChanged();
+                }
             }
         }
     }
@@ -379,13 +497,13 @@ void QAppWindow::updSnapTree(){
                 qDebug() << "[II] Данные получены (finished)";
 
                 // *** On/Off GoTo button *** //
-                gotoAndDelBtnManage();
+                btnManageGoDel();
 
                 thread->quit();
                 thread->wait();
 
                 vmDataCollector->deleteLater();
-                this->takeSnapBtnManage();
+                this->btnManageTake();
                 thread->deleteLater();
 
                 // *** Снятие флага продолжения загрузки *** //
@@ -550,7 +668,7 @@ void QAppWindow::deleteSnapshot(){
 void QAppWindow::startVM(){
     // *** Запуск ВМ, необходимо предупреждение *** //
     QLayoutItem* item = m_vVmLayout->itemAt(m_selectedVmIndex);
-    m_vmList[m_selectedVmIndex].state = "Waiting to start, please wait …";
+    m_vmList[m_selectedVmIndex].state = "Preparing to start, please wait…";
     if (item) {
         VmWidget* widget = static_cast<VmWidget*>(item->widget());
         if (widget) {
@@ -575,6 +693,46 @@ void QAppWindow::startVM(){
                         }
                     });
     // *** Первый этап запуска ВМ *** //
+    process.start("virt-manager", {"--connect=qemu:///system",
+                                    "--show-domain-console", m_currentVmName});
+    loop.exec();
+}
+
+void QAppWindow::togglePauseVM(){
+
+    // *** do resume VM *** //
+    if (m_vmList[m_selectedVmIndex].state == "paused"){
+        QProcess process;
+        QEventLoop loop;
+        QObject::connect(&process, &QProcess::finished,
+                    [&](int, QProcess::ExitStatus){
+                        loop.quit();
+                    });
+        process.start("virsh", {"resume", m_currentVmName});
+        loop.exec();
+    }
+
+    // *** do pause VM *** //
+    if (m_vmList[m_selectedVmIndex].state == "running"){
+        QProcess process;
+        QEventLoop loop;
+        QObject::connect(&process, &QProcess::finished,
+                    [&](int, QProcess::ExitStatus){
+                        loop.quit();
+                    });
+        process.start("virsh", {"suspend", m_currentVmName});
+        loop.exec();
+    }
+}
+
+void QAppWindow::openVM(){
+    QProcess process;
+    QEventLoop loop;
+
+    QObject::connect(&process, &QProcess::finished,
+                                                [&](int, QProcess::ExitStatus){
+                                                    loop.quit();
+                                                });
     process.start("virt-manager", {"--connect=qemu:///system",
                                     "--show-domain-console", m_currentVmName});
     loop.exec();
@@ -615,16 +773,18 @@ void QAppWindow::resizeEvent(QResizeEvent* event) {
                        ->setMinimumSectionSize(width() - m_appWindowWidth/2.24);
 }
 
-void QAppWindow::takeSnapBtnManage(){
-    if (m_mountStorages.size() > 0){
+void QAppWindow::btnManageTake(){
+    if (m_mountStorages.size() > 0
+                            && m_vmList[m_selectedVmIndex].state == "shut off"){
         m_takeSnapBtn->setEnabled(true);
+
     }
     else {
         m_takeSnapBtn->setEnabled(false);
     }
 }
 
-void QAppWindow::gotoAndDelBtnManage(){
+void QAppWindow::btnManageGoDel(){
 
     QItemSelectionModel* selectionModel = m_snapTreeView->selectionModel();
     QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
@@ -633,7 +793,8 @@ void QAppWindow::gotoAndDelBtnManage(){
         QModelIndex index = selectedIndexes[0];
         const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(index);
         // *** "active" нельзя удалить и нельзя в него перейти *** //
-        if (node.imagesType != "active"){
+        if (node.imagesType != "active"
+                           && m_vmList[m_selectedVmIndex].state == "shut off" ){
             m_deleteBtn->setEnabled(true);
             m_gotoBtn->setEnabled(true);
         }
@@ -641,7 +802,6 @@ void QAppWindow::gotoAndDelBtnManage(){
             m_deleteBtn->setEnabled(false);
             m_gotoBtn->setEnabled(false);
         }
-
     }
     else {
         m_deleteBtn->setEnabled(false);
@@ -649,12 +809,48 @@ void QAppWindow::gotoAndDelBtnManage(){
     }
 }
 
-void QAppWindow::startBtnManage(){
-    if (m_vmList.size() > 0){
+void QAppWindow::btnManageStart(){
+    if (m_vmList[m_selectedVmIndex].state == "shut off"){
         m_startBtn->setEnabled(true);
     }
     else {
         m_startBtn->setEnabled(false);
+    }
+}
+
+void QAppWindow::btnManagePause(){
+    if (m_vmList[m_selectedVmIndex].state == "paused"
+                            || m_vmList[m_selectedVmIndex].state == "running" ){
+        m_pauseBtn->setEnabled(true);
+        if (m_vmList[m_selectedVmIndex].state == "paused"){
+            m_pauseBtn->setText("Resume");
+        }
+        else {
+            m_pauseBtn->setText("Pause");
+        }
+    }
+    else {
+        m_pauseBtn->setEnabled(false);
+    }
+}
+
+void QAppWindow::btnManageStop(){
+    if (m_vmList[m_selectedVmIndex].state == "shut off"){
+        m_stopBtn->setEnabled(false);
+    }
+    else {
+        m_stopBtn->setEnabled(true);
+    }
+}
+
+void QAppWindow::snapTreeViewManage(){
+    if (m_vmList[m_selectedVmIndex].state == "shut off"){
+        // *** Режим работы с деревом снапшотов *** //
+        m_snapTreeView->setContextMenuPolicy(Qt::DefaultContextMenu);
+    }
+    else {
+        // *** Режим read-only *** //
+        m_snapTreeView->setContextMenuPolicy(Qt::NoContextMenu);
     }
 }
 
@@ -786,6 +982,66 @@ int QAppWindow::getModifyWidgetIndex(const QVector<VMachine>& appList,
     }
 
     return uuidVmList.indexOf(inVm.uuid);
+}
+
+void QAppWindow::menuRebootVM(){
+    QProcess process;
+    QEventLoop loop;
+    QObject::connect(&process, &QProcess::finished,
+                [&](int, QProcess::ExitStatus){
+                    loop.quit();
+                });
+    process.start("virsh", {"reboot", m_currentVmName});
+    loop.exec();
+};
+
+void QAppWindow::menuShutDownVM(){
+    QProcess process;
+    QEventLoop loop;
+    QObject::connect(&process, &QProcess::finished,
+                [&](int, QProcess::ExitStatus){
+                    loop.quit();
+                });
+    process.start("virsh", {"shutdown", m_currentVmName});
+    loop.exec();
+}
+
+void QAppWindow::menuForceRebootVM(){
+    QProcess process;
+    QEventLoop loop;
+    QObject::connect(&process, &QProcess::finished,
+                [&](int, QProcess::ExitStatus){
+                    loop.quit();
+                });
+    process.start("virsh", {"reset", m_currentVmName});
+    loop.exec();
+}
+
+void QAppWindow::menuForceShutdownVM(){
+    QProcess process;
+    QEventLoop loop;
+    QObject::connect(&process, &QProcess::finished,
+                [&](int, QProcess::ExitStatus){
+                    loop.quit();
+                });
+    process.start("virsh", {"destroy", m_currentVmName});
+    loop.exec();
+}
+
+void QAppWindow::menuStopBtnSelect(){
+    if (m_vmList[m_selectedVmIndex].state == "paused") {
+        m_stopBtn->setMenu(m_onlyForceStopBtnMenu);
+        QString text = m_stopBtn->text();
+        m_stopBtn->setDefaultAction(m_defaulActionList[1]);
+        m_stopBtn->setText(text);
+    } else {
+        if (m_vmList[m_selectedVmIndex].state == "running") {
+            m_stopBtn->setMenu(m_fullStopBtnMenu);
+            QString text = m_stopBtn->text();
+            m_stopBtn->setDefaultAction(m_defaulActionList[0]);
+            m_stopBtn->setText(text);
+        }
+    }
 }
 
 // End appWindow.cpp
