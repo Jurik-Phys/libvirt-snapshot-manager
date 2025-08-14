@@ -105,10 +105,10 @@ void QAppWindow::setVmBtnFrame(){
 
     // *** Два варианта меню для кнопки stop *** //
     m_fullStopBtnMenu = new QMenu(m_stopBtn);
-    QAction* actShutdown = m_fullStopBtnMenu->addAction("Shutdown");
     QAction* actReboot = m_fullStopBtnMenu->addAction("Reboot");
-    QAction* actForceShutdown = m_fullStopBtnMenu->addAction("Force shutdown");
     QAction* actForceReboot = m_fullStopBtnMenu->addAction("Force reboot");
+    QAction* actShutdown = m_fullStopBtnMenu->addAction("Shutdown");
+    QAction* actForceShutdown = m_fullStopBtnMenu->addAction("Force shutdown");
 
     m_onlyForceStopBtnMenu = new QMenu(m_stopBtn);
     m_onlyForceStopBtnMenu->addAction(actForceReboot);
