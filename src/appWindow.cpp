@@ -364,9 +364,9 @@ void QAppWindow::addVmToFrame(const QVector<VMachine>& toAddvmList){
                 }
             });
         QObject::connect(vmWidget, &VmWidget::clicked, this,
-                                                     &QAppWindow::updSnapTree);
+                                                      &QAppWindow::updSnapTree);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
-                                                  &QAppWindow::btnManageStart);
+                                                   &QAppWindow::btnManageStart);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
                                                    &QAppWindow::btnManagePause);
         QObject::connect(vmWidget, &VmWidget::clicked, this,

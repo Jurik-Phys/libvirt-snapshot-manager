@@ -471,49 +471,49 @@ void VmDataCollector::loadVmImagesRawInfoOverQEMU(const QString& snapshotsDir){
     }
 }
 
-QString VmDataCollector::getBackFullNameQEMU(const VmImageRawInfo& vmImageRawInfo){
+QString VmDataCollector::getBackFullNameQEMU(const VmImageRawInfo& vmImgRawInf){
     QString backingFile;
 
-    QString baseDir = QFileInfo(vmImageRawInfo.imageFullName).absolutePath();
+    QString baseDir = QFileInfo(vmImgRawInf.imageFullName).absolutePath();
 
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     env.insert("LANG", "C");
 
     QProcess process;
     process.setProcessEnvironment(env);
-    process.start("qemu-img", {"info", vmImageRawInfo.imageFullName});
+    QEventLoop loop;
+    QObject::connect(&process, &QProcess::finished, &loop, &QEventLoop::quit);
 
-    if (!process.waitForStarted()){
-        return backingFile;
-    }
+    QObject::connect(&process, &QProcess::readyReadStandardOutput,
+        [&](){
+            QString output = process.readAllStandardOutput();
 
-    if (!process.waitForFinished()){
-        return backingFile;
-    }
-
-    QString output = process.readAllStandardOutput();
-
-    if (output.contains("backing file")){
-        QStringList outputLines = output.split('\n', Qt::SkipEmptyParts);
-        for (int i = 0; i < outputLines.size(); ++i){
-            QString line = outputLines[i];
-            if (line.split(":", Qt::SkipEmptyParts)[0] == "backing file"){
-                backingFile = line.split(":", Qt::SkipEmptyParts)[1];
-                // Надпись "(actual path ... )" у коротких названий есть,
-                // а у длинных отсутствует и путь выдаётся полный,
-                // поэтому испольуется "хак", чтобы оба способа работали
-                backingFile = backingFile.split("(", Qt::SkipEmptyParts)[0];
-                backingFile = backingFile.trimmed();
-                backingFile = QFileInfo(backingFile).fileName();
-                backingFile = baseDir + "/" + backingFile;
-                break;
+            if (output.contains("backing file")){
+                QStringList outLines = output.split('\n', Qt::SkipEmptyParts);
+                for (int i = 0; i < outLines.size(); ++i){
+                    QString ln = outLines[i];
+                    if (ln.split(":", Qt::SkipEmptyParts)[0] == "backing file"){
+                        backingFile = ln.split(":", Qt::SkipEmptyParts)[1];
+                        // Надпись "(actual path ... )" у коротких названий есть,
+                        // а у длинных отсутствует и путь выдаётся полный,
+                        // поэтому испольуется "хак", чтобы оба способа работали
+                        backingFile = backingFile
+                                             .split("(", Qt::SkipEmptyParts)[0];
+                        backingFile = backingFile.trimmed();
+                        backingFile = QFileInfo(backingFile).fileName();
+                        backingFile = baseDir + "/" + backingFile;
+                        break;
+                    }
+                }
             }
-        }
-    }
-    else {
-        // No backing file => file is root of disk chains
-        backingFile = "-1";
-    }
+            else {
+                // No backing file => file is root of disk chains
+                backingFile = "-1";
+            }
+        });
+
+    process.start("qemu-img", {"info", "-U", vmImgRawInf.imageFullName});
+    loop.exec();
 
     return backingFile;
 }
