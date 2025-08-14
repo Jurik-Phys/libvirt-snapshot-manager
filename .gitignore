@@ -15,6 +15,7 @@
 **/compile_commands.json
 **/.cmake
 **/.make
+**/.gdb_history
 
 # ctags db
 **/tags

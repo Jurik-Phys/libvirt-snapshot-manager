@@ -33,6 +33,12 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
                             vmDataCollector, &VmDataCollector::vmListStopTimer);
     QObject::connect(this, &QAppWindow::vmListProcessingCompleted,
                            vmDataCollector, &VmDataCollector::vmListStartTimer);
+    QObject::connect(this, &QAppWindow::startVmBegin,
+                                               this, &QAppWindow::viewOnlyMode);
+    QObject::connect(this, &QAppWindow::startVmBegin,
+                            vmDataCollector, &VmDataCollector::vmListStopTimer);
+    QObject::connect(this, &QAppWindow::startVmEnd,
+                           vmDataCollector, &VmDataCollector::vmListStartTimer);
 
     getVmListThread->start();
 
@@ -99,10 +105,10 @@ void QAppWindow::setVmBtnFrame(){
 
     // *** Два варианта меню для кнопки stop *** //
     m_fullStopBtnMenu = new QMenu(m_stopBtn);
-    QAction* actReboot = m_fullStopBtnMenu->addAction("Reboot");
     QAction* actShutdown = m_fullStopBtnMenu->addAction("Shutdown");
-    QAction* actForceReboot = m_fullStopBtnMenu->addAction("Force reboot");
+    QAction* actReboot = m_fullStopBtnMenu->addAction("Reboot");
     QAction* actForceShutdown = m_fullStopBtnMenu->addAction("Force shutdown");
+    QAction* actForceReboot = m_fullStopBtnMenu->addAction("Force reboot");
 
     m_onlyForceStopBtnMenu = new QMenu(m_stopBtn);
     m_onlyForceStopBtnMenu->addAction(actForceReboot);
@@ -231,7 +237,6 @@ void QAppWindow::setSnapBtnFrame(){
     snapBtnFrameHLayout->addWidget(exitBtn);
 
     m_vRColumnLayout->addWidget(snapBtnFrame);
-
 }
 
 void QAppWindow::setSnapFrame(){
@@ -328,13 +333,7 @@ void QAppWindow::addVmToFrame(){
         QObject::connect(vmWidget, &VmWidget::clicked, this,
                                                       &QAppWindow::updSnapTree);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
-                                                   &QAppWindow::btnManageStart);
-        QObject::connect(vmWidget, &VmWidget::clicked, this,
-                                                   &QAppWindow::btnManagePause);
-        QObject::connect(vmWidget, &VmWidget::clicked, this,
-                                                   &QAppWindow::btnManageStop);
-        QObject::connect(vmWidget, &VmWidget::clicked, this,
-                                               &QAppWindow::snapTreeViewManage);
+                                                     &QAppWindow::viewOnlyMode);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
                                                 &QAppWindow::menuStopBtnSelect);
     }
@@ -366,13 +365,7 @@ void QAppWindow::addVmToFrame(const QVector<VMachine>& toAddvmList){
         QObject::connect(vmWidget, &VmWidget::clicked, this,
                                                       &QAppWindow::updSnapTree);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
-                                                   &QAppWindow::btnManageStart);
-        QObject::connect(vmWidget, &VmWidget::clicked, this,
-                                                   &QAppWindow::btnManagePause);
-        QObject::connect(vmWidget, &VmWidget::clicked, this,
-                                                   &QAppWindow::btnManageStop);
-        QObject::connect(vmWidget, &VmWidget::clicked, this,
-                                               &QAppWindow::snapTreeViewManage);
+                                                     &QAppWindow::viewOnlyMode);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
                                                 &QAppWindow::menuStopBtnSelect);
     }
@@ -496,14 +489,18 @@ void QAppWindow::updSnapTree(){
                 // }
                 qDebug() << "[II] Данные получены (finished)";
 
-                // *** On/Off GoTo button *** //
+                // *** On/Off buttons *** //
                 btnManageGoDel();
+                btnManageTake();
+                btnManageStart();
+                btnManagePause();
+                btnManageStop();
+                snapTreeViewManage();
 
                 thread->quit();
                 thread->wait();
 
                 vmDataCollector->deleteLater();
-                this->btnManageTake();
                 thread->deleteLater();
 
                 // *** Снятие флага продолжения загрузки *** //
@@ -666,6 +663,9 @@ void QAppWindow::deleteSnapshot(){
 }
 
 void QAppWindow::startVM(){
+
+    emit startVmBegin();
+
     // *** Запуск ВМ, необходимо предупреждение *** //
     QLayoutItem* item = m_vVmLayout->itemAt(m_selectedVmIndex);
     m_vmList[m_selectedVmIndex].state = "Preparing to start, please wait…";
@@ -690,6 +690,7 @@ void QAppWindow::startVM(){
                         }
                         else{
                             loop.quit();
+                            emit startVmEnd();
                         }
                     });
     // *** Первый этап запуска ВМ *** //
@@ -1022,6 +1023,7 @@ void QAppWindow::menuForceShutdownVM(){
     QEventLoop loop;
     QObject::connect(&process, &QProcess::finished,
                 [&](int, QProcess::ExitStatus){
+                    btnManageGoDel();
                     loop.quit();
                 });
     process.start("virsh", {"destroy", m_currentVmName});
@@ -1042,6 +1044,14 @@ void QAppWindow::menuStopBtnSelect(){
             m_stopBtn->setText(text);
         }
     }
+}
+
+void QAppWindow::viewOnlyMode(){
+    // *** Отклчюение управлением снапшотами *** //
+    m_takeSnapBtn->setEnabled(false);
+    m_gotoBtn->setEnabled(false);
+    m_deleteBtn->setEnabled(false);
+    m_snapTreeView->setContextMenuPolicy(Qt::NoContextMenu);
 }
 
 // End appWindow.cpp

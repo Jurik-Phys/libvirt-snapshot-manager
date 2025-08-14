@@ -41,6 +41,8 @@ class QAppWindow : public QWidget {
     signals:
         void vmListProcessingStarted();
         void vmListProcessingCompleted();
+        void startVmBegin();
+        void startVmEnd();
         void selectVmChanged();
 
     public slots:
@@ -116,6 +118,8 @@ class QAppWindow : public QWidget {
         void menuForceRebootVM();
         void menuForceShutdownVM();
         void menuStopBtnSelect();
+
+        void viewOnlyMode();
 };
 
 #endif
