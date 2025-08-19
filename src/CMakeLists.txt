@@ -7,6 +7,7 @@ set(SOURCE_LIB  appWindow.cpp
                 vmDataCollector.cpp
                 treeItemDelegate.cpp
                 treeLinesStyle.cpp
+                infoWidget.cpp
                 vmWidget.cpp)
 
 add_library(src-lib STATIC ${SOURCE_LIB})

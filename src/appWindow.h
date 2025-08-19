@@ -18,6 +18,7 @@
 #include "snapTreeModel.h"
 #include "vmDataCollector.h"
 #include "treeItemDelegate.h"
+#include "infoWidget.h"
 #include <QHeaderView>
 #include "treeLinesStyle.h"
 
@@ -51,8 +52,9 @@ class QAppWindow : public QWidget {
 
     private:
         const int m_appWindowWidth  = 945;
-        const int m_appWindowHeight = 750;
+        const int m_appWindowHeight = 912;
         const int m_headFrameHeight = 90;
+        const int m_infoFrameHeight = 328;
 
         const int m_btnHeight = 64;
         const int m_btnWidth = 1.2*m_btnHeight;
@@ -67,6 +69,7 @@ class QAppWindow : public QWidget {
         SnapTreeModel* m_snapTreeLoadingModel;
         SnapTreeView*  m_snapTreeView;
         QVector<VMachine> m_vmList;
+        InfoWidget*   m_infoWidget;
         ChainNode     m_activeNode;
         QStringList   m_mountStorages;
         QString       m_currentVmName;
@@ -83,6 +86,7 @@ class QAppWindow : public QWidget {
 
         void setVmBtnFrame();
         void setVmFrame();
+        void setInfoFrame();
         void setSnapBtnFrame();
         void setSnapFrame();
 

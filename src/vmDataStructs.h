@@ -25,6 +25,8 @@ struct VMachine {
     QString     state;         // Состояние виртуальной машины (вкл./выкл.)
     QString     cpu;           // Информация о процессоре
     QString     ram;           // Оперативная память
+    QString     title;         // Человекочитаемый заголовок
+    QString     description;   // Описание виртуальной машины
     QStringList mountStorages; // Примонтированные хранилища данных
     QStringList rootFullName;  // Полные имена корневых файлов цепочек состояний
     QStringList snapshotsDirs; // Каталоги хранения цепочек сохранения состояний

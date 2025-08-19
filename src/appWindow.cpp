@@ -50,6 +50,7 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
 
     setVmBtnFrame();
     setVmFrame();
+    setInfoFrame();
     setSnapBtnFrame();
     setSnapFrame();
 
@@ -178,6 +179,22 @@ void QAppWindow::setVmFrame(){
     vmFrame->setFixedWidth(m_appWindowWidth/2.5);
 
     m_vLColumnLayout->addWidget(vmFrame);
+}
+
+void QAppWindow::setInfoFrame(){
+    m_infoWidget = new InfoWidget(this);
+    m_infoWidget->setFrameShape(QFrame::StyledPanel);
+    m_infoWidget->setFrameShadow(QFrame::Plain);
+    m_infoWidget->setFixedHeight(m_infoFrameHeight);
+    m_infoWidget->setFixedWidth(m_appWindowWidth/2.5);
+
+    // *** Правильная установка белого фона *** //
+    m_infoWidget->setAutoFillBackground(true);
+    QPalette pal = m_infoWidget->palette();
+    pal.setColor(QPalette::Window, Qt::white);
+    m_infoWidget->setPalette(pal);
+
+    m_vLColumnLayout->addWidget(m_infoWidget);
 }
 
 void QAppWindow::setSnapBtnFrame(){
@@ -487,7 +504,8 @@ void QAppWindow::updSnapTree(){
                 //             << vmSnapshotsChain[i].parentId
                 //             << vmSnapshotsChain[i].name;
                 // }
-                qDebug() << "[II] Данные получены (finished)";
+                m_infoWidget->setData(result);
+                qDebug() << "[II] Данные получены и выведены (finished)";
 
                 // *** On/Off buttons *** //
                 btnManageGoDel();
@@ -546,6 +564,9 @@ void QAppWindow::doSnapshot(){
     // *** Отключение кнопок Goto и Delete *** //
     m_deleteBtn->setEnabled(false);
     m_gotoBtn->setEnabled(false);
+
+    // *** Обновление информации о примонтированных дисках *** //
+    m_infoWidget->setStorageList(m_mountStorages);
 }
 
 void QAppWindow::gotoSnapshot(){
@@ -588,6 +609,9 @@ void QAppWindow::gotoSnapshot(){
     // *** Отключение кнопок Goto и Delete *** //
     m_deleteBtn->setEnabled(false);
     m_gotoBtn->setEnabled(false);
+
+    // *** Обновление информации о примонтированных дисках *** //
+    m_infoWidget->setStorageList(m_mountStorages);
 }
 
 void QAppWindow::deleteSnapshot(){

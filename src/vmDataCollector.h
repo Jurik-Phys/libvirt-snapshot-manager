@@ -15,6 +15,7 @@
 #include <QDomDocument>
 #include <QCryptographicHash>
 #include <QRegularExpression>
+#include <QTextDocumentFragment>
 #include "vmDataStructs.h"
 
 class VmDataCollector : public QObject {

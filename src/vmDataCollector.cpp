@@ -99,13 +99,19 @@ VMachine VmDataCollector::getVmInfo(const VMachine& vmIn){
 
     QDomElement vmXml = vmXmlDoc.documentElement();
     vm.uuid = vmXml.firstChildElement("uuid").text();
+    vm.title = vmXml.firstChildElement("title").text();
+    vm.description = vmXml.firstChildElement("description").text();
     vm.ram = vmXml.firstChildElement("memory").text()
                     + " " + vmXml.firstChildElement("memory").attribute("unit");
     vm.osId = vmXml.firstChildElement("metadata")
                                     .firstChildElement("libosinfo:libosinfo")
                                         .firstChildElement("libosinfo:os")
                                             .attribute("id");
-    vm.cpu = "Virtual CPUs: " + vmXml.firstChildElement("vcpu").text() + " (";
+    if (vm.osId == ""){
+        vm.osId = "Not set";
+    }
+
+    vm.cpu = vmXml.firstChildElement("vcpu").text() + " (";
 
     QDomNamedNodeMap cpuAttribues = vmXml.firstChildElement("cpu")
                                     .firstChildElement("topology").attributes();
@@ -116,7 +122,9 @@ VMachine VmDataCollector::getVmInfo(const VMachine& vmIn){
         vm.cpu = vm.cpu + name + " " + value + "; ";
     }
     vm.cpu.chop(2);
-    vm.cpu = vm.cpu + ")";
+    if (cpuAttribues.count() > 0) {
+        vm.cpu = vm.cpu + ")";
+    }
 
     QDomElement devices = vmXml.firstChildElement("devices");
     QDomNodeList diskNodes  = devices.elementsByTagName("disk");
@@ -167,6 +175,8 @@ VMachine VmDataCollector::getVmInfo(const VMachine& vmIn){
     vm.snapshotsDirs = uniqueSet.values();
 
     qDebug() << "\n[II] VM.INFO:            ";
+    qDebug() <<   "[II]    > Title:         " << vm.title;
+    qDebug() <<   "[II]    > Description:   " << vm.description;
     qDebug() <<   "[II]    > Name:          " << vm.name;
     qDebug() <<   "[II]    > UUID:          " << vm.uuid;
     qDebug() <<   "[II]    > OsID:          " << vm.osId;
