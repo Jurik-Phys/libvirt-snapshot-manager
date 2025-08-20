@@ -18,7 +18,7 @@
 #include "snapTreeModel.h"
 #include "vmDataCollector.h"
 #include "treeItemDelegate.h"
-#include "infoWidget.h"
+#include "vmInfoWidget.h"
 #include <QHeaderView>
 #include "treeLinesStyle.h"
 
@@ -49,6 +49,7 @@ class QAppWindow : public QWidget {
     public slots:
         void showErrorMessage(const QString& title, const QString& message);
         void onVmListReady(const QVector<VMachine> vmList);
+        void onNewVmInfoReady(const VMachine&);
 
     private:
         const int m_appWindowWidth  = 945;
@@ -61,6 +62,8 @@ class QAppWindow : public QWidget {
         const int m_vmIconSize = 48;
         int m_selectedVmIndex = -1;
 
+
+        VmDataCollector* m_vmDataCollector;
         QVBoxLayout*  m_vLColumnLayout;
         QVBoxLayout*  m_vRColumnLayout;
         QVBoxLayout*  m_vVmLayout;
@@ -69,10 +72,11 @@ class QAppWindow : public QWidget {
         SnapTreeModel* m_snapTreeLoadingModel;
         SnapTreeView*  m_snapTreeView;
         QVector<VMachine> m_vmList;
-        InfoWidget*   m_infoWidget;
+        VmInfoWidget* m_vmInfoWidget;
         ChainNode     m_activeNode;
         QStringList   m_mountStorages;
         QString       m_currentVmName;
+        QString       m_currentVmUUID;
         QToolButton*  m_takeSnapBtn;
         QToolButton*  m_gotoBtn;
         QToolButton*  m_startBtn;

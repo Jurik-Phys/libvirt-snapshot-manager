@@ -1,8 +1,16 @@
-// Begin infoWidget.cpp
+// Begin vmInfoWidget.cpp
 
-#include "infoWidget.h"
+#include "vmInfoWidget.h"
 
-InfoWidget::InfoWidget(QWidget* parent) : QFrame(parent){
+VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
+
+    m_saveTitleTimer = new QTimer();
+    m_saveTitleTimer->setInterval(1000);
+    m_saveTitleTimer->setSingleShot(true);
+
+    m_saveDescriptionTimer = new QTimer();
+    m_saveDescriptionTimer->setInterval(1000);
+    m_saveDescriptionTimer->setSingleShot(true);
 
     QVBoxLayout* vFrameLayout = new QVBoxLayout(this);
     vFrameLayout->setAlignment(Qt::AlignTop);
@@ -69,6 +77,12 @@ InfoWidget::InfoWidget(QWidget* parent) : QFrame(parent){
             line->setLineWrapMode(QTextEdit::NoWrap);
             line->setStyleSheet("background-color: white;");
             line->setPlaceholderText("Virtual machine title…");
+            line->setReadOnly(true);
+            line->installEventFilter(this);
+            QObject::connect(line, &QTextEdit::textChanged,
+                                    this, &VmInfoWidget::restartSaveTitleTimer);
+            QObject::connect(m_saveTitleTimer, &QTimer::timeout,
+                                             this, &VmInfoWidget::writeVmTitle);
             continue;
         }
 
@@ -83,7 +97,12 @@ InfoWidget::InfoWidget(QWidget* parent) : QFrame(parent){
             edit->setFixedHeight(rowHeight * 4 + 2 * edit->frameWidth() + 10);
             edit->viewport()->setStyleSheet("background-color: white;");
             fixScrollBar(edit);
+            edit->setReadOnly(true);
             edit->setPlaceholderText("Virtual machine description…");
+            QObject::connect(edit, &QTextEdit::textChanged,
+                              this, &VmInfoWidget::restartSaveDescriptionTimer);
+            QObject::connect(m_saveDescriptionTimer, &QTimer::timeout,
+                                       this, &VmInfoWidget::writeVmDescription);
             continue;
         }
 
@@ -147,10 +166,10 @@ InfoWidget::InfoWidget(QWidget* parent) : QFrame(parent){
     m_vScrollLayout->addStretch();
 }
 
-InfoWidget::~InfoWidget(){
+VmInfoWidget::~VmInfoWidget(){
 }
 
-void InfoWidget::fixScrollBar(QScrollArea* scrollArea){
+void VmInfoWidget::fixScrollBar(QScrollArea* scrollArea){
     // *** Костыль для скрытия квадратика при обоих скроллах *** //
     QWidget* corner = new QWidget();
     corner->setFixedSize(0, 0);
@@ -192,7 +211,7 @@ void InfoWidget::fixScrollBar(QScrollArea* scrollArea){
                                     )");
 }
 
-void InfoWidget::fixScrollBar(QTextEdit* edit){
+void VmInfoWidget::fixScrollBar(QTextEdit* edit){
 
     // *** Костыль для вертикального скролла *** //
     edit->verticalScrollBar()->setStyleSheet(R"(
@@ -230,9 +249,14 @@ void InfoWidget::fixScrollBar(QTextEdit* edit){
                                     )");
 }
 
-void InfoWidget::setData(const VMachine& vm){
+void VmInfoWidget::setData(const VMachine& vm){
+    m_titleChangedCounter = 0;
+    m_descriptionChangedCounter = 0;
+    m_uuid = vm.uuid;
     qobject_cast<QTextEdit*>(m_colBWidgets[0])->setText(vm.title);
+    qobject_cast<QTextEdit*>(m_colBWidgets[0])->setReadOnly(false);
     qobject_cast<QTextEdit*>(m_colBWidgets[1])->setText(vm.description);
+    qobject_cast<QTextEdit*>(m_colBWidgets[1])->setReadOnly(false);
     qobject_cast<QLabel*>(m_colBWidgets[2])->setText(vm.uuid);
     qobject_cast<QLabel*>(m_colBWidgets[3])->setText(vm.name);
     qobject_cast<QLabel*>(m_colBWidgets[4])->setText(vm.cpu);
@@ -243,7 +267,7 @@ void InfoWidget::setData(const VMachine& vm){
     setStorageList(vm.mountStorages);
 }
 
-QString InfoWidget::humanMemory(const QString& rawRam){
+QString VmInfoWidget::humanMemory(const QString& rawRam){
     QString res = rawRam;
 
     float humanMemValue;
@@ -294,7 +318,6 @@ QString InfoWidget::humanMemory(const QString& rawRam){
     if (memUnits == "T" || memUnits == "TiB"){
         bytesRam == memValue * 1024 * 1024 * 1024 * 1024;
     }
-    qDebug() << "bytesRam" << bytesRam;
 
     humanMemValue = bytesRam;
     for (int i = 0; i < l1024BaseUnits.size(); ++i){
@@ -314,7 +337,7 @@ QString InfoWidget::humanMemory(const QString& rawRam){
     return res;
 }
 
-void InfoWidget::setStorageList(const QStringList& mountStorages){
+void VmInfoWidget::setStorageList(const QStringList& mountStorages){
     QStringList listData;
 
     for (int i = 0; i < mountStorages.size(); ++i){
@@ -335,4 +358,231 @@ void InfoWidget::setStorageList(const QStringList& mountStorages){
     storageList->setText(listData.join("\n"));
 }
 
-// End infoWidget.cpp
+void VmInfoWidget::writeVmTitle(){
+    QEventLoop loop;
+    QProcess   process;
+
+    bool stepOneDone = false;
+    QString uuid = m_uuid;
+    QObject::connect(&process, &QProcess::finished,
+        [&](){
+            QString fileName = "/tmp/" + uuid + ".xml";
+            if (!stepOneDone){
+                QString output = process.readAllStandardOutput();
+
+                QDomDocument vmXmlDoc;
+                vmXmlDoc.setContent(output);
+                QDomElement vmXml = vmXmlDoc.documentElement();
+                QDomElement titleVmXml = vmXml.firstChildElement("title");
+                QTextEdit* nTitle = qobject_cast<QTextEdit*>(m_colBWidgets[0]);
+                // *** Случай,  когда поле Title не существовало *** //
+                if (titleVmXml.isNull()) {
+                    QDomElement newTitleVmXml = vmXmlDoc.createElement("title");
+                    QDomText    newTitleVmXmlText = vmXmlDoc
+                                         .createTextNode(nTitle->toPlainText());
+                    newTitleVmXml.appendChild(newTitleVmXmlText);
+                    vmXml.appendChild(newTitleVmXml);
+                }
+                else{
+                    // Справочно. titleVmXml — это элемент <title>. У элемента
+                    // есть дочерний текстовый узел (QDomText), в котором
+                    // реально хранится строка. setNodeValue() для элемента
+                    // (QDomElement) ничего не меняет, потому что значение
+                    // текста хранится в его child-узле, а не в самом элементе.
+                    titleVmXml.firstChild().setNodeValue(nTitle->toPlainText());
+                }
+
+
+                // *** Сохранение временного xml файла *** //
+                QFile file(fileName);
+                if (!file.open(QIODevice::WriteOnly | QIODevice::Text
+                            | QIODevice::Truncate)){
+                    qDebug() << "[EE] Failed to write back XML file.";
+                    return;
+                }
+
+                // *** "4" пробела для отступа при сериализации XML *** //
+                QTextStream out(&file);
+                vmXmlDoc.save(out, 4);
+                file.close();
+
+                stepOneDone = true;
+
+                // *** Применение новых настроек через virsh *** //
+                process.start("virsh", {"define", fileName});
+            }
+            else {
+                // *** Удаление временного xml файла *** //
+                if (QFile::exists(fileName)) {
+                    if (!QFile::remove(fileName)) {
+                        qDebug() << "[EE] don't delete:" << fileName;
+                    }
+                }
+
+                // *** Выключение таймера перезаписи *** //
+                m_saveTitleTimer->stop();
+
+                // *** Отправка сигнала, что ввод текста завершен *** //
+                emit textChangedEnd();
+                loop.quit();
+            }
+        });
+
+    process.start("virsh", {"dumpxml", uuid});
+    loop.exec();
+}
+
+void VmInfoWidget::writeVmDescription(){
+
+    QEventLoop loop;
+    QProcess   process;
+
+    bool stepOneDone = false;
+    QString uuid = m_uuid;
+    QObject::connect(&process, &QProcess::finished,
+        [&](){
+            QString fileName = "/tmp/" + uuid + ".xml";
+            if (!stepOneDone){
+                QString output = process.readAllStandardOutput();
+
+                QDomDocument vmXmlDoc;
+                vmXmlDoc.setContent(output);
+                QDomElement vmXml = vmXmlDoc.documentElement();
+                QDomElement descriptionVmXml = vmXml
+                                              .firstChildElement("description");
+                QTextEdit* nDescription
+                                   = qobject_cast<QTextEdit*>(m_colBWidgets[1]);
+                // *** Description отсутствует у виртуальной машины *** //
+                if (descriptionVmXml.isNull()){
+                    QDomElement newDescriptionVmXml = vmXmlDoc
+                                                  .createElement("description");
+                    QDomText newDescriptionVmXmlText = vmXmlDoc
+                                   .createTextNode(nDescription->toPlainText());
+                    newDescriptionVmXml.appendChild(newDescriptionVmXmlText);
+                    vmXml.appendChild(newDescriptionVmXml);
+                }
+                else {
+                    descriptionVmXml.firstChild()
+                                     .setNodeValue(nDescription->toPlainText());
+                }
+
+                QFile file(fileName);
+                if (!file.open(QIODevice::WriteOnly | QIODevice::Text
+                            | QIODevice::Truncate)){
+                    qDebug() << "[EE] Failed to write back XML file.";
+                    return;
+                }
+
+                QTextStream out(&file);
+                vmXmlDoc.save(out, 4);
+                file.close();
+
+                stepOneDone = true;
+
+                // *** Применение новых настроек через virsh *** //
+                process.start("virsh", {"define", fileName});
+            }
+            else {
+                if (QFile::exists(fileName)){
+                    if (!QFile::remove(fileName)){
+                        qDebug() << "[EE] don't delete:" << fileName;
+                    }
+                }
+
+                // *** Выключение таймера перезаписи *** //
+                m_saveTitleTimer->stop();
+
+                // *** Отправка сигнала, что ввод текста завершен *** //
+                emit textChangedEnd();
+                loop.quit();
+            }
+        });
+
+    process.start("virsh", {"dumpxml", uuid});
+    loop.exec();
+}
+
+void VmInfoWidget::restartSaveTitleTimer(){
+    // *** Первые события - создание QTextEdit и присвоение через setData *** //
+    if (m_titleChangedCounter < 10){
+        m_titleChangedCounter++;
+        if (m_titleChangedCounter < 2){
+            return;
+        }
+    }
+
+    m_saveTitleTimer->start();
+    emit textChangedBegin();
+}
+
+void VmInfoWidget::restartSaveDescriptionTimer(){
+
+    if (m_descriptionChangedCounter < 10){
+        m_descriptionChangedCounter++;
+        if (m_descriptionChangedCounter < 2){
+            return;
+        }
+    }
+
+    m_saveDescriptionTimer->start();
+    emit textChangedBegin();
+}
+
+bool VmInfoWidget::eventFilter(QObject *obj, QEvent* event){
+    QWidget*   widget = m_colBWidgets[0];
+    QTextEdit* line = qobject_cast<QTextEdit*>(widget);
+    if (obj == line && event->type() == QEvent::KeyPress) {
+        QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+            if (keyEvent->key() == Qt::Key_Return
+                                          || keyEvent->key() == Qt::Key_Enter) {
+                return true;
+            }
+        }
+        return QWidget::eventFilter(obj, event);
+}
+
+VMachine VmInfoWidget::getData(){
+    VMachine vm;
+
+    vm.title = qobject_cast<QTextEdit*>(m_colBWidgets[0])->toPlainText();
+    vm.description = qobject_cast<QTextEdit*>(m_colBWidgets[1])->toPlainText();
+    vm.uuid = qobject_cast<QLabel*>(m_colBWidgets[2])->text();
+    vm.name = qobject_cast<QLabel*>(m_colBWidgets[3])->text();
+    vm.cpu = qobject_cast<QLabel*>(m_colBWidgets[4])->text();
+    vm.ram = qobject_cast<QLabel*>(m_colBWidgets[5])->text();
+    vm.osId = qobject_cast<QLabel*>(m_colBWidgets[6])->text();
+
+    return vm;
+}
+
+void VmInfoWidget::setTitle(const QString& newTitle){
+    QTextEdit* edit = qobject_cast<QTextEdit*>(m_colBWidgets[0]);
+    // *** Применение изменений тогда, когда курсора нет в поле ввода *** //
+    if (!edit->hasFocus()){
+        edit->setText(newTitle);
+    }
+}
+
+void VmInfoWidget::setDescription(const QString& newDescription){
+    QTextEdit* edit = qobject_cast<QTextEdit*>(m_colBWidgets[1]);
+    if (!edit->hasFocus()){
+        edit->setText(newDescription);
+    }
+}
+
+void VmInfoWidget::setName(const QString& newName){
+    qobject_cast<QLabel*>(m_colBWidgets[3])->setText(newName);
+}
+
+void VmInfoWidget::setCpu(const QString& newCpu){
+    qobject_cast<QLabel*>(m_colBWidgets[4])->setText(newCpu);
+}
+void VmInfoWidget::setRam(const QString& newRam){
+    qobject_cast<QLabel*>(m_colBWidgets[5])->setText(humanMemory(newRam));
+}
+
+void VmInfoWidget::setOsId(const QString& newOsId){
+    qobject_cast<QLabel*>(m_colBWidgets[6])->setText(newOsId);
+}
+
+// End vmInfoWidget.cpp

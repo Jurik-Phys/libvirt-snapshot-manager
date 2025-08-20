@@ -27,11 +27,16 @@ class VmDataCollector : public QObject {
         VmDataCollector(const VMachine& vm, QWidget* parent = nullptr);
         ~VmDataCollector();
 
-        VMachine getVmInfo();
+        VMachine getVmFullInfo();
+        VMachine getVmShortInfo(const QString& uuid);
         QString getNodeName(const QString& imgFileName, const QString& imgType);
 
         void vmListStartTimer();
         void vmListStopTimer();
+        void vmGeneralInfoStartTimer(const VMachine&);
+        void vmGeneralInfoStartTimer();
+
+        void vmGeneralInfoStopTimer();
         QVector<VMachine> getVmList();
 
     public slots:
@@ -41,10 +46,11 @@ class VmDataCollector : public QObject {
         void finished(const VMachine&);
         void errorMsg(const QString& title, const QString& message);
         void vmListReady(const QVector<VMachine> newVmList);
+        void newVmInfoReady(const VMachine&);
 
     private:
         VMachine m_vm;
-        VMachine getVmInfo(const VMachine& vm);
+        VMachine getVmFullInfo(const VMachine& vm);
         QDomDocument getVmXml(const QString& vmName);
         void setSnapChainData(VMachine& vm);
         void setChildrenData(VMachine& vm);
@@ -56,9 +62,10 @@ class VmDataCollector : public QObject {
         QVector<VmImageRawInfo> m_vmImagesRawInfo;
 
         QWidget* parentWindow;
-        QTimer* m_getListTimer;
+        QTimer*  m_getListTimer;
+        QTimer*  m_getActualVmGeneralInfoTimer;
         void vmListSender();
-
+        void selectedVmActualInfoSender();
 };
 
 #endif

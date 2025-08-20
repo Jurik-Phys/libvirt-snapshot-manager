@@ -18,27 +18,28 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     m_vVmLayout->setAlignment(Qt::AlignTop);
     m_vSnapLayout = new QVBoxLayout;
 
-    // VmDataCollector vmDataCollector;
-    // m_vmList = vmDataCollector.getVmList();
-    VmDataCollector* vmDataCollector = new VmDataCollector();
-    m_vmList = vmDataCollector->getVmList();
+    m_vmDataCollector = new VmDataCollector();
+    m_vmList = m_vmDataCollector->getVmList();
 
     QThread* getVmListThread = new QThread();
-    vmDataCollector->moveToThread(getVmListThread);
+    m_vmDataCollector->moveToThread(getVmListThread);
     QObject::connect(getVmListThread, &QThread::started,
-                           vmDataCollector, &VmDataCollector::vmListStartTimer);
-    QObject::connect(vmDataCollector, &VmDataCollector::vmListReady,
+                         m_vmDataCollector, &VmDataCollector::vmListStartTimer);
+    QObject::connect(m_vmDataCollector, &VmDataCollector::vmListReady,
                                               this, &QAppWindow::onVmListReady);
     QObject::connect(this, &QAppWindow::vmListProcessingStarted,
-                            vmDataCollector, &VmDataCollector::vmListStopTimer);
+                          m_vmDataCollector, &VmDataCollector::vmListStopTimer);
     QObject::connect(this, &QAppWindow::vmListProcessingCompleted,
-                           vmDataCollector, &VmDataCollector::vmListStartTimer);
+                         m_vmDataCollector, &VmDataCollector::vmListStartTimer);
     QObject::connect(this, &QAppWindow::startVmBegin,
                                                this, &QAppWindow::viewOnlyMode);
     QObject::connect(this, &QAppWindow::startVmBegin,
-                            vmDataCollector, &VmDataCollector::vmListStopTimer);
+                          m_vmDataCollector, &VmDataCollector::vmListStopTimer);
     QObject::connect(this, &QAppWindow::startVmEnd,
-                           vmDataCollector, &VmDataCollector::vmListStartTimer);
+                         m_vmDataCollector, &VmDataCollector::vmListStartTimer);
+    // vmInfoWidget update
+    QObject::connect(m_vmDataCollector, &VmDataCollector::newVmInfoReady,
+                                           this, &QAppWindow::onNewVmInfoReady);
 
     getVmListThread->start();
 
@@ -51,6 +52,13 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     setVmBtnFrame();
     setVmFrame();
     setInfoFrame();
+
+    QObject::connect(m_vmInfoWidget, &VmInfoWidget::textChangedBegin,
+                   m_vmDataCollector, &VmDataCollector::vmGeneralInfoStopTimer);
+
+    QObject::connect(m_vmInfoWidget, &VmInfoWidget::textChangedEnd,
+                m_vmDataCollector,
+                    QOverload<>::of(&VmDataCollector::vmGeneralInfoStartTimer));
     setSnapBtnFrame();
     setSnapFrame();
 
@@ -182,19 +190,19 @@ void QAppWindow::setVmFrame(){
 }
 
 void QAppWindow::setInfoFrame(){
-    m_infoWidget = new InfoWidget(this);
-    m_infoWidget->setFrameShape(QFrame::StyledPanel);
-    m_infoWidget->setFrameShadow(QFrame::Plain);
-    m_infoWidget->setFixedHeight(m_infoFrameHeight);
-    m_infoWidget->setFixedWidth(m_appWindowWidth/2.5);
+    m_vmInfoWidget = new VmInfoWidget(this);
+    m_vmInfoWidget->setFrameShape(QFrame::StyledPanel);
+    m_vmInfoWidget->setFrameShadow(QFrame::Plain);
+    m_vmInfoWidget->setFixedHeight(m_infoFrameHeight);
+    m_vmInfoWidget->setFixedWidth(m_appWindowWidth/2.5);
 
     // *** Правильная установка белого фона *** //
-    m_infoWidget->setAutoFillBackground(true);
-    QPalette pal = m_infoWidget->palette();
+    m_vmInfoWidget->setAutoFillBackground(true);
+    QPalette pal = m_vmInfoWidget->palette();
     pal.setColor(QPalette::Window, Qt::white);
-    m_infoWidget->setPalette(pal);
+    m_vmInfoWidget->setPalette(pal);
 
-    m_vLColumnLayout->addWidget(m_infoWidget);
+    m_vLColumnLayout->addWidget(m_vmInfoWidget);
 }
 
 void QAppWindow::setSnapBtnFrame(){
@@ -473,8 +481,8 @@ void QAppWindow::updSnapTree(){
 
     VMachine activeVm = getActiveVm();
 
-    qDebug() << "[II] Update snap tree now!";
-    qDebug() << "[II] Selected VM index:" << m_selectedVmIndex;
+    // qDebug() << "[II] Update snap tree now!";
+    // qDebug() << "[II] Selected VM index:" << m_selectedVmIndex;
 
     m_snapTreeView->setModel(m_snapTreeLoadingModel);
 
@@ -488,7 +496,6 @@ void QAppWindow::updSnapTree(){
 
     QObject::connect(thread, &QThread::started,
                                     vmDataCollector, &VmDataCollector::process);
-
     QObject::connect(vmDataCollector, &VmDataCollector::finished, this,
         [=](const VMachine& result) {
                 QVector<ChainNode> vmSnapshotsChain = result.vmStateChain;
@@ -498,14 +505,15 @@ void QAppWindow::updSnapTree(){
                 m_snapTreeView->expandAll();
                 m_currentVmName = result.name;
                 m_mountStorages = result.mountStorages;
+                m_currentVmUUID = result.uuid;
 
                 // for (int i = 0; i < result.vmStateChain.size(); ++i){
                 //    qDebug() << vmSnapshotsChain[i].id
                 //             << vmSnapshotsChain[i].parentId
                 //             << vmSnapshotsChain[i].name;
                 // }
-                m_infoWidget->setData(result);
-                qDebug() << "[II] Данные получены и выведены (finished)";
+                m_vmInfoWidget->setData(result);
+                // qDebug() << "[II] Данные получены и выведены (finished)";
 
                 // *** On/Off buttons *** //
                 btnManageGoDel();
@@ -524,6 +532,12 @@ void QAppWindow::updSnapTree(){
                 // *** Снятие флага продолжения загрузки *** //
                 vmWidget->setLoadingFlag(false);
         });
+
+    // После получения данных от локального vmDataCollector,
+    // запуск таймера в глобальном m_vmDataCollector на обновление информации ВМ
+    QObject::connect(vmDataCollector, &VmDataCollector::finished,
+    m_vmDataCollector,
+    QOverload<const VMachine&>::of(&VmDataCollector::vmGeneralInfoStartTimer));
 }
 
 VMachine QAppWindow::getActiveVm(){
@@ -566,7 +580,7 @@ void QAppWindow::doSnapshot(){
     m_gotoBtn->setEnabled(false);
 
     // *** Обновление информации о примонтированных дисках *** //
-    m_infoWidget->setStorageList(m_mountStorages);
+    m_vmInfoWidget->setStorageList(m_mountStorages);
 }
 
 void QAppWindow::gotoSnapshot(){
@@ -611,7 +625,7 @@ void QAppWindow::gotoSnapshot(){
     m_gotoBtn->setEnabled(false);
 
     // *** Обновление информации о примонтированных дисках *** //
-    m_infoWidget->setStorageList(m_mountStorages);
+    m_vmInfoWidget->setStorageList(m_mountStorages);
 }
 
 void QAppWindow::deleteSnapshot(){
@@ -1076,6 +1090,38 @@ void QAppWindow::viewOnlyMode(){
     m_gotoBtn->setEnabled(false);
     m_deleteBtn->setEnabled(false);
     m_snapTreeView->setContextMenuPolicy(Qt::NoContextMenu);
+}
+
+void QAppWindow::onNewVmInfoReady(const VMachine& vmNew){
+
+    VMachine vmOld = m_vmInfoWidget->getData();
+
+    // Требование равенства uuid обусловлено возможной несинхроностью
+    // при переключении между виртуальными машинами.
+    // Наличие uuid не позволит испортить записи соседних машин
+    if (vmNew.name != vmOld.name && vmNew.uuid == vmOld.uuid){
+        m_vmInfoWidget->setName(vmNew.name);
+    }
+
+    if (vmNew.title != vmOld.title && vmNew.uuid == vmOld.uuid){
+        m_vmInfoWidget->setTitle(vmNew.title);
+    }
+
+    if (vmNew.description != vmOld.description && vmNew.uuid == vmOld.uuid){
+        m_vmInfoWidget->setDescription(vmNew.description);
+    }
+
+    if (vmNew.cpu != vmOld.cpu && vmNew.uuid == vmOld.uuid){
+        m_vmInfoWidget->setCpu(vmNew.cpu);
+    }
+
+    if (vmNew.ram != vmOld.ram && vmNew.uuid == vmOld.uuid){
+        m_vmInfoWidget->setRam(vmNew.ram);
+    }
+
+    if (vmNew.osId != vmOld.osId && vmNew.uuid == vmOld.uuid){
+        m_vmInfoWidget->setOsId(vmNew.osId);
+    }
 }
 
 // End appWindow.cpp

@@ -3,9 +3,17 @@
 #include "vmDataCollector.h"
 
 VmDataCollector::VmDataCollector(QWidget* parent) : parentWindow(parent){
+    // *** Таймер обновления списка виртуальных машин *** //
     m_getListTimer = new QTimer(this);
+    m_getListTimer->setInterval(1000);
     QObject::connect(m_getListTimer, &QTimer::timeout,
                                           this, &VmDataCollector::vmListSender);
+
+    // *** Таймер забора общей информации о ВМ *** //
+    m_getActualVmGeneralInfoTimer = new QTimer(this);
+    m_getActualVmGeneralInfoTimer->setInterval(1000);
+    QObject::connect(m_getActualVmGeneralInfoTimer, &QTimer::timeout,
+                            this, &VmDataCollector::selectedVmActualInfoSender);
 }
 
 VmDataCollector::VmDataCollector(const VMachine& vm, QWidget* parent) {
@@ -16,7 +24,7 @@ VmDataCollector::VmDataCollector(const VMachine& vm, QWidget* parent) {
 VmDataCollector::~VmDataCollector(){
 }
 
-// Вектор из {name, state}
+// Вектор из {name, uuid, state}
 QVector<VMachine> VmDataCollector::getVmList(){
     QVector<VMachine> vmList;
     QVector<VMachine> uuidVmList;
@@ -89,16 +97,15 @@ QVector<VMachine> VmDataCollector::getVmList(){
     return vmList;
 }
 
-VMachine VmDataCollector::getVmInfo(const VMachine& vmIn){
+VMachine VmDataCollector::getVmShortInfo(const QString& uuid){
     VMachine vm;
-    vm.name = vmIn.name;
-    vm.state = vmIn.state;
 
     // Virtual machine information in XML
-    QDomDocument vmXmlDoc = getVmXml(vm.name);
+    QDomDocument vmXmlDoc = getVmXml(uuid);
 
     QDomElement vmXml = vmXmlDoc.documentElement();
-    vm.uuid = vmXml.firstChildElement("uuid").text();
+    vm.uuid = uuid;
+    vm.name = vmXml.firstChildElement("name").text();
     vm.title = vmXml.firstChildElement("title").text();
     vm.description = vmXml.firstChildElement("description").text();
     vm.ram = vmXml.firstChildElement("memory").text()
@@ -174,15 +181,14 @@ VMachine VmDataCollector::getVmInfo(const VMachine& vmIn){
     }
     vm.snapshotsDirs = uniqueSet.values();
 
-    qDebug() << "\n[II] VM.INFO:            ";
-    qDebug() <<   "[II]    > Title:         " << vm.title;
-    qDebug() <<   "[II]    > Description:   " << vm.description;
-    qDebug() <<   "[II]    > Name:          " << vm.name;
-    qDebug() <<   "[II]    > UUID:          " << vm.uuid;
-    qDebug() <<   "[II]    > OsID:          " << vm.osId;
-    qDebug() <<   "[II]    > State:         " << vm.state;
-    qDebug() <<   "[II]    > CPU:           " << vm.cpu;
-    qDebug() <<   "[II]    > RAM:           " << vm.ram;
+    return vm;
+}
+
+VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
+
+    VMachine vm = getVmShortInfo(vmIn.uuid);
+    vm.state = vmIn.state;
+
     // Вывод информации о подключеных к ВМ дисках
     for (int i = 0; i < vm.mountStorages.size(); ++i){
         if (i == 0){
@@ -237,7 +243,7 @@ VMachine VmDataCollector::getVmInfo(const VMachine& vmIn){
     return vm;
 }
 
-QDomDocument VmDataCollector::getVmXml(const QString& vmName){
+QDomDocument VmDataCollector::getVmXml(const QString& uuid){
     QDomDocument vmXmlDoc;
 
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
@@ -245,7 +251,7 @@ QDomDocument VmDataCollector::getVmXml(const QString& vmName){
 
     QProcess process;
     process.setProcessEnvironment(env);
-    process.start("virsh", {"dumpxml", vmName});
+    process.start("virsh", {"dumpxml", uuid});
 
     if (!process.waitForStarted()){
         return vmXmlDoc;
@@ -587,18 +593,19 @@ QString VmDataCollector::getRootFullName(const QString& imageFullName){
 }
 
 void VmDataCollector::process(){
+    // До getVmFullInfo() в m_vm хранится "скелет" ВМ (name, state, uuid)
+    // result - полная версия ВМ с цепочками сохранения и используемыми дискми
     VMachine result;
-    result = getVmInfo(m_vm);
+    result = getVmFullInfo(m_vm);
     emit finished(result);
 }
 
-VMachine VmDataCollector::getVmInfo(){
-    return getVmInfo(m_vm);
+VMachine VmDataCollector::getVmFullInfo(){
+    return getVmFullInfo(m_vm);
 }
 
 void VmDataCollector::vmListStartTimer(){
-    // TODO Увеличить задержку для прода
-    m_getListTimer->start(1000);
+    m_getListTimer->start();
 }
 
 void VmDataCollector::vmListStopTimer(){
@@ -607,6 +614,23 @@ void VmDataCollector::vmListStopTimer(){
 
 void VmDataCollector::vmListSender(){
     emit vmListReady(getVmList());
+}
+
+void VmDataCollector::vmGeneralInfoStartTimer(const VMachine& vm){
+    m_vm.uuid = vm.uuid;
+    m_getActualVmGeneralInfoTimer->start();
+}
+
+void VmDataCollector::vmGeneralInfoStartTimer(){
+    m_getActualVmGeneralInfoTimer->start();
+}
+
+void VmDataCollector::vmGeneralInfoStopTimer(){
+    m_getActualVmGeneralInfoTimer->stop();
+}
+
+void VmDataCollector::selectedVmActualInfoSender(){
+    emit newVmInfoReady(getVmShortInfo(m_vm.uuid));
 }
 
 // End vmDataCollector.cpp
