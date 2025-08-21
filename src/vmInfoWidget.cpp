@@ -585,4 +585,24 @@ void VmInfoWidget::setOsId(const QString& newOsId){
     qobject_cast<QLabel*>(m_colBWidgets[6])->setText(newOsId);
 }
 
+void VmInfoWidget::setReadOnly(bool ro){
+    QTextEdit* title = qobject_cast<QTextEdit*>(m_colBWidgets[0]);
+    QTextEdit* description = qobject_cast<QTextEdit*>(m_colBWidgets[1]);
+
+    title->setReadOnly(ro);
+    description->setReadOnly(ro);
+
+    QString roToolTip = "Can edit only when VM is shut off";
+    QString blankToolTip = "";
+
+    if (ro){
+        title->setToolTip(roToolTip);
+        description->setToolTip(roToolTip);
+    }
+    else {
+        title->setToolTip(blankToolTip);
+        description->setToolTip(blankToolTip);
+    }
+}
+
 // End vmInfoWidget.cpp

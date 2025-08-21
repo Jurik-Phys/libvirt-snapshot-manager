@@ -105,6 +105,7 @@ class QAppWindow : public QWidget {
         void btnManageStop();
         void btnManageTake();
         void snapTreeViewManage();
+        void vmInfoWidgetManage();
 
         void onTreeItemClicked(const QModelIndex& index);
         void resizeEvent(QResizeEvent *event) override;

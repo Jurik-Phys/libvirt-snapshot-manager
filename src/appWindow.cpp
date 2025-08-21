@@ -173,6 +173,8 @@ void QAppWindow::setVmBtnFrame(){
                                          this, &QAppWindow::snapTreeViewManage);
     QObject::connect(this, &QAppWindow::selectVmChanged,
                                          this, &QAppWindow::menuStopBtnSelect);
+    QObject::connect(this, &QAppWindow::selectVmChanged,
+                                         this, &QAppWindow::vmInfoWidgetManage);
 }
 
 void QAppWindow::setVmFrame(){
@@ -522,6 +524,7 @@ void QAppWindow::updSnapTree(){
                 btnManagePause();
                 btnManageStop();
                 snapTreeViewManage();
+                vmInfoWidgetManage();
 
                 thread->quit();
                 thread->wait();
@@ -890,6 +893,16 @@ void QAppWindow::snapTreeViewManage(){
     else {
         // *** Режим read-only *** //
         m_snapTreeView->setContextMenuPolicy(Qt::NoContextMenu);
+    }
+}
+
+void QAppWindow::vmInfoWidgetManage(){
+
+    if (m_vmList[m_selectedVmIndex].state == "shut off"){
+        m_vmInfoWidget->setReadOnly(false);
+    }
+    else {
+        m_vmInfoWidget->setReadOnly(true);
     }
 }
 
