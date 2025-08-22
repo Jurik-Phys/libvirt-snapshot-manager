@@ -9,6 +9,7 @@
 #include <QThread>
 #include <QProcess>
 #include <QtEndian>
+#include <QUuid>
 #include <QEventLoop>
 #include <QFileInfo>
 #include <QMessageBox>
@@ -30,6 +31,7 @@ class VmDataCollector : public QObject {
         VMachine getVmFullInfo();
         VMachine getVmShortInfo(const QString& uuid);
         QString getNodeName(const QString& imgFileName, const QString& imgType);
+        QString getNodeUuid(const QString& imgFileName);
 
         void vmListStartTimer();
         void vmListStopTimer();

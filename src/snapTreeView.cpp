@@ -22,7 +22,7 @@ void SnapTreeView::contextMenuEvent(QContextMenuEvent* event){
     QMenu menu(this);
     if (node.imagesType == "active"){
         QAction* runVmAction  = menu.addAction("Start VM at this state");
-        QAction* takeAction   = menu.addAction("Take snapshot …");
+        QAction* takeAction   = menu.addAction("Take snapshot…");
 
         QObject::connect(runVmAction, &QAction::triggered,
                                             this, &SnapTreeView::onActionRunVm);
@@ -30,7 +30,7 @@ void SnapTreeView::contextMenuEvent(QContextMenuEvent* event){
                                        this, &SnapTreeView::onActionDoSnapshot);
     } else {
         QAction* gotoAction   = menu.addAction("Go to snapshot");
-        QAction* deleteAction = menu.addAction("Delete snapshot …");
+        QAction* deleteAction = menu.addAction("Delete snapshot…");
 
         QObject::connect(deleteAction, &QAction::triggered,
                                            this, &SnapTreeView::onActionDelete);

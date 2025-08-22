@@ -70,7 +70,9 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
             QTextEdit* line = qobject_cast<QTextEdit*>(widget);
             QFontMetrics fm(line->font());
             int rowHeight = fm.lineSpacing();
-            line->setFixedHeight(rowHeight + 2 * line->frameWidth() + 10);
+            int docMargin = line->document()->documentMargin();
+            line->setFixedHeight(rowHeight
+                                      + 4 * line->frameWidth() + 2 * docMargin);
             line->viewport()->setStyleSheet("background-color: white;");
             line->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
             line->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -94,7 +96,9 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
             // *** Увеличение числа отображемых строк в поле ввода до 4 *** //
             QFontMetrics fm(edit->font());
             int rowHeight = fm.lineSpacing();
-            edit->setFixedHeight(rowHeight * 4 + 2 * edit->frameWidth() + 10);
+            int docMargin = edit->document()->documentMargin();
+            edit->setFixedHeight(rowHeight * 4
+                                      + 2 * edit->frameWidth() + 2 * docMargin);
             edit->viewport()->setStyleSheet("background-color: white;");
             fixScrollBar(edit);
             edit->setReadOnly(true);
@@ -114,12 +118,6 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
 
         // *** Присвоение значений виджетам второго столбца *** //
         switch (i){
-            case 0: // Title
-                lbl->setText("—");
-                break;
-            case 1: // Description
-                lbl->setText("—");
-                break;
             case 2: // UUID
                 lbl->setText("—");
                 break;
@@ -352,9 +350,9 @@ void VmInfoWidget::setStorageList(const QStringList& mountStorages){
     // *** Изменение его вертикального размера для вмещения всех дисков *** //
     QFontMetrics fm(storageList->font());
     int rowHeight = fm.lineSpacing();
-
+    int docMargin = storageList->document()->documentMargin();
     storageList->setFixedHeight(rowHeight * listData.size()
-                                          + 2 * storageList->frameWidth() + 14);
+                               + 2 * storageList->frameWidth() + 4 * docMargin);
     storageList->setText(listData.join("\n"));
 }
 

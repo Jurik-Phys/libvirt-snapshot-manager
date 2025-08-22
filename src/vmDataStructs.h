@@ -11,6 +11,7 @@
 struct ChainNode {
     int     id;
     int     parentId;
+    QString uuid;                // Уникальный идентификатор
     QString name;                // Словосочетание по хешу
     QString imagesType;          // Тип текущего состояния [snap|work|root]
     QStringList imagesFullNames; // Полные имена образов жёстких дисков узла

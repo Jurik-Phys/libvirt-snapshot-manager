@@ -16,6 +16,7 @@
 #include "snapManager.h"
 #include "snapTreeView.h"
 #include "snapTreeModel.h"
+#include "snapInfoWidget.h"
 #include "vmDataCollector.h"
 #include "treeItemDelegate.h"
 #include "vmInfoWidget.h"
@@ -73,6 +74,7 @@ class QAppWindow : public QWidget {
         SnapTreeView*  m_snapTreeView;
         QVector<VMachine> m_vmList;
         VmInfoWidget* m_vmInfoWidget;
+        SnapInfoWidget* m_snapInfoWidget;
         ChainNode     m_activeNode;
         QStringList   m_mountStorages;
         QString       m_currentVmName;
@@ -90,9 +92,10 @@ class QAppWindow : public QWidget {
 
         void setVmBtnFrame();
         void setVmFrame();
-        void setInfoFrame();
+        void setVmInfoFrame();
         void setSnapBtnFrame();
         void setSnapFrame();
+        void setSnapInfoFrame();
 
         void addVmToFrame();
         void addVmToFrame(const QVector<VMachine>&);

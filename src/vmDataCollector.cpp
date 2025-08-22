@@ -298,6 +298,7 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
 
                 // Имя узла задано на основе хеша + списка словосочетаний
                 node.name = getNodeName(imageFileName, node.imagesType);
+                node.uuid = getNodeUuid(imageFileName);
             }
             // Формирование всех остальных узлов в цепочке сохранений
             else {
@@ -336,6 +337,7 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
 
                         // Имя узла по его хешу и списку словосочетаний
                         node.name = getNodeName(imageFileName, node.imagesType);
+                        node.uuid = getNodeUuid(imageFileName);
 
                         // Если точка без потомков (work) и совпадает с точкой
                         // монтирования к ВМ, то это активная рабочая точка
@@ -590,6 +592,14 @@ QString VmDataCollector::getRootFullName(const QString& imageFullName){
     int index = hashValue % nodeNameList.size();
 
     return nodeNameList[index];
+}
+
+QString VmDataCollector::getNodeUuid(const QString& fName){
+
+    QUuid uuid = QUuid::createUuidV5(QUuid::fromString(
+                                    "{12329e42e-d24e-4ad0-84dd-9e03b8b33e7}"),
+                                                                        fName);
+    return uuid.toString(QUuid::WithoutBraces);
 }
 
 void VmDataCollector::process(){

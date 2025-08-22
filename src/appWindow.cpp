@@ -51,7 +51,7 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
 
     setVmBtnFrame();
     setVmFrame();
-    setInfoFrame();
+    setVmInfoFrame();
 
     QObject::connect(m_vmInfoWidget, &VmInfoWidget::textChangedBegin,
                    m_vmDataCollector, &VmDataCollector::vmGeneralInfoStopTimer);
@@ -61,6 +61,7 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
                     QOverload<>::of(&VmDataCollector::vmGeneralInfoStartTimer));
     setSnapBtnFrame();
     setSnapFrame();
+    setSnapInfoFrame();
 
     addVmToFrame();
 }
@@ -191,7 +192,7 @@ void QAppWindow::setVmFrame(){
     m_vLColumnLayout->addWidget(vmFrame);
 }
 
-void QAppWindow::setInfoFrame(){
+void QAppWindow::setVmInfoFrame(){
     m_vmInfoWidget = new VmInfoWidget(this);
     m_vmInfoWidget->setFrameShape(QFrame::StyledPanel);
     m_vmInfoWidget->setFrameShadow(QFrame::Plain);
@@ -308,6 +309,21 @@ void QAppWindow::setSnapFrame(){
 
     // *** Отключение всплывающего меню  *** //
     m_snapTreeView->setContextMenuPolicy(Qt::NoContextMenu);
+}
+
+void QAppWindow::setSnapInfoFrame(){
+    m_snapInfoWidget = new SnapInfoWidget(this);
+    m_snapInfoWidget->setFrameShape(QFrame::StyledPanel);
+    m_snapInfoWidget->setFrameShadow(QFrame::Plain);
+    m_snapInfoWidget->setFixedHeight(m_infoFrameHeight);
+
+    // *** Правильная установка белого фона *** //
+    m_snapInfoWidget->setAutoFillBackground(true);
+    QPalette pal = m_snapInfoWidget->palette();
+    pal.setColor(QPalette::Window, Qt::white);
+    m_snapInfoWidget->setPalette(pal);
+
+    m_vRColumnLayout->addWidget(m_snapInfoWidget);
 }
 
 void QAppWindow::addVmToFrame(){
@@ -790,6 +806,7 @@ void QAppWindow::onTreeItemClicked(const QModelIndex& index){
         qDebug() << "        Node Id:" << node.id;
         qDebug() << "      Parent Id:" << node.parentId;
         qDebug() << "    Images Type:" << node.imagesType;
+        qDebug() << "           UUID:" << node.uuid;
         qDebug() << "ImagesFullNames:";
         for (int i = 0; i < node.imagesFullNames.size(); ++i){
             qDebug() << "                " << node.imagesFullNames[i];
