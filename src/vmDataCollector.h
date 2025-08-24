@@ -41,6 +41,8 @@ class VmDataCollector : public QObject {
         void vmGeneralInfoStopTimer();
         QVector<VMachine> getVmList();
 
+        void getSnapshotXmlInfo(ChainNode&);
+
     public slots:
         void process();
 

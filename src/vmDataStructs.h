@@ -11,8 +11,10 @@
 struct ChainNode {
     int     id;
     int     parentId;
-    QString uuid;                // Уникальный идентификатор
     QString name;                // Словосочетание по хешу
+    QString uuid;                // Уникальный идентификатор
+    QString title;               // Человекочитаемый заголовок
+    QString description;         // Описание снапшота
     QString imagesType;          // Тип текущего состояния [snap|work|root]
     QStringList imagesFullNames; // Полные имена образов жёстких дисков узла
     QStringList backFullNames;   // Полные имена backing (родительских) файлов

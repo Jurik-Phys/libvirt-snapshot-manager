@@ -45,8 +45,10 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
 
     m_snapTreeModel = new SnapTreeModel();
     m_snapTreeLoadingModel = new SnapTreeModel();
-    ChainNode loadingNode = {1, -1,
-                          "Loading snapshot chain information. Please wait …"};
+    ChainNode loadingNode;
+    loadingNode.id = 1;
+    loadingNode.parentId = -1;
+    loadingNode.name = "Loading snapshot chain information. Please wait…";
     m_snapTreeLoadingModel->setSnapData({loadingNode});
 
     setVmBtnFrame();
@@ -800,9 +802,13 @@ void QAppWindow::onTreeItemClicked(const QModelIndex& index){
     QString text = index.data(Qt::DisplayRole).toString();
     qDebug() << "Клик по строке:" << text;
 
-    const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(index);
+    ChainNode node = m_snapTreeModel->getChainNodeByIndex(index);
     m_activeNode = m_snapTreeModel->getChainNodeByIndex(index);
     if (node.id != -1) {
+        // *** Установка параметров виджета вывода информации *** //
+        m_vmDataCollector->getSnapshotXmlInfo(node);
+        m_snapInfoWidget->setData(node);
+
         qDebug() << "        Node Id:" << node.id;
         qDebug() << "      Parent Id:" << node.parentId;
         qDebug() << "    Images Type:" << node.imagesType;

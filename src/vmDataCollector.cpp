@@ -246,23 +246,18 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
 QDomDocument VmDataCollector::getVmXml(const QString& uuid){
     QDomDocument vmXmlDoc;
 
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("LANG", "C");
-
+    QEventLoop loop;
     QProcess process;
-    process.setProcessEnvironment(env);
+
+    QObject::connect(&process, &QProcess::finished, [&](){
+
+            QString output = process.readAllStandardOutput();
+            vmXmlDoc.setContent(output);
+            loop.quit();
+        });
+
     process.start("virsh", {"dumpxml", uuid});
-
-    if (!process.waitForStarted()){
-        return vmXmlDoc;
-    }
-
-    if (!process.waitForFinished()){
-        return vmXmlDoc;
-    }
-
-    QString output = process.readAllStandardOutput();
-    vmXmlDoc.setContent(output);
+    loop.exec();
 
     return vmXmlDoc;
 }
@@ -641,6 +636,31 @@ void VmDataCollector::vmGeneralInfoStopTimer(){
 
 void VmDataCollector::selectedVmActualInfoSender(){
     emit newVmInfoReady(getVmShortInfo(m_vm.uuid));
+}
+
+void VmDataCollector::getSnapshotXmlInfo(ChainNode& node){
+    // Virtual machine information in XML
+    QDomDocument vmXmlDoc = getVmXml(m_vm.uuid);
+    QDomElement vmXml = vmXmlDoc.documentElement();
+
+    QDomElement snapInfo = vmXml.firstChildElement("metadata")
+                        .firstChildElement("libvirt-snapshot-manager:snapInfo");
+    QDomNodeList snapshots = snapInfo.elementsByTagName("snapshot");
+
+    // *** Поиск элемента с атрибутом uuid равным node.uuid *** //
+    QDomElement snapshotByUuid;
+    for (int i = 0; i < snapshots.size(); ++i) {
+        QDomElement xmlElement = snapshots.item(i).toElement();
+        if (!xmlElement.isNull() && xmlElement.hasAttribute("uuid")) {
+            if (xmlElement.attribute("uuid") == node.uuid) {
+                snapshotByUuid = xmlElement;
+                break;
+            }
+        }
+    }
+
+    node.title = snapshotByUuid.firstChildElement("title").text();
+    node.description = snapshotByUuid.firstChildElement("description").text();
 }
 
 // End vmDataCollector.cpp

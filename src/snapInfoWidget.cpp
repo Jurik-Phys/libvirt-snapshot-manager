@@ -134,12 +134,6 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
         m_vScrollLayout->addLayout(hLayoutArray[i]);
     }
 
-    QStringList listData = {
-     "1. /home/jurik_phys/.kvm/win/WinXP/Windows.XP.disk-E-id-1755610771.qcow2",
-     "2. /home/jurik_phys/.kvm/win/WinXP/Windows.XP.disk-E-id-1755610771.qcow2",
-     "3. /home/jurik_phys/.kvm/win/WinXP/Windows.XP.disk-E-id-1755610771.qcow2",
-    };
-
     // *** Добавление и настройка виджета списка файлов снапшота *** //
     QTextEdit* imageFiles = new QTextEdit();
     imageFiles->setLineWrapMode(QTextEdit::NoWrap);
@@ -149,14 +143,6 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
     imageFiles->viewport()->setStyleSheet("background-color: white;");
     imageFiles->setStyleSheet("QTextEdit {" "border: none;" "}");
     fixScrollBar(imageFiles);
-
-    // *** Изменение вертикального размера, исключение прокрутки *** //
-    QFontMetrics fm(imageFiles->font());
-    int rowHeight = fm.lineSpacing();
-    int docMargin = imageFiles->document()->documentMargin();
-    imageFiles->setFixedHeight(rowHeight * listData.size()
-                                + 2 * imageFiles->frameWidth() + 4 * docMargin);
-    imageFiles->setText(listData.join("\n"));
 
     m_vScrollLayout->addWidget(imageFiles);
     m_vScrollLayout->addStretch();
@@ -256,6 +242,52 @@ bool SnapInfoWidget::eventFilter(QObject *obj, QEvent* event){
             }
         }
         return QWidget::eventFilter(obj, event);
+}
+
+void SnapInfoWidget::setData(const ChainNode& node){
+    qobject_cast<QTextEdit*>(m_colBWidgets[0])->setText(node.title);
+    qobject_cast<QTextEdit*>(m_colBWidgets[0])->setReadOnly(false);
+    QString desc = node.description;
+    qobject_cast<QTextEdit*>(m_colBWidgets[1])
+                                      ->setPlainText(desc.replace("\\n", "\n"));
+    qobject_cast<QTextEdit*>(m_colBWidgets[1])->setReadOnly(false);
+    qobject_cast<QLabel*>(m_colBWidgets[2])->setText(node.uuid);
+    qobject_cast<QLabel*>(m_colBWidgets[3])->setText(node.name);
+    // *** Type & children *** //
+    QString typeOut;
+    if (node.imagesType == "work"){
+        typeOut = "Inactive workpoint. It always has no children";
+    }
+    else {
+        if (node.imagesType == "snap"){
+            switch (node.childrenImagesFullNames.size()){
+                case 1:
+                    typeOut = "Fixed state with 1 child";
+                    break;
+                default:
+                    typeOut = "Fixed state with %1 children";
+                    typeOut = typeOut.arg(node.childrenImagesFullNames.size());
+            }
+        }
+        else {
+            typeOut = "Active workpoint. It always has no children";
+        }
+    }
+    qobject_cast<QLabel*>(m_colBWidgets[4])->setText(typeOut);
+    qobject_cast<QLabel*>(m_colBWidgets[5])
+                          ->setText(QString::number(node.backFullNames.size()));
+
+    QWidget* editWidget =  m_vScrollLayout
+                               ->itemAt(m_vScrollLayout->count() - 2)->widget();
+    QTextEdit* imageFiles = qobject_cast<QTextEdit*>(editWidget);
+
+    // *** Изменение вертикального размера, исключение прокрутки *** //
+    QFontMetrics fm(imageFiles->font());
+    int rowHeight = fm.lineSpacing();
+    int docMargin = imageFiles->document()->documentMargin();
+    imageFiles->setFixedHeight(rowHeight * node.imagesFullNames.size()
+                                + 2 * imageFiles->frameWidth() + 4 * docMargin);
+    imageFiles->setText(node.imagesFullNames.join("\n"));
 }
 
 // End snapInfoWidget.cpp
