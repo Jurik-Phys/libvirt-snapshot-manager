@@ -3,6 +3,15 @@
 #include "snapInfoWidget.h"
 
 SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
+
+    m_saveTitleTimer = new QTimer();
+    m_saveTitleTimer->setInterval(1000);
+    m_saveTitleTimer->setSingleShot(true);
+
+    m_saveDescriptionTimer = new QTimer();
+    m_saveDescriptionTimer->setInterval(1000);
+    m_saveDescriptionTimer->setSingleShot(true);
+
     QVBoxLayout* vFrameLayout = new QVBoxLayout(this);
     vFrameLayout->setAlignment(Qt::AlignTop);
     vFrameLayout->setContentsMargins(7, 5, 0, 0);
@@ -69,10 +78,10 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
             line->setPlaceholderText("Snapshot title…");
             line->setReadOnly(true);
             line->installEventFilter(this);
-            //QObject::connect(line, &QTextEdit::textChanged,
-            //                        this, &VmInfoWidget::restartSaveTitleTimer);
-            //QObject::connect(m_saveTitleTimer, &QTimer::timeout,
-            //                                 this, &VmInfoWidget::writeVmTitle);
+            QObject::connect(line, &QTextEdit::textChanged,
+                                  this, &SnapInfoWidget::restartSaveTitleTimer);
+            QObject::connect(m_saveTitleTimer, &QTimer::timeout,
+                                         this, &SnapInfoWidget::writeSnapTitle);
             continue;
         }
 
@@ -91,10 +100,10 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
             fixScrollBar(edit);
             edit->setReadOnly(true);
             edit->setPlaceholderText("Snapshot description…");
-            // QObject::connect(edit, &QTextEdit::textChanged,
-            //                   this, &VmInfoWidget::restartSaveDescriptionTimer);
-            // QObject::connect(m_saveDescriptionTimer, &QTimer::timeout,
-            //                            this, &VmInfoWidget::writeVmDescription);
+            QObject::connect(edit, &QTextEdit::textChanged,
+                            this, &SnapInfoWidget::restartSaveDescriptionTimer);
+            QObject::connect(m_saveDescriptionTimer, &QTimer::timeout,
+                                   this, &SnapInfoWidget::writeSnapDescription);
             continue;
         }
 
@@ -244,9 +253,19 @@ bool SnapInfoWidget::eventFilter(QObject *obj, QEvent* event){
         return QWidget::eventFilter(obj, event);
 }
 
+void SnapInfoWidget::setData(const VMachine& vm){
+    m_vm = vm;
+}
+
 void SnapInfoWidget::setData(const ChainNode& node){
+    m_node = node;
+
+    // *** Setup counter to prevent raise write event in this step *** //
+    m_titleChangedCounter = 1;
     qobject_cast<QTextEdit*>(m_colBWidgets[0])->setText(node.title);
     qobject_cast<QTextEdit*>(m_colBWidgets[0])->setReadOnly(false);
+
+    m_descriptionChangedCounter = 1;
     QString desc = node.description;
     qobject_cast<QTextEdit*>(m_colBWidgets[1])
                                       ->setPlainText(desc.replace("\\n", "\n"));
@@ -288,6 +307,101 @@ void SnapInfoWidget::setData(const ChainNode& node){
     imageFiles->setFixedHeight(rowHeight * node.imagesFullNames.size()
                                 + 2 * imageFiles->frameWidth() + 4 * docMargin);
     imageFiles->setText(node.imagesFullNames.join("\n"));
+}
+
+void SnapInfoWidget::restartSaveTitleTimer(){
+    // *** Первые события - создание QTextEdit и присвоение через setData *** //
+    if (m_titleChangedCounter < 10){
+        m_titleChangedCounter++;
+        if (m_titleChangedCounter <= 2){
+            return;
+        }
+    }
+    m_saveTitleTimer->start();
+}
+
+void SnapInfoWidget::restartSaveDescriptionTimer(){
+    // *** Первые события - создание QTextEdit и присвоение через setData *** //
+    if (m_descriptionChangedCounter < 10){
+        m_descriptionChangedCounter++;
+        if (m_descriptionChangedCounter <= 2){
+            return;
+        }
+    }
+    m_saveDescriptionTimer->start();
+}
+
+void SnapInfoWidget::writeSnapTitle(){
+
+    QString vm_uuid    = m_vm.uuid;
+    QString snap_uuid  = m_node.uuid;
+    QString snap_name  = m_node.name;
+    QString snap_title;
+    snap_title = qobject_cast<QTextEdit*>(m_colBWidgets[0])->toPlainText();
+
+    QStringList uuid = {vm_uuid, snap_uuid};
+    QStringList snapInfo = {snap_name, snap_title};
+
+    emit writeSnapTitleRequested(uuid, snapInfo);
+}
+
+void SnapInfoWidget::writeSnapDescription(){
+    QString vm_uuid          = m_vm.uuid;
+    QString snap_uuid        = m_node.uuid;
+    QString snap_name        = m_node.name;
+    QString snap_desc;
+    snap_desc = qobject_cast<QTextEdit*>(m_colBWidgets[1])->toPlainText();
+
+    QStringList uuid = {vm_uuid, snap_uuid};
+    QStringList snapInfo = {snap_name, snap_desc};
+
+    emit writeSnapDescriptionRequested(uuid, snapInfo);
+}
+
+void SnapInfoWidget::setReadOnly(bool ro){
+    QTextEdit* title = qobject_cast<QTextEdit*>(m_colBWidgets[0]);
+    QTextEdit* description = qobject_cast<QTextEdit*>(m_colBWidgets[1]);
+
+    title->setReadOnly(ro);
+    description->setReadOnly(ro);
+
+    QString roToolTip = "Can edit only when VM is shut off";
+    QString blankToolTip = "";
+
+    if (ro){
+        title->setToolTip(roToolTip);
+        description->setToolTip(roToolTip);
+    }
+    else {
+        title->setToolTip(blankToolTip);
+        description->setToolTip(blankToolTip);
+    }
+}
+
+void SnapInfoWidget::clearData(){
+    // *** Clear uuid's *** //
+    ChainNode zeroNode;
+    VMachine  zeroVm;
+    m_vm = zeroVm;
+    m_node = zeroNode;
+
+    // *** Setup counter to prevent raise write event in this step *** //
+    m_titleChangedCounter = 1;
+    m_descriptionChangedCounter = 1;
+
+    qobject_cast<QTextEdit*>(m_colBWidgets[0])->setText("");
+    qobject_cast<QTextEdit*>(m_colBWidgets[0])->setReadOnly(true);
+    qobject_cast<QTextEdit*>(m_colBWidgets[1])->setText("");
+    qobject_cast<QTextEdit*>(m_colBWidgets[1])->setReadOnly(true);
+    qobject_cast<QLabel*>(m_colBWidgets[2])->setText("—");
+    qobject_cast<QLabel*>(m_colBWidgets[3])->setText("—");
+    qobject_cast<QLabel*>(m_colBWidgets[4])->setText("—");
+    qobject_cast<QLabel*>(m_colBWidgets[5])->setText("—");
+    // *** Список файлов снимка *** //
+    QWidget* editWidget =  m_vScrollLayout
+                               ->itemAt(m_vScrollLayout->count() - 2)->widget();
+    QTextEdit* imageFiles = qobject_cast<QTextEdit*>(editWidget);
+    imageFiles->clear();
 }
 
 // End snapInfoWidget.cpp

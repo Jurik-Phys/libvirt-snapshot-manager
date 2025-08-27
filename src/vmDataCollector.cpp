@@ -663,4 +663,252 @@ void VmDataCollector::getSnapshotXmlInfo(ChainNode& node){
     node.description = snapshotByUuid.firstChildElement("description").text();
 }
 
+void VmDataCollector::writeVmTitle(const QString& vm_uuid,
+                                                     const QString& newVmTitle){
+    qDebug() << "[II] writeVmTitle:" << vm_uuid << newVmTitle;
+
+    QDomDocument vmXmlDoc = getVmXml(vm_uuid);
+    QDomElement  vmXml = vmXmlDoc.documentElement();
+    QDomElement titleVmXml = vmXml.firstChildElement("title");
+
+    // *** Случай,  когда поле Title не существовало *** //
+    if (titleVmXml.isNull()) {
+        QDomElement newTitleVmXml = vmXmlDoc.createElement("title");
+        QDomText    newTitleVmXmlText = vmXmlDoc.createTextNode(newVmTitle);
+        newTitleVmXml.appendChild(newTitleVmXmlText);
+        vmXml.appendChild(newTitleVmXml);
+    }
+    else{
+        // Справочно. titleVmXml — это элемент <title>. У элемента
+        // есть дочерний текстовый узел (QDomText), в котором
+        // реально хранится строка. setNodeValue() для элемента
+        // (QDomElement) ничего не меняет, потому что значение
+        // текста хранится в его child-узле, а не в самом элементе.
+        titleVmXml.firstChild().setNodeValue(newVmTitle);
+    }
+
+    pushVmXml(vmXmlDoc);
+
+}
+
+void VmDataCollector::writeVmDescription(const QString& vm_uuid,
+                                               const QString& newVmDescription){
+    qDebug() << "[II] writeVmDescription" << vm_uuid << newVmDescription;
+
+    QDomDocument vmXmlDoc = getVmXml(vm_uuid);
+    QDomElement  vmXml = vmXmlDoc.documentElement();
+    QDomElement descriptionVmXml = vmXml.firstChildElement("description");
+
+    // *** Случай,  когда поле Title не существовало *** //
+    if (descriptionVmXml.isNull()) {
+        QDomElement newDescriptionVmXml = vmXmlDoc.createElement("description");
+        QDomText    newDescriptionVmXmlText = vmXmlDoc
+                                              .createTextNode(newVmDescription);
+        newDescriptionVmXml.appendChild(newDescriptionVmXmlText);
+        vmXml.appendChild(newDescriptionVmXml);
+    }
+    else{
+        // Справочно. titleVmXml — это элемент <title>. У элемента
+        // есть дочерний текстовый узел (QDomText), в котором
+        // реально хранится строка. setNodeValue() для элемента
+        // (QDomElement) ничего не меняет, потому что значение
+        // текста хранится в его child-узле, а не в самом элементе.
+        descriptionVmXml.firstChild().setNodeValue(newVmDescription);
+    }
+
+    pushVmXml(vmXmlDoc);
+}
+
+void VmDataCollector::writeSnapTitle(const QStringList& uuid,
+                                                   const QStringList& snapInfo){
+    QString vm_uuid = uuid[0];
+    QString snap_uuid = uuid[1];
+    QString snapName = snapInfo[0];
+    QString snapTitle = snapInfo[1];
+
+    QDomDocument vmXmlDoc = getVmXml(vm_uuid);
+
+    QDomElement  vmXml = vmXmlDoc.documentElement();
+
+    QDomElement metadataXml = findOrCreateElement(vmXmlDoc, vmXml, "metadata");
+
+    QDomElement snapInfoXml = findOrCreateElement(vmXmlDoc, metadataXml,
+                                           "libvirt-snapshot-manager:snapInfo");
+
+    snapInfoXml.setAttribute("xmlns:libvirt-snapshot-manager",
+                      "https://github.com/Jurik-Phys/libvirt-snapshot-manager");
+
+    QDomElement snapshotXml = findOrCreateSnapshotElement(vmXmlDoc, snapInfoXml,
+                                                                     snap_uuid);
+    QDomElement snapNameXml = findOrCreateElement(vmXmlDoc, snapshotXml,
+                                                                        "name");
+    QDomElement snapTitleXml = findOrCreateElement(vmXmlDoc, snapshotXml,
+                                                                       "title");
+
+    writeQDomElementText(vmXmlDoc, snapNameXml, snapName );
+    writeQDomElementText(vmXmlDoc, snapTitleXml, snapTitle );
+
+    pushVmXml(vmXmlDoc);
+}
+
+void VmDataCollector::writeSnapDescription(const QStringList& uuid,
+                                                   const QStringList& snapInfo){
+    QString vm_uuid = uuid[0];
+    QString snap_uuid = uuid[1];
+    QString snapName = snapInfo[0];
+    QString snapDescription = snapInfo[1];
+
+    QDomDocument vmXmlDoc = getVmXml(vm_uuid);
+
+    QDomElement  vmXml = vmXmlDoc.documentElement();
+
+    QDomElement metadataXml = findOrCreateElement(vmXmlDoc, vmXml, "metadata");
+
+    QDomElement snapInfoXml = findOrCreateElement(vmXmlDoc, metadataXml,
+                                           "libvirt-snapshot-manager:snapInfo");
+
+    snapInfoXml.setAttribute("xmlns:libvirt-snapshot-manager",
+                      "https://github.com/Jurik-Phys/libvirt-snapshot-manager");
+
+    QDomElement snapshotXml = findOrCreateSnapshotElement(vmXmlDoc, snapInfoXml,
+                                                                     snap_uuid);
+    QDomElement snapNameXml = findOrCreateElement(vmXmlDoc, snapshotXml,
+                                                                        "name");
+    QDomElement snapDescriptionXml = findOrCreateElement(vmXmlDoc, snapshotXml,
+                                                                 "description");
+
+    writeQDomElementText(vmXmlDoc, snapNameXml, snapName );
+    writeQDomElementText(vmXmlDoc, snapDescriptionXml, snapDescription );
+
+    pushVmXml(vmXmlDoc);
+}
+
+void VmDataCollector::rmSnapshotXmlElement(const QString& vmUuid,
+                                                      const QString& snapUuid ){
+    qDebug() << "[II] rmSnapshotXmlElement";
+    qDebug() << "vmUuid  " << vmUuid;
+    qDebug() << "snapUuid" << snapUuid;
+
+    QDomDocument vmXmlDoc = getVmXml(vmUuid);
+
+    QDomElement  vmXml = vmXmlDoc.documentElement();
+
+    QDomElement metadataXml = vmXml.firstChildElement("metadata");
+
+    // *** Нет элемента metadata, значит нет и всех остальных элементов *** //
+    if (metadataXml.isNull()){
+        return;
+    }
+
+    QDomElement snapInfoXml = metadataXml
+                        .firstChildElement("libvirt-snapshot-manager:snapInfo");
+
+    // *** Нет раздела со снапшотами, удалять нечего *** //
+    if (snapInfoXml.isNull()){
+        return;
+    }
+
+    QDomElement toRemoveSnapshot;
+    QDomNodeList snapshots = snapInfoXml.elementsByTagName("snapshot");
+    for (int i = 0; i < snapshots.size(); ++i){
+        QDomElement tmpSnap = snapshots.at(i).toElement();
+        if (!tmpSnap.isNull() && tmpSnap.attribute("uuid") == snapUuid){
+            toRemoveSnapshot = tmpSnap;
+        }
+    }
+
+    if (toRemoveSnapshot.isNull()){
+        return;
+    }
+    else {
+        // *** Удаление единственного снапошота *** //
+        if (snapshots.size() == 1){
+            metadataXml.removeChild(snapInfoXml);
+        }
+        else {
+            snapInfoXml.removeChild(toRemoveSnapshot);
+        }
+    }
+
+    pushVmXml(vmXmlDoc);
+}
+
+void VmDataCollector::pushVmXml(const QDomDocument& vmXmlDoc){
+    QEventLoop loop;
+    QProcess process;
+
+    QDomElement vmXml = vmXmlDoc.documentElement();
+    QString vm_uuid = vmXml.firstChildElement("uuid").text();
+
+    // *** Сохранение временного xml файла *** //
+    QString fileName = "/tmp/" + vm_uuid + ".xml";
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text
+                | QIODevice::Truncate)){
+        qDebug() << "[EE] Failed to write back XML file.";
+        return;
+    }
+
+    // *** "4" пробела для отступа при сериализации XML *** //
+    QTextStream out(&file);
+    vmXmlDoc.save(out, 4);
+    file.close();
+
+    QObject::connect(&process, &QProcess::finished,
+        [&](){
+           // *** Удаление временного xml файла *** //
+           if (QFile::exists(fileName)) {
+               if (!QFile::remove(fileName)) {
+                   qDebug() << "[EE] don't delete:" << fileName;
+               }
+           }
+           loop.quit();
+        });
+
+    process.start("virsh", {"define", fileName});
+    loop.exec();
+}
+
+QDomElement VmDataCollector::findOrCreateElement(QDomDocument& doc,
+                                       QDomElement& parent, const QString& tag){
+    QDomElement res = parent.firstChildElement(tag);
+    if (res.isNull()){
+        res = doc.createElement(tag);
+        parent.appendChild(res);
+    }
+    return res;
+}
+
+QDomElement VmDataCollector::findOrCreateSnapshotElement(QDomDocument& doc,
+                                QDomElement& snapInf, const QString& snap_uuid){
+    QDomElement res;
+
+    QDomNodeList snapshots = snapInf.elementsByTagName("snapshot");
+    for (int i = 0; i < snapshots.size(); ++i){
+        QDomElement tmpSnap = snapshots.at(i).toElement();
+        if (!tmpSnap.isNull() && tmpSnap.attribute("uuid") == snap_uuid){
+            res = tmpSnap;
+        }
+    }
+
+    if (res.isNull()){
+        res = doc.createElement("snapshot");
+        res.setAttribute("uuid", snap_uuid);
+        snapInf.appendChild(res);
+    }
+
+    return res;
+}
+
+void VmDataCollector::writeQDomElementText(QDomDocument& doc, QDomElement& el,
+                                                          const QString& value){
+    if (!el.isNull() && el.firstChild().isText()){
+        el.firstChild().setNodeValue(value);
+    }
+    else {
+        QDomText text = doc.createTextNode(value);
+        el.appendChild(text);
+    }
+}
+
 // End vmDataCollector.cpp

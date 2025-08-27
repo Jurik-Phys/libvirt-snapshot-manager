@@ -357,147 +357,21 @@ void VmInfoWidget::setStorageList(const QStringList& mountStorages){
 }
 
 void VmInfoWidget::writeVmTitle(){
-    QEventLoop loop;
-    QProcess   process;
-
-    bool stepOneDone = false;
-    QString uuid = m_uuid;
-    QObject::connect(&process, &QProcess::finished,
-        [&](){
-            QString fileName = "/tmp/" + uuid + ".xml";
-            if (!stepOneDone){
-                QString output = process.readAllStandardOutput();
-
-                QDomDocument vmXmlDoc;
-                vmXmlDoc.setContent(output);
-                QDomElement vmXml = vmXmlDoc.documentElement();
-                QDomElement titleVmXml = vmXml.firstChildElement("title");
-                QTextEdit* nTitle = qobject_cast<QTextEdit*>(m_colBWidgets[0]);
-                // *** Случай,  когда поле Title не существовало *** //
-                if (titleVmXml.isNull()) {
-                    QDomElement newTitleVmXml = vmXmlDoc.createElement("title");
-                    QDomText    newTitleVmXmlText = vmXmlDoc
-                                         .createTextNode(nTitle->toPlainText());
-                    newTitleVmXml.appendChild(newTitleVmXmlText);
-                    vmXml.appendChild(newTitleVmXml);
-                }
-                else{
-                    // Справочно. titleVmXml — это элемент <title>. У элемента
-                    // есть дочерний текстовый узел (QDomText), в котором
-                    // реально хранится строка. setNodeValue() для элемента
-                    // (QDomElement) ничего не меняет, потому что значение
-                    // текста хранится в его child-узле, а не в самом элементе.
-                    titleVmXml.firstChild().setNodeValue(nTitle->toPlainText());
-                }
-
-
-                // *** Сохранение временного xml файла *** //
-                QFile file(fileName);
-                if (!file.open(QIODevice::WriteOnly | QIODevice::Text
-                            | QIODevice::Truncate)){
-                    qDebug() << "[EE] Failed to write back XML file.";
-                    return;
-                }
-
-                // *** "4" пробела для отступа при сериализации XML *** //
-                QTextStream out(&file);
-                vmXmlDoc.save(out, 4);
-                file.close();
-
-                stepOneDone = true;
-
-                // *** Применение новых настроек через virsh *** //
-                process.start("virsh", {"define", fileName});
-            }
-            else {
-                // *** Удаление временного xml файла *** //
-                if (QFile::exists(fileName)) {
-                    if (!QFile::remove(fileName)) {
-                        qDebug() << "[EE] don't delete:" << fileName;
-                    }
-                }
-
-                // *** Выключение таймера перезаписи *** //
-                m_saveTitleTimer->stop();
-
-                // *** Отправка сигнала, что ввод текста завершен *** //
-                emit textChangedEnd();
-                loop.quit();
-            }
-        });
-
-    process.start("virsh", {"dumpxml", uuid});
-    loop.exec();
+    QString vm_uuid = m_uuid;
+    QString vm_titl = qobject_cast<QTextEdit*>(m_colBWidgets[0])->toPlainText();
+    emit writeVmTitleRequested(vm_uuid, vm_titl);
+    // *** Отправка сигнала, что ввод текста завершен *** //
+    emit textChangedEnd();
 }
 
 void VmInfoWidget::writeVmDescription(){
 
-    QEventLoop loop;
-    QProcess   process;
+    QString vm_uuid = m_uuid;
+    QString vm_desc = qobject_cast<QTextEdit*>(m_colBWidgets[1])->toPlainText();
+    emit writeVmDescriptionRequested(vm_uuid, vm_desc);
 
-    bool stepOneDone = false;
-    QString uuid = m_uuid;
-    QObject::connect(&process, &QProcess::finished,
-        [&](){
-            QString fileName = "/tmp/" + uuid + ".xml";
-            if (!stepOneDone){
-                QString output = process.readAllStandardOutput();
-
-                QDomDocument vmXmlDoc;
-                vmXmlDoc.setContent(output);
-                QDomElement vmXml = vmXmlDoc.documentElement();
-                QDomElement descriptionVmXml = vmXml
-                                              .firstChildElement("description");
-                QTextEdit* nDescription
-                                   = qobject_cast<QTextEdit*>(m_colBWidgets[1]);
-                // *** Description отсутствует у виртуальной машины *** //
-                if (descriptionVmXml.isNull()){
-                    QDomElement newDescriptionVmXml = vmXmlDoc
-                                                  .createElement("description");
-                    QDomText newDescriptionVmXmlText = vmXmlDoc
-                                   .createTextNode(nDescription->toPlainText());
-                    newDescriptionVmXml.appendChild(newDescriptionVmXmlText);
-                    vmXml.appendChild(newDescriptionVmXml);
-                }
-                else {
-                    descriptionVmXml.firstChild()
-                                     .setNodeValue(nDescription->toPlainText());
-                }
-
-                QFile file(fileName);
-                if (!file.open(QIODevice::WriteOnly | QIODevice::Text
-                            | QIODevice::Truncate)){
-                    qDebug() << "[EE] Failed to write back XML file.";
-                    return;
-                }
-
-                QTextStream out(&file);
-                vmXmlDoc.save(out, 4);
-                file.close();
-
-                stepOneDone = true;
-
-                // *** Применение новых настроек через virsh *** //
-                process.start("virsh", {"define", fileName});
-            }
-            else {
-                if (QFile::exists(fileName)){
-                    if (!QFile::remove(fileName)){
-                        qDebug() << "[EE] don't delete:" << fileName;
-                    }
-                }
-
-                // *** Выключение таймера перезаписи *** //
-                m_saveTitleTimer->stop();
-
-                // *** Отправка сигнала, что ввод текста завершен *** //
-                emit textChangedEnd();
-                loop.quit();
-            }
-        });
-
-    process.start("virsh", {"dumpxml", uuid});
-    loop.exec();
+    // *** Отправка сигнала, что ввод текста завершен *** //
+    emit textChangedEnd();
 }
 
 void VmInfoWidget::restartSaveTitleTimer(){

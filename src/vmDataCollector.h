@@ -31,7 +31,6 @@ class VmDataCollector : public QObject {
         VMachine getVmFullInfo();
         VMachine getVmShortInfo(const QString& uuid);
         QString getNodeName(const QString& imgFileName, const QString& imgType);
-        QString getNodeUuid(const QString& imgFileName);
 
         void vmListStartTimer();
         void vmListStopTimer();
@@ -42,6 +41,16 @@ class VmDataCollector : public QObject {
         QVector<VMachine> getVmList();
 
         void getSnapshotXmlInfo(ChainNode&);
+
+        // *** Write VM & Snapshot info *** //
+        void writeVmTitle(const QString& vm_uuid, const QString& vmTitle);
+        void writeVmDescription(const QString& vm_uuid, const QString& vmDesc);
+        void writeSnapTitle(const QStringList& uuid,
+                                                   const QStringList& snapInfo);
+        void writeSnapDescription(const QStringList& uuid,
+                                                   const QStringList& snapInfo);
+        void rmSnapshotXmlElement(const QString& vmUuid,
+                                                       const QString& snapUuid);
 
     public slots:
         void process();
@@ -55,7 +64,8 @@ class VmDataCollector : public QObject {
     private:
         VMachine m_vm;
         VMachine getVmFullInfo(const VMachine& vm);
-        QDomDocument getVmXml(const QString& vmName);
+        QDomDocument getVmXml(const QString& vmUuid);
+        void pushVmXml(const QDomDocument& vmXmlDoc);
         void setSnapChainData(VMachine& vm);
         void setChildrenData(VMachine& vm);
         bool isVMachineImage(const QString& imageFullName);
@@ -64,12 +74,21 @@ class VmDataCollector : public QObject {
         QString getBackFullNameFast(const QString& fullFileName);
         QString getRootFullName(const QString& fileFullName);
         QVector<VmImageRawInfo> m_vmImagesRawInfo;
+        QString getNodeUuid(const QString& imgFileName);
 
         QWidget* parentWindow;
         QTimer*  m_getListTimer;
         QTimer*  m_getActualVmGeneralInfoTimer;
         void vmListSender();
         void selectedVmActualInfoSender();
+
+        QDomElement findOrCreateElement(QDomDocument& doc, QDomElement& parent,
+                                                            const QString& tag);
+        QDomElement findOrCreateSnapshotElement(QDomDocument& doc,
+                               QDomElement& snapInfo, const QString& snap_uuid);
+
+        void writeQDomElementText(QDomDocument& doc, QDomElement& el,
+                                                          const QString& value);
 };
 
 #endif

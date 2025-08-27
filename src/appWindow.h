@@ -46,6 +46,7 @@ class QAppWindow : public QWidget {
         void startVmBegin();
         void startVmEnd();
         void selectVmChanged();
+        // void updateSnapInformationRequested(QModelIndex);
 
     public slots:
         void showErrorMessage(const QString& title, const QString& message);
@@ -109,6 +110,7 @@ class QAppWindow : public QWidget {
         void btnManageTake();
         void snapTreeViewManage();
         void vmInfoWidgetManage();
+        void snapInfoWidgetManage();
 
         void onTreeItemClicked(const QModelIndex& index);
         void resizeEvent(QResizeEvent *event) override;

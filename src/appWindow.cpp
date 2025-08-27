@@ -54,6 +54,9 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     setVmBtnFrame();
     setVmFrame();
     setVmInfoFrame();
+    setSnapBtnFrame();
+    setSnapFrame();
+    setSnapInfoFrame();
 
     QObject::connect(m_vmInfoWidget, &VmInfoWidget::textChangedBegin,
                    m_vmDataCollector, &VmDataCollector::vmGeneralInfoStopTimer);
@@ -61,9 +64,16 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     QObject::connect(m_vmInfoWidget, &VmInfoWidget::textChangedEnd,
                 m_vmDataCollector,
                     QOverload<>::of(&VmDataCollector::vmGeneralInfoStartTimer));
-    setSnapBtnFrame();
-    setSnapFrame();
-    setSnapInfoFrame();
+    // *** Write vmInfo & snapInfo to xml file of VM *** //
+    QObject::connect(m_vmInfoWidget, &VmInfoWidget::writeVmTitleRequested,
+                             m_vmDataCollector, &VmDataCollector::writeVmTitle);
+    QObject::connect(m_vmInfoWidget, &VmInfoWidget::writeVmDescriptionRequested,
+                       m_vmDataCollector, &VmDataCollector::writeVmDescription);
+    QObject::connect(m_snapInfoWidget, &SnapInfoWidget::writeSnapTitleRequested,
+                           m_vmDataCollector, &VmDataCollector::writeSnapTitle);
+    QObject::connect(m_snapInfoWidget,
+                &SnapInfoWidget::writeSnapDescriptionRequested,
+                     m_vmDataCollector, &VmDataCollector::writeSnapDescription);
 
     addVmToFrame();
 }
@@ -381,6 +391,8 @@ void QAppWindow::addVmToFrame(){
                                                      &QAppWindow::viewOnlyMode);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
                                                 &QAppWindow::menuStopBtnSelect);
+        QObject::connect(vmWidget, &VmWidget::clicked, m_snapInfoWidget,
+                                                    &SnapInfoWidget::clearData);
     }
 }
 
@@ -413,6 +425,8 @@ void QAppWindow::addVmToFrame(const QVector<VMachine>& toAddvmList){
                                                      &QAppWindow::viewOnlyMode);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
                                                 &QAppWindow::menuStopBtnSelect);
+        QObject::connect(vmWidget, &VmWidget::clicked, m_snapInfoWidget,
+                                                    &SnapInfoWidget::clearData);
     }
 }
 
@@ -589,7 +603,6 @@ void QAppWindow::doSnapshot(){
     m_snapTreeView->expandAll();
 
     // *** Выделение и переход к новому узлу *** //
-    // QModelIndex newItemIdx = m_snapTreeModel->index(index.row(), 0, index);
     index = m_snapTreeModel->getActiveStateIndex();
     m_snapTreeView->selectionModel()->setCurrentIndex(index,
                                            QItemSelectionModel::ClearAndSelect);
@@ -602,10 +615,17 @@ void QAppWindow::doSnapshot(){
 
     // *** Обновление информации о примонтированных дисках *** //
     m_vmInfoWidget->setStorageList(m_mountStorages);
+
+    // *** Установка параметров виджета вывода информации *** //
+    ChainNode updNode = m_snapTreeModel->getChainNodeByIndex(index);
+    m_vmDataCollector->getSnapshotXmlInfo(updNode);
+    m_snapInfoWidget->setData(updNode);
 }
 
 void QAppWindow::gotoSnapshot(){
     QStringList snapFullNames;
+
+    QModelIndex currentModelIndex;
 
     // *** Доступ к данным через QItemSelectionModel *** //
     QItemSelectionModel* selectionModel = m_snapTreeView->selectionModel();
@@ -613,6 +633,7 @@ void QAppWindow::gotoSnapshot(){
 
     // *** Выделение одиночное, в списке максимум один элемент *** //
     QModelIndex index = selectedIndexes[0];
+    currentModelIndex = index;
 
     // *** Получение данных выделенного узла цепочки сохранения состояний *** //
     const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(index);
@@ -628,7 +649,6 @@ void QAppWindow::gotoSnapshot(){
         m_snapTreeModel->setActive(index);
     }
     else {
-        qDebug() << index.row();
         m_snapTreeModel->setSnapImagesFullName(snapFullNames);
         bool ok = m_snapTreeModel->insertRowAt(index.row(), index);
 
@@ -639,6 +659,7 @@ void QAppWindow::gotoSnapshot(){
         m_snapTreeView->setFocus();
         m_snapTreeView->scrollTo(newNodeIndex,
                                            QAbstractItemView::PositionAtCenter);
+        currentModelIndex = newNodeIndex;
     }
 
     // *** Отключение кнопок Goto и Delete *** //
@@ -647,6 +668,11 @@ void QAppWindow::gotoSnapshot(){
 
     // *** Обновление информации о примонтированных дисках *** //
     m_vmInfoWidget->setStorageList(m_mountStorages);
+
+    // *** Установка параметров виджета вывода информации *** //
+    ChainNode updNode = m_snapTreeModel->getChainNodeByIndex(currentModelIndex);
+    m_vmDataCollector->getSnapshotXmlInfo(updNode);
+    m_snapInfoWidget->setData(updNode);
 }
 
 void QAppWindow::deleteSnapshot(){
@@ -719,6 +745,12 @@ void QAppWindow::deleteSnapshot(){
     // *** Выдленых элементов SnapTreeView нет, отключение кнопок *** //
     m_deleteBtn->setEnabled(false);
     m_gotoBtn->setEnabled(false);
+
+    // *** Выделены элементов updSnapTree нет, сбро информации о снапшоте *** //
+    m_snapInfoWidget->clearData();
+
+    // *** Удалить запись о снапшоте из xml документа ВМ *** //
+    m_vmDataCollector->rmSnapshotXmlElement(m_currentVmUUID, node.uuid);
 }
 
 void QAppWindow::startVM(){
@@ -800,35 +832,14 @@ void QAppWindow::openVM(){
 
 void QAppWindow::onTreeItemClicked(const QModelIndex& index){
     QString text = index.data(Qt::DisplayRole).toString();
-    qDebug() << "Клик по строке:" << text;
 
     ChainNode node = m_snapTreeModel->getChainNodeByIndex(index);
-    m_activeNode = m_snapTreeModel->getChainNodeByIndex(index);
+      m_activeNode = m_snapTreeModel->getChainNodeByIndex(index);
     if (node.id != -1) {
         // *** Установка параметров виджета вывода информации *** //
         m_vmDataCollector->getSnapshotXmlInfo(node);
+        m_snapInfoWidget->setData(m_vmList[m_selectedVmIndex]);
         m_snapInfoWidget->setData(node);
-
-        qDebug() << "        Node Id:" << node.id;
-        qDebug() << "      Parent Id:" << node.parentId;
-        qDebug() << "    Images Type:" << node.imagesType;
-        qDebug() << "           UUID:" << node.uuid;
-        qDebug() << "ImagesFullNames:";
-        for (int i = 0; i < node.imagesFullNames.size(); ++i){
-            qDebug() << "                " << node.imagesFullNames[i];
-        }
-        qDebug() << "   BackFullName:";
-        for (int i = 0; i < node.backFullNames.size(); ++i){
-            qDebug() << "                " << node.backFullNames[i];
-        }
-        qDebug() << "   children:" << node.childrenImagesFullNames.size() ;
-        for (int i = 0; i < node.childrenImagesFullNames.size(); ++i){
-            for (int j = 0; j < node.childrenImagesFullNames[i].size(); ++j ){
-                qDebug() << "                "
-                            << node.childrenImagesFullNames[i][j];
-            }
-            qDebug() << "";
-        }
     }
 }
 
@@ -920,6 +931,16 @@ void QAppWindow::snapTreeViewManage(){
 }
 
 void QAppWindow::vmInfoWidgetManage(){
+
+    if (m_vmList[m_selectedVmIndex].state == "shut off"){
+        m_vmInfoWidget->setReadOnly(false);
+    }
+    else {
+        m_vmInfoWidget->setReadOnly(true);
+    }
+}
+
+void QAppWindow::snapInfoWidgetManage(){
 
     if (m_vmList[m_selectedVmIndex].state == "shut off"){
         m_vmInfoWidget->setReadOnly(false);

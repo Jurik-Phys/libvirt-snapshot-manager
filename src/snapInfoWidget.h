@@ -4,6 +4,7 @@
 #define SNAPINFOWIDGET_H
 
 #include <QFrame>
+#include <QTimer>
 #include <QLabel>
 #include <QEvent>
 #include <QKeyEvent>
@@ -22,7 +23,15 @@ class SnapInfoWidget : public QFrame {
         ~SnapInfoWidget();
 
         void setData(const ChainNode& node);
+        void setData(const VMachine& vm);
+        void setReadOnly(bool);
+        void clearData();
 
+    signals:
+        void writeSnapTitleRequested(const QStringList& uuid,
+                                                   const QStringList& snapInfo);
+        void writeSnapDescriptionRequested(const QStringList& uuid,
+                                                   const QStringList& snapInfo);
     private:
         QVBoxLayout*      m_vScrollLayout;
         void fixScrollBar(QTextEdit*);
@@ -31,6 +40,24 @@ class SnapInfoWidget : public QFrame {
         QVector<QWidget*> m_colBWidgets;
 
         bool eventFilter(QObject* obj, QEvent* event) override;
+
+        // *** Виджет не должен сам сохранять данные в VM, но пока так *** //
+        VMachine m_vm;
+        ChainNode m_node;
+        QTimer* m_saveTitleTimer;
+        QTimer* m_saveDescriptionTimer;
+
+        void restartSaveTitleTimer();
+        void restartSaveDescriptionTimer();
+        void writeSnapTitle();
+        void writeSnapDescription();
+
+        int m_titleChangedCounter = 0;
+        int m_descriptionChangedCounter = 0;
+
+        QString m_vmUUID;
+        QString m_snapUUID;
+
 };
 
 #endif

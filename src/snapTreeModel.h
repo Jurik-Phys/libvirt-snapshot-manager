@@ -63,6 +63,8 @@ class SnapTreeModel : public QAbstractItemModel {
         int findChildIdByRow(int parentId, int row) const;
         const ChainNode& findNodeById(int id) const;
         int rowOfChild(int childId, int parentId) const;
+
+        QString getNodeUuid(const QString& fileName);
 };
 
 #endif

@@ -40,6 +40,10 @@ class VmInfoWidget : public QFrame {
     signals:
         void textChangedBegin();
         void textChangedEnd();
+        void writeVmTitleRequested(const QString& vm_uuid,
+                                                        const QString& vmTitle);
+        void writeVmDescriptionRequested(const QString& vm_uuid,
+                                                  const QString& vmDescription);
 
     private:
         QVBoxLayout* m_vScrollLayout;

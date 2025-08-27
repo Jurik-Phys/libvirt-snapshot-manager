@@ -182,11 +182,6 @@ ChainNode SnapTreeModel::getChainNodeByIndex(const QModelIndex& index) const {
 bool SnapTreeModel::removeRows(int row, int count, const QModelIndex& parent){
     bool res;
 
-    // qDebug() << "[II] removeRowsBegin";
-    // for (int i = 0; i < m_nodes.size(); ++i){
-    //     qDebug() << m_nodes[i].id << m_nodes[i].parentId << m_nodes[i].name;
-    // }
-
     // Узел родителя
     ChainNode parentNode = getChainNodeByIndex(parent);
 
@@ -294,11 +289,6 @@ bool SnapTreeModel::removeRows(int row, int count, const QModelIndex& parent){
         }
     }
 
-    // qDebug() << "[II] removeRowsEnd";
-    // for (int i = 0; i < m_nodes.size(); ++i){
-    //     qDebug() << m_nodes[i].id << m_nodes[i].parentId << m_nodes[i].name;
-    // }
-
     endRemoveRows();
 
     return true;
@@ -325,6 +315,9 @@ bool SnapTreeModel::insertRows(int row, int count, const QModelIndex& index){
         newNode.id = m_nodes[m_nodes.size() - 1].id + 1;
         // parentId
         newNode.parentId = m_nodes[activeIndex].id;
+        // uuid
+        QString fileName = QFileInfo(m_snapImagesFullNames.last()).fileName();
+        newNode.uuid = getNodeUuid(fileName);
         // imagesType
         newNode.imagesType = "active";
         // imagesFullNames
@@ -346,7 +339,6 @@ bool SnapTreeModel::insertRows(int row, int count, const QModelIndex& index){
 }
 
 bool SnapTreeModel::insertRowAt(int row, const QModelIndex& parentIndex){
-    qDebug() << "[II] insertRowAt";
 
     ChainNode node = getChainNodeByIndex(parentIndex);
 
@@ -379,6 +371,9 @@ bool SnapTreeModel::insertRowAt(int row, const QModelIndex& parentIndex){
         newNode.id = m_nodes[m_nodes.size() - 1].id + 1;
         // parentId
         newNode.parentId = m_nodes[parentNodeIdx].id;
+        // uuid
+        QString fileName = QFileInfo(m_snapImagesFullNames.last()).fileName();
+        newNode.uuid = getNodeUuid(fileName);
         // imagesType
         newNode.imagesType = "active";
         // imagesFullNames
@@ -386,7 +381,7 @@ bool SnapTreeModel::insertRowAt(int row, const QModelIndex& parentIndex){
         // backFullNames
         for (int i = 0; i < m_snapImagesFullNames.size(); ++i){
             newNode.backFullNames
-                            .push_back(m_nodes[parentNodeIdx].imagesFullNames[i]);
+                          .push_back(m_nodes[parentNodeIdx].imagesFullNames[i]);
         }
         // name
         VmDataCollector vmDataCollector;
@@ -453,6 +448,14 @@ void SnapTreeModel::setActive(const QModelIndex& newActiveIndex){
     }
 
     emit dataChanged(newActiveIndex, newActiveIndex, {Qt::DisplayRole});
+}
+
+QString SnapTreeModel::getNodeUuid(const QString& fName){
+
+    QUuid uuid = QUuid::createUuidV5(QUuid::fromString(
+                                    "{12329e42e-d24e-4ad0-84dd-9e03b8b33e7}"),
+                                                                        fName);
+    return uuid.toString(QUuid::WithoutBraces);
 }
 
 // End snapTreeModel.cpp
