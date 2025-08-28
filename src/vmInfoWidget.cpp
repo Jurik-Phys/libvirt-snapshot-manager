@@ -428,6 +428,7 @@ VMachine VmInfoWidget::getData(){
 }
 
 void VmInfoWidget::setTitle(const QString& newTitle){
+    m_titleChangedCounter = 0;
     QTextEdit* edit = qobject_cast<QTextEdit*>(m_colBWidgets[0]);
     // *** Применение изменений тогда, когда курсора нет в поле ввода *** //
     if (!edit->hasFocus()){
@@ -436,6 +437,7 @@ void VmInfoWidget::setTitle(const QString& newTitle){
 }
 
 void VmInfoWidget::setDescription(const QString& newDescription){
+    m_descriptionChangedCounter = 0;
     QTextEdit* edit = qobject_cast<QTextEdit*>(m_colBWidgets[1]);
     if (!edit->hasFocus()){
         edit->setText(newDescription);
