@@ -188,6 +188,8 @@ void QAppWindow::setVmBtnFrame(){
                                          this, &QAppWindow::menuStopBtnSelect);
     QObject::connect(this, &QAppWindow::selectVmChanged,
                                          this, &QAppWindow::vmInfoWidgetManage);
+    QObject::connect(this, &QAppWindow::selectVmChanged,
+                                       this, &QAppWindow::snapInfoWidgetManage);
 }
 
 void QAppWindow::setVmFrame(){
@@ -515,9 +517,6 @@ void QAppWindow::updSnapTree(){
 
     VMachine activeVm = getActiveVm();
 
-    // qDebug() << "[II] Update snap tree now!";
-    // qDebug() << "[II] Selected VM index:" << m_selectedVmIndex;
-
     m_snapTreeView->setModel(m_snapTreeLoadingModel);
 
     QThread* thread = new QThread;
@@ -541,11 +540,6 @@ void QAppWindow::updSnapTree(){
                 m_mountStorages = result.mountStorages;
                 m_currentVmUUID = result.uuid;
 
-                // for (int i = 0; i < result.vmStateChain.size(); ++i){
-                //    qDebug() << vmSnapshotsChain[i].id
-                //             << vmSnapshotsChain[i].parentId
-                //             << vmSnapshotsChain[i].name;
-                // }
                 m_vmInfoWidget->setData(result);
                 // qDebug() << "[II] Данные получены и выведены (finished)";
 
@@ -557,6 +551,7 @@ void QAppWindow::updSnapTree(){
                 btnManageStop();
                 snapTreeViewManage();
                 vmInfoWidgetManage();
+                snapInfoWidgetManage();
 
                 thread->quit();
                 thread->wait();
@@ -943,10 +938,10 @@ void QAppWindow::vmInfoWidgetManage(){
 void QAppWindow::snapInfoWidgetManage(){
 
     if (m_vmList[m_selectedVmIndex].state == "shut off"){
-        m_vmInfoWidget->setReadOnly(false);
+        m_snapInfoWidget->setReadOnly(false);
     }
     else {
-        m_vmInfoWidget->setReadOnly(true);
+        m_snapInfoWidget->setReadOnly(true);
     }
 }
 
@@ -963,10 +958,6 @@ void QAppWindow::onVmListReady(const QVector<VMachine> newVmList){
     toModVmList = getToModVmList(m_vmList, newVmList);
     toAddVmList = getToAddVmList(m_vmList, newVmList);
     toDelVmList = getToDelVmList(m_vmList, newVmList);
-
-    // qDebug() << "\n[II] toModVmList.size()" << toModVmList.size();
-    // qDebug() << "[II] toAddVmList.size()" << toAddVmList.size();
-    // qDebug() << "[II] toDelVmList.size()" << toDelVmList.size();
 
     // *** Cбор данных прекращается до окончания их обработки *** //
     if ( toModVmList.size() > 0 || toAddVmList.size() > 0
@@ -1147,6 +1138,8 @@ void QAppWindow::viewOnlyMode(){
     m_gotoBtn->setEnabled(false);
     m_deleteBtn->setEnabled(false);
     m_snapTreeView->setContextMenuPolicy(Qt::NoContextMenu);
+    m_snapInfoWidget->setReadOnly(true);
+    m_vmInfoWidget->setReadOnly(true);
 }
 
 void QAppWindow::onNewVmInfoReady(const VMachine& vmNew){

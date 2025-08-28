@@ -263,13 +263,16 @@ void SnapInfoWidget::setData(const ChainNode& node){
     // *** Setup counter to prevent raise write event in this step *** //
     m_titleChangedCounter = 1;
     qobject_cast<QTextEdit*>(m_colBWidgets[0])->setText(node.title);
-    qobject_cast<QTextEdit*>(m_colBWidgets[0])->setReadOnly(false);
-
+    if (m_vm.state == "shut off"){
+        qobject_cast<QTextEdit*>(m_colBWidgets[0])->setReadOnly(false);
+    }
     m_descriptionChangedCounter = 1;
     QString desc = node.description;
     qobject_cast<QTextEdit*>(m_colBWidgets[1])
                                       ->setPlainText(desc.replace("\\n", "\n"));
-    qobject_cast<QTextEdit*>(m_colBWidgets[1])->setReadOnly(false);
+    if (m_vm.state == "shut off"){
+        qobject_cast<QTextEdit*>(m_colBWidgets[1])->setReadOnly(false);
+    }
     qobject_cast<QLabel*>(m_colBWidgets[2])->setText(node.uuid);
     qobject_cast<QLabel*>(m_colBWidgets[3])->setText(node.name);
     // *** Type & children *** //
@@ -306,7 +309,13 @@ void SnapInfoWidget::setData(const ChainNode& node){
     int docMargin = imageFiles->document()->documentMargin();
     imageFiles->setFixedHeight(rowHeight * node.imagesFullNames.size()
                                 + 2 * imageFiles->frameWidth() + 4 * docMargin);
-    imageFiles->setText(node.imagesFullNames.join("\n"));
+    // *** Добавление номеров к списку файлов *** //
+    QStringList listData;
+    for (int i = 0; i < node.imagesFullNames.size(); ++i){
+        listData.push_back(QString::number(i+1) + ". "
+                                                     + node.imagesFullNames[i]);
+    }
+    imageFiles->setText(listData.join("\n"));
 }
 
 void SnapInfoWidget::restartSaveTitleTimer(){
