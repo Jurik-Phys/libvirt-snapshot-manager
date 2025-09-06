@@ -41,7 +41,6 @@ class SnapInfoWidget : public QFrame {
 
         bool eventFilter(QObject* obj, QEvent* event) override;
 
-        // *** Виджет не должен сам сохранять данные в VM, но пока так *** //
         VMachine m_vm;
         ChainNode m_node;
         QTimer* m_saveTitleTimer;

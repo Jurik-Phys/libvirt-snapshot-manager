@@ -7,6 +7,18 @@ SnapTreeView::SnapTreeView(QWidget* parent) : QTreeView(parent){
     setContextMenuPolicy(Qt::DefaultContextMenu);
 }
 
+bool SnapTreeView::isSelectItem(){
+    bool res = false;
+
+    QModelIndexList selected = this->selectionModel()->selectedIndexes();
+
+    if (selected.size() > 0){
+        res = true;
+    }
+
+    return res;
+}
+
 void SnapTreeView::contextMenuEvent(QContextMenuEvent* event){
     contextIndex = indexAt(event->pos());
 

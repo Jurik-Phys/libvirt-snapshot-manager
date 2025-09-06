@@ -374,7 +374,8 @@ void SnapInfoWidget::setReadOnly(bool ro){
     title->setReadOnly(ro);
     description->setReadOnly(ro);
 
-    QString roToolTip = "Can edit only when VM is shut off";
+    QString roToolTip = "Can edit only when VM is shut off "
+                                                  "and a snapshot is selected.";
     QString blankToolTip = "";
 
     if (ro){

@@ -937,11 +937,20 @@ void QAppWindow::vmInfoWidgetManage(){
 
 void QAppWindow::snapInfoWidgetManage(){
 
-    if (m_vmList[m_selectedVmIndex].state == "shut off"){
-        m_snapInfoWidget->setReadOnly(false);
+    bool isSelectSnapshot = m_snapTreeView->isSelectItem();
+
+    // *** Если снапшот не выделен, то режим только чтение *** //
+    if (!isSelectSnapshot){
+        m_snapInfoWidget->setReadOnly(true);
     }
     else {
-        m_snapInfoWidget->setReadOnly(true);
+        // *** Если выделен снапшот, то возможны варианты *** //
+        if (m_vmList[m_selectedVmIndex].state == "shut off"){
+            m_snapInfoWidget->setReadOnly(false);
+        }
+        else {
+            m_snapInfoWidget->setReadOnly(true);
+        }
     }
 }
 
