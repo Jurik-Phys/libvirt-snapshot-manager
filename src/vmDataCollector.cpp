@@ -189,29 +189,6 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
     VMachine vm = getVmShortInfo(vmIn.uuid);
     vm.state = vmIn.state;
 
-    // Вывод информации о подключеных к ВМ дисках
-    for (int i = 0; i < vm.mountStorages.size(); ++i){
-        if (i == 0){
-            qDebug() << "[II]    > Mount storages:"
-                   << QString::number(i + 1) + ". " + vm.mountStorages[i];
-        }
-        else {
-            qDebug() << "[II]                     "
-                   << QString::number(i + 1) + ". " + vm.mountStorages[i];
-        }
-    }
-    // Вывод информаци о каталогах со снапшотами
-    for (int i = 0; i < vm.snapshotsDirs.size(); ++i){
-        if (i == 0){
-            qDebug() << "[II]    > Snapshots dirs:"
-                   << QString::number(i + 1) + ". " + vm.snapshotsDirs[i];
-        }
-        else {
-            qDebug() << "[II]                     "
-                   << QString::number(i + 1) + ". " + vm.snapshotsDirs[i];
-        }
-    }
-
     // Загрузка данных о qcow2 файлах, из каталогов сохранения цепочек состояний
     m_vmImagesRawInfo.clear();
     for ( int i = 0; i < vm.snapshotsDirs.size(); ++i ){
@@ -221,16 +198,6 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
     // Определение корневых файлов для каждой цепочки сохранения
     for (int i = 0; i < vm.mountStorages.size(); ++i){
         vm.rootFullName.push_back(getRootFullName(vm.mountStorages[i]));
-
-        // Вывод информаци о корневых файлах каждой из цепочек сохранения
-        if (i == 0){
-            qDebug() << "[II]    > Storage's root:"
-                            << QString::number(i+1) +". " + vm.rootFullName[i];
-        }
-        else {
-            qDebug() << "[II]                     "
-                            << QString::number(i+1) +". " + vm.rootFullName[i];
-        }
     }
 
     // Построение цепочек сохранённых состояний
