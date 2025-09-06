@@ -177,17 +177,16 @@ const QStringList nodeNameList = {
     "Exciting movie", "Tiring walk", "Stressful work", "Noisy city",
     "Quiet park", "Smooth talk", "Hard job", "Fixed plan", "Lost way",
     "Angry crowd", "Sad moment", "Bored group", "Tired traveler",
-    "Hungry gues", "Scared child", "Brave choice", "Rich history",
-    "Strong relationship", "Weak link", "Big change", "Small detail",
-    "Long story", "Fast response", "Slow internet", "Young hero", "Old legend",
-    "Ancient book", "Public service", "Private life", "Main role", "Side kick",
-    "Front line", "Back seat", "Left wing", "Strict father", "Kind mother",
-    "Busy day", "Quiet time", "Healthy body", "Sick mind", "Tasty dinner",
-    "Salty ocean", "Cold look", "Tall wall", "Short trip", "Narrow road",
-    "Deep voice", "Shallow breath", "Exciting plan", "Tiring work",
-    "Relaxing time", "Noisy market", "Rough skin", "Wet hair", "Dry lips",
-    "Found hope", "Dead body", "Alive hope", "Great success", "First love",
-    "Last chance"
+    "Hungry guest", "Brave choice", "Rich history", "Strong relationship",
+    "Weak link", "Big change", "Small detail", "Long story", "Fast response",
+    "Slow internet", "Young hero", "Old legend", "Ancient book",
+    "Public service", "Private life", "Main role", "Side kick", "Front line",
+    "Back seat", "Left wing", "Strict father", "Kind mother", "Busy day",
+    "Quiet time", "Healthy body", "Sick mind", "Tasty dinner", "Salty ocean",
+    "Cold look", "Tall wall", "Short trip", "Narrow road", "Deep voice",
+    "Shallow breath", "Tiring work", "Relaxing time", "Noisy market",
+    "Rough skin", "Wet hair", "Dry lips", "Found hope", "Dead body",
+    "Alive hope", "Great success", "First love", "Last chance"
 };
 
 #endif
