@@ -19,7 +19,10 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     m_vSnapLayout = new QVBoxLayout;
 
     m_vmDataCollector = new VmDataCollector();
-    m_vmList = m_vmDataCollector->getVmList();
+    bool isOkGetVmList = false;
+    do {
+        m_vmList = m_vmDataCollector->getVmList(&isOkGetVmList);
+    } while (!isOkGetVmList);
 
     QThread* getVmListThread = new QThread();
     m_vmDataCollector->moveToThread(getVmListThread);
@@ -28,7 +31,8 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     QObject::connect(m_vmDataCollector, &VmDataCollector::vmListReady,
                                               this, &QAppWindow::onVmListReady);
     QObject::connect(this, &QAppWindow::vmListProcessingStarted,
-                          m_vmDataCollector, &VmDataCollector::vmListStopTimer);
+                    m_vmDataCollector, &VmDataCollector::vmListStopTimer,
+                                                  Qt::BlockingQueuedConnection);
     QObject::connect(this, &QAppWindow::vmListProcessingCompleted,
                          m_vmDataCollector, &VmDataCollector::vmListStartTimer);
     QObject::connect(this, &QAppWindow::startVmBegin,
@@ -37,6 +41,9 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
                           m_vmDataCollector, &VmDataCollector::vmListStopTimer);
     QObject::connect(this, &QAppWindow::startVmEnd,
                          m_vmDataCollector, &VmDataCollector::vmListStartTimer);
+    QObject::connect(this, &QAppWindow::deleteActiveVm,
+                   m_vmDataCollector, &VmDataCollector::vmGeneralInfoStopTimer);
+
     // vmInfoWidget update
     QObject::connect(m_vmDataCollector, &VmDataCollector::newVmInfoReady,
                                            this, &QAppWindow::onNewVmInfoReady);
@@ -971,6 +978,7 @@ void QAppWindow::onVmListReady(const QVector<VMachine> newVmList){
     // *** Cбор данных прекращается до окончания их обработки *** //
     if ( toModVmList.size() > 0 || toAddVmList.size() > 0
                                                     || toDelVmList.size() > 0 ){
+        // Блокирующий вызов Qt::BlockingQueuedConnection
         emit vmListProcessingStarted();
 
         // *** Работа со списком VM *** //
@@ -1153,8 +1161,22 @@ void QAppWindow::viewOnlyMode(){
 
 void QAppWindow::onNewVmInfoReady(const VMachine& vmNew){
 
-    VMachine vmOld = m_vmInfoWidget->getData();
+    // *** Если от vmDataCollector прилетела пустая VM, *** //
+    //     то значит текущая VM удалена через virsh, virt-manager и т.д.
+    if (vmNew.name == "" && vmNew.uuid == ""){
+        // *** Остановка сбора информации т.к., после удаления VM
+        //     из списка, в списке нет активных VM
+        //     (сигнал т.к., таймер в другом потоке)
+        emit deleteActiveVm();
+        m_vmInfoWidget->clearData();
+        m_snapInfoWidget->clearData();
+        QVector<ChainNode> fakeChain;
+        m_snapTreeModel->setSnapData(fakeChain);
+        m_snapTreeView->viewport()->update();
+        return;
+    }
 
+    VMachine vmOld = m_vmInfoWidget->getData();
     // Требование равенства uuid обусловлено возможной несинхроностью
     // при переключении между виртуальными машинами.
     // Наличие uuid не позволит испортить записи соседних машин

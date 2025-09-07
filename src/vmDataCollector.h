@@ -29,7 +29,7 @@ class VmDataCollector : public QObject {
         ~VmDataCollector();
 
         VMachine getVmFullInfo();
-        VMachine getVmShortInfo(const QString& uuid);
+        VMachine getVmShortInfo(const QString& uuid, bool* isOk = nullptr);
         QString getNodeName(const QString& imgFileName, const QString& imgType);
 
         void vmListStartTimer();
@@ -38,7 +38,7 @@ class VmDataCollector : public QObject {
         void vmGeneralInfoStartTimer();
 
         void vmGeneralInfoStopTimer();
-        QVector<VMachine> getVmList();
+        QVector<VMachine> getVmList(bool* isOk);
 
         void getSnapshotXmlInfo(ChainNode&);
 
@@ -69,7 +69,7 @@ class VmDataCollector : public QObject {
         void setSnapChainData(VMachine& vm);
         void setChildrenData(VMachine& vm);
         bool isVMachineImage(const QString& imageFullName);
-        void loadVmImagesRawInfoOverQEMU(const QString& dir);
+        bool loadVmImagesRawInfoOverQEMU(const QString& dir);
         QString getBackFullNameQEMU(const VmImageRawInfo&);
         QString getBackFullNameFast(const QString& fullFileName);
         QString getRootFullName(const QString& fileFullName);

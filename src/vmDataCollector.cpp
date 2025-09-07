@@ -25,7 +25,7 @@ VmDataCollector::~VmDataCollector(){
 }
 
 // Вектор из {name, uuid, state}
-QVector<VMachine> VmDataCollector::getVmList(){
+QVector<VMachine> VmDataCollector::getVmList(bool* isOk){
     QVector<VMachine> vmList;
     QVector<VMachine> uuidVmList;
 
@@ -79,14 +79,32 @@ QVector<VMachine> VmDataCollector::getVmList(){
                     uuidVmList.append(vm);
                 }
 
-                // *** Слияние информации об uuid виртуальных машин *** //
-                for (int i = 0; i < vmList.size(); ++i){
-                    // *** Очерёдность виртуальных машин не гарантирована *** //
-                    for (int j = 0; j < vmList.size(); ++j){
-                        if (vmList[i].name == uuidVmList[j].name){
-                            vmList[i].uuid = uuidVmList[j].uuid;
+                // В общем случае, между двумя запросами информации число VM
+                // может измениться из-за добавления/удаления машин через
+                // внешние инструменты virsh/virt-manager и т.д.
+                //
+                // Предлагается маркировать такой случай для прниятия решения
+                // об учёте или не учёте величины
+                if (isOk != nullptr){
+                    if (vmList.size() != uuidVmList.size()){
+                        *isOk = false;
+                        vmList.clear();
+                    }
+                    else {
+                        *isOk = true;
+                        // *** Слияние информации об uuid VM *** //
+                        for (int i = 0; i < vmList.size(); ++i){
+                            // *** Очерёдность VM не гарантирована *** //
+                            for (int j = 0; j < vmList.size(); ++j){
+                                if (vmList[i].name == uuidVmList[j].name){
+                                    vmList[i].uuid = uuidVmList[j].uuid;
+                                }
+                            }
                         }
                     }
+                }
+                else {
+                    vmList.clear();
                 }
                 loop.quit();
             }
@@ -97,11 +115,23 @@ QVector<VMachine> VmDataCollector::getVmList(){
     return vmList;
 }
 
-VMachine VmDataCollector::getVmShortInfo(const QString& uuid){
+VMachine VmDataCollector::getVmShortInfo(const QString& uuid, bool* isOk){
+    if (isOk != nullptr) {
+        *isOk = true;
+    }
     VMachine vm;
 
-    // Virtual machine information in XML
+    // Virtual machine information from XML
     QDomDocument vmXmlDoc = getVmXml(uuid);
+    // *** Если ответ пустой, значит VM  с запрошенным uuid не существует *** //
+    if (vmXmlDoc.isNull()){
+        if (isOk != nullptr) {
+            *isOk = false;
+        }
+        vm.uuid = "";
+        vm.name = "";
+        return vm;
+    }
 
     QDomElement vmXml = vmXmlDoc.documentElement();
     vm.uuid = uuid;
@@ -147,23 +177,31 @@ VMachine VmDataCollector::getVmShortInfo(const QString& uuid){
                 // Точка монтирования может являться символической ссылкой,
                 // необходимо это проверить и разрешить путь при необходимости
                 QFileInfo file(mountStorage);
+                bool mountStorageErrorFlag = false;
                 if (!file.exists()){
-                    qDebug() << "[II] The virtual machine storage isn't "
-                                                   "available:" << mountStorage;
                     emit errorMsg("File access error …",
                         "The virtual machine storage is not available:\n"
                         + QString(" - Base path: ") + QFileInfo(mountStorage)
                                                             .absolutePath()+"\n"
                         + QString(" - File name: ") + QFileInfo(mountStorage)
                                                                    .fileName());
-                    return vm;
+                    if (isOk != nullptr) {
+                        *isOk = false;
+                    }
+                    mountStorageErrorFlag = true;
                 }
 
                 if (file.isSymLink()){
                     mountStorage = QFileInfo(mountStorage).absolutePath() +"/"+
                                  QFileInfo(file.canonicalFilePath()).fileName();
                 }
-                vm.mountStorages.push_back(mountStorage);
+
+                if (mountStorageErrorFlag == true){
+                    vm.mountStorages.push_back("[x] " + mountStorage);
+                }
+                else {
+                    vm.mountStorages.push_back(mountStorage);
+                }
 
                 // Установка каталога цепочки сохранения состояния
                 QString snapshotsDir = QFileInfo(mountStorage).absolutePath();
@@ -186,13 +224,24 @@ VMachine VmDataCollector::getVmShortInfo(const QString& uuid){
 
 VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
 
-    VMachine vm = getVmShortInfo(vmIn.uuid);
+    bool isOkLoadShortInfo = true;
+    VMachine vm = getVmShortInfo(vmIn.uuid, &isOkLoadShortInfo);
     vm.state = vmIn.state;
+
+    // *** Отмена работы со снапшотами при ошибке загрузки данных *** //
+    if (!isOkLoadShortInfo){
+        return vm;
+    }
 
     // Загрузка данных о qcow2 файлах, из каталогов сохранения цепочек состояний
     m_vmImagesRawInfo.clear();
+    bool isOkLoadRawInfo = false;
     for ( int i = 0; i < vm.snapshotsDirs.size(); ++i ){
-        loadVmImagesRawInfoOverQEMU(vm.snapshotsDirs[i]);
+        isOkLoadRawInfo = loadVmImagesRawInfoOverQEMU(vm.snapshotsDirs[i]);
+        // *** Прекращение работы при первой же ошибке получения данных *** //
+        if (!isOkLoadRawInfo){
+            return vm;
+        }
     }
 
     // Определение корневых файлов для каждой цепочки сохранения
@@ -219,7 +268,10 @@ QDomDocument VmDataCollector::getVmXml(const QString& uuid){
     QObject::connect(&process, &QProcess::finished, [&](){
 
             QString output = process.readAllStandardOutput();
-            vmXmlDoc.setContent(output);
+            if (!vmXmlDoc.setContent(output)) {
+                // *** Ошибка парсинга, возврат пустого документа *** //
+                vmXmlDoc.clear();
+            }
             loop.quit();
         });
 
@@ -370,9 +422,7 @@ bool VmDataCollector::isVMachineImage(const QString& imageFullName){
     QFile file(imageFullName);
 
     if (!file.open(QIODevice::ReadOnly)){
-        qDebug() << "[EE] Error access" << imageFullName;
-        emit errorMsg("File access error …",
-                     "Please check your access to the file:\n" + imageFullName);
+        // *** К одному из файлов в каталоге снапшотов нет доступа *** //
         return false;
     }
 
@@ -385,7 +435,7 @@ bool VmDataCollector::isVMachineImage(const QString& imageFullName){
     return vmImage;
 }
 
-void VmDataCollector::loadVmImagesRawInfoOverQEMU(const QString& snapshotsDir){
+bool VmDataCollector::loadVmImagesRawInfoOverQEMU(const QString& snapshotsDir){
     QVector<VmImageRawInfo> vmImagesRawInfo;
 
     // Получение списка всех файлов из каталога цепочки сохранения состояний
@@ -400,7 +450,7 @@ void VmDataCollector::loadVmImagesRawInfoOverQEMU(const QString& snapshotsDir){
         qDebug() << "[EE] Error open directory:" << snapshotsDir;
         emit errorMsg("Directory access error …",
                  "Please check your access to the directory:\n" + snapshotsDir);
-        return;
+        return false;
     }
 
     // В 'snapshotsDir' символические ссылки отбрасыаются:
@@ -430,15 +480,16 @@ void VmDataCollector::loadVmImagesRawInfoOverQEMU(const QString& snapshotsDir){
             // Проверка на существование backFullName,
             // "-1" исключается из проверки т.к.,
             // соответствует штатному отсутствию backing-file (корневой диск)
-            if (!QFileInfo(vmImageRawInfo.backFullName).isFile() &&
-                                           vmImageRawInfo.backFullName != "-1"){
+            if (!QFileInfo(vmImageRawInfo.backFullName).isReadable()
+                                        && vmImageRawInfo.backFullName != "-1"){
                 qDebug() << "[EE] Error open backing-file:" <<
                                                     vmImageRawInfo.backFullName;
-                QMessageBox::critical(parentWindow, "Ошибка доступа к файлу",
-                      "Проверьте backing файл:\n" +vmImageRawInfo.backFullName);
+                emit errorMsg("File access error…",
+                      "Please check your access to the backing file:\n"
+                                                 + vmImageRawInfo.backFullName);
                 vmImageRawInfo.backFullName = "[Not found] "
                                                   + vmImageRawInfo.backFullName;
-                return;
+                return false;
             }
 
             vmImageRawInfo.inChain = false;
@@ -449,6 +500,8 @@ void VmDataCollector::loadVmImagesRawInfoOverQEMU(const QString& snapshotsDir){
             // qDebug() << "    [b] >" << vmImageRawInfo.backFullName;
         }
     }
+
+    return true;
 }
 
 QString VmDataCollector::getBackFullNameQEMU(const VmImageRawInfo& vmImgRawInf){
@@ -585,7 +638,13 @@ void VmDataCollector::vmListStopTimer(){
 }
 
 void VmDataCollector::vmListSender(){
-    emit vmListReady(getVmList());
+    bool isOkVmList = true;
+    QVector<VMachine> vmList = getVmList(&isOkVmList);
+    // Если в двух запросах uuid & name число VM разное,
+    // то результат отбрасывается т.к., данные не консистентны
+    if (isOkVmList){
+        emit vmListReady(vmList);
+    }
 }
 
 void VmDataCollector::vmGeneralInfoStartTimer(const VMachine& vm){
@@ -602,7 +661,9 @@ void VmDataCollector::vmGeneralInfoStopTimer(){
 }
 
 void VmDataCollector::selectedVmActualInfoSender(){
-    emit newVmInfoReady(getVmShortInfo(m_vm.uuid));
+    bool isOkLoadShortInfo = false;
+    VMachine vm = getVmShortInfo(m_vm.uuid, &isOkLoadShortInfo);
+    emit newVmInfoReady(vm);
 }
 
 void VmDataCollector::getSnapshotXmlInfo(ChainNode& node){

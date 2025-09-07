@@ -46,7 +46,7 @@ class QAppWindow : public QWidget {
         void startVmBegin();
         void startVmEnd();
         void selectVmChanged();
-        // void updateSnapInformationRequested(QModelIndex);
+        void deleteActiveVm();
 
     public slots:
         void showErrorMessage(const QString& title, const QString& message);

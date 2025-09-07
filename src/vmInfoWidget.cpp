@@ -271,7 +271,9 @@ QString VmInfoWidget::humanMemory(const QString& rawRam){
     float humanMemValue;
     QString humanMemUnits;
 
-    QStringList parts = rawRam.split(" ", Qt::SkipEmptyParts);
+    // *** Пустая строка будет причиной проблем с её парсингом *** //
+    if (res.size() < 3){ res = "0 GB";}
+    QStringList parts = res.split(" ", Qt::SkipEmptyParts);
 
     long int     memValue = parts[0].toLong();
     QString memUnits = parts[1];
@@ -477,6 +479,23 @@ void VmInfoWidget::setReadOnly(bool ro){
         title->setToolTip(blankToolTip);
         description->setToolTip(blankToolTip);
     }
+}
+
+void VmInfoWidget::clearData(){
+    m_titleChangedCounter = 0;
+    m_descriptionChangedCounter = 0;
+    m_uuid = QString("");
+    qobject_cast<QTextEdit*>(m_colBWidgets[0])->setText("");
+    qobject_cast<QTextEdit*>(m_colBWidgets[0])->setReadOnly(true);
+    qobject_cast<QTextEdit*>(m_colBWidgets[1])->setText("");
+    qobject_cast<QTextEdit*>(m_colBWidgets[1])->setReadOnly(true);
+    qobject_cast<QLabel*>(m_colBWidgets[2])->setText("—");
+    qobject_cast<QLabel*>(m_colBWidgets[3])->setText("—");
+    qobject_cast<QLabel*>(m_colBWidgets[4])->setText("—");
+    qobject_cast<QLabel*>(m_colBWidgets[5])->setText("—");
+    qobject_cast<QLabel*>(m_colBWidgets[6])->setText("—");
+    qobject_cast<QLabel*>(m_colBWidgets[7])->setText("—");
+    setStorageList(QStringList());
 }
 
 // End vmInfoWidget.cpp
