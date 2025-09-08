@@ -589,11 +589,12 @@ void QAppWindow::doSnapshot(){
     QStringList  snapFullNames;
     SnapManager* snapManager = new SnapManager(this);
     snapFullNames = snapManager->doSnapshot(m_currentVmName, m_mountStorages);
-    m_mountStorages = snapFullNames;
-    snapManager->deleteLater();
+    // *** Снапшотов не получилось, пропуск дальнейших действий *** //
     if (snapFullNames.size() == 0){
         return;
     }
+    m_mountStorages = snapFullNames;
+    snapManager->deleteLater();
 
     // *** Обновление дерева снимков состояний виртуальной машины *** //
     // *** Получение индекса модели данных активного состояния VM *** //
@@ -642,6 +643,12 @@ void QAppWindow::gotoSnapshot(){
 
     SnapManager* snapManager = new SnapManager(this);
     snapFullNames = snapManager->gotoSnapshot(m_currentVmName, node );
+
+    // *** Пропуск перехода к снапшоту, если *work* создать не получилось *** //
+    if (snapFullNames.size() == 0){
+        return;
+    }
+
     m_mountStorages = snapFullNames;
     snapManager->deleteLater();
     m_snapTreeView->clearFocus();

@@ -15,6 +15,7 @@
 #include <QDir>
 #include <QEventLoop>
 #include <QTimer>
+#include <QTemporaryFile>
 #include "vmDataStructs.h"
 
 class SnapManager : public QObject {

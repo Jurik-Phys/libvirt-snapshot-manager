@@ -10,7 +10,7 @@ SnapManager::~SnapManager(){
 
 QStringList SnapManager::doSnapshot(const QString& name,
                                     const QStringList& workDisks, bool silence){
-
+    // *** Подтверждение создания снапшота *** //
     if (!silence) {
         QMessageBox::StandardButton reply = QMessageBox::question(
                     parentWindow, "Take Snapshot - " + name,
@@ -20,6 +20,37 @@ QStringList SnapManager::doSnapshot(const QString& name,
         if (reply == QMessageBox::No) {
             return QStringList();
         }
+    }
+
+    // *** Формирование уникального списка каталогов для снапшотов *** //
+    QStringList snapshotDirs;
+    QSet<QString> uniqueSet;
+    for (int i = 0; i < workDisks.size(); ++i){
+        uniqueSet.insert(QFileInfo(workDisks[i]).absolutePath());
+    }
+    snapshotDirs = uniqueSet.values();
+
+    // *** Проверка прав записи в каталоги хранения дисков *** //
+    bool writeSnapShotDirFlag = true;
+    QString noWriteSnapshotDir;
+    for (int i = 0; i < snapshotDirs.size(); ++i){
+        QString snapshotPath = snapshotDirs[i];
+        QTemporaryFile createTestFile(snapshotPath + "/.writeTestFile-XXXXXX");
+        if (createTestFile.open()) {
+            createTestFile.remove();
+        }
+        else {
+            writeSnapShotDirFlag = false;
+            noWriteSnapshotDir = snapshotPath;
+        }
+    }
+
+    if (!writeSnapShotDirFlag){
+        QMessageBox::critical(parentWindow, "Snapshot operation error…",
+                        "Unable to create file. "
+                            "Please check your write access to the directory:\n"
+                                                          + noWriteSnapshotDir);
+        return QStringList();
     }
 
     // id - число секунд с 1970-ого года
@@ -34,7 +65,6 @@ QStringList SnapManager::doSnapshot(const QString& name,
     // // Создание и запуск внешней команды
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     env.insert("LANG", "C");
-
 
     // Индексы у workDisks и snapshotsFullNames согласованы
     for (int n = 0; n < snapshotsFullNames.size(); ++n){
@@ -216,7 +246,7 @@ void SnapManager::switchVmMountStorages(const QString& vmName,
     QFile file(fileName);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text
                                                        | QIODevice::Truncate)){
-        qWarning() << "[EE] Failed to write back XML file.";
+        qDebug() << "[EE] Failed to write back XML file.";
         return;
     }
 
