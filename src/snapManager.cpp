@@ -22,34 +22,14 @@ QStringList SnapManager::doSnapshot(const QString& name,
         }
     }
 
-    // *** Формирование уникального списка каталогов для снапшотов *** //
-    QStringList snapshotDirs;
-    QSet<QString> uniqueSet;
-    for (int i = 0; i < workDisks.size(); ++i){
-        uniqueSet.insert(QFileInfo(workDisks[i]).absolutePath());
-    }
-    snapshotDirs = uniqueSet.values();
-
     // *** Проверка прав записи в каталоги хранения дисков *** //
-    bool writeSnapShotDirFlag = true;
-    QString noWriteSnapshotDir;
-    for (int i = 0; i < snapshotDirs.size(); ++i){
-        QString snapshotPath = snapshotDirs[i];
-        QTemporaryFile createTestFile(snapshotPath + "/.writeTestFile-XXXXXX");
-        if (createTestFile.open()) {
-            createTestFile.remove();
-        }
-        else {
-            writeSnapShotDirFlag = false;
-            noWriteSnapshotDir = snapshotPath;
-        }
-    }
+    QStringList noWriteDirs;
+    bool isWrite = checkWriteAccessToDirs(workDisks, &noWriteDirs);
 
-    if (!writeSnapShotDirFlag){
+    if (!isWrite){
         QMessageBox::critical(parentWindow, "Snapshot operation error…",
-                        "Unable to create file. "
-                            "Please check your write access to the directory:\n"
-                                                          + noWriteSnapshotDir);
+            "Unable to create file. "
+                "Please check your write access:\n" + noWriteDirs.join("\n"));
         return QStringList();
     }
 
@@ -119,14 +99,14 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
     if ( node.parentId == -1 ){
         qDebug() << node.childrenImagesFullNames.size();
         if (node.childrenImagesFullNames.size() > 1 ) {
-            QMessageBox::information(parentWindow,"Root chain node deletion...",
+            QMessageBox::information(parentWindow,"Root chain node deletion…",
                 "Info: The root snapshot can only be removed with one child.");
                 return false;
         }
         else {
             // *** Delete confirmation in this specific case (one child)  *** //
             QMessageBox::StandardButton reply = QMessageBox::question(
-                                parentWindow, "Delete confirmation...",
+                                parentWindow, "Delete confirmation…",
                                 "Do you really want to delete the snapshot?\n\n"
                        "Deleting root snapshot may take a long time \n"
                         "and temporarily require additional disk space.",
@@ -146,10 +126,20 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
     }
 
     QMessageBox::StandardButton reply = QMessageBox::question(
-                                parentWindow, "Delete confirmation...",
+                                parentWindow, "Delete confirmation…",
                                    "Do you really want to delete the snapshot?",
                                             QMessageBox::Yes | QMessageBox::No);
     if (reply == QMessageBox::No) {
+        return false;
+    }
+
+    // *** Проверка записи в каталоги, а значит и удаления из них *** //
+    QStringList noWriteDirs;
+    bool isWrite = checkWriteAccessToDirs(node.imagesFullNames, &noWriteDirs);
+    if (!isWrite){
+        QMessageBox::critical(parentWindow, "Snapshot operation error…",
+            "Unable to delete file. "
+                "Please check your write access:\n" + noWriteDirs.join("\n"));
         return false;
     }
 
@@ -287,7 +277,7 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
                 if (!file.isWritable()) {
                     qDebug() << "[EE] Error: The file must be writable"
                                                         << childrenImages[i][j];
-                    QMessageBox::critical(parentWindow, "Permission error...",
+                    QMessageBox::critical(parentWindow, "Permission error…",
                        "Error: The file must be writable:\n" + file.fileName());
                     return false;
                 }
@@ -296,7 +286,7 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
 
     // Настройка диалога перебазирования файлов
     m_progress = new QProgressDialog("", "", -1, 100*totalFiles, parentWindow);
-    m_progress->setWindowTitle("Rebasing snapshot chain...");
+    m_progress->setWindowTitle("Rebasing snapshot chain…");
     m_progress->setCancelButton(nullptr);
     m_progress->setMinimumWidth(445);
     m_progress->setWindowModality(Qt::WindowModal);
@@ -321,7 +311,7 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
             // *** Вывод информации во всплывающее окно *** //
             partInfo = QString("Updating snapshot structure\n DANGER: "
             "Manually canceling this process may corrupt or cause data loss!\n"
-                                    "Please wait...\n"
+                                    "Please wait…\n"
                             "Processing file %1 of %2 (%4%) \n '%3'")
                                .arg(doneFiles+1, 3)
                                .arg(totalFiles,  3)
@@ -386,7 +376,7 @@ void SnapManager::doNewRoot(const QStringList& idImgs,
                                                 const QStringList& childImgs){
     m_progress = new QProgressDialog("", "", -1, childImgs.size()*100,
                                                                   parentWindow);
-    m_progress->setWindowTitle("Data transfer...");
+    m_progress->setWindowTitle("Data transfer…");
     m_progress->setCancelButton(nullptr);
     m_progress->setMinimumWidth(445);
     m_progress->setWindowModality(Qt::WindowModal);
@@ -397,7 +387,7 @@ void SnapManager::doNewRoot(const QStringList& idImgs,
         // *** Вывод информации во всплывающее окно *** //
         partInfo = QString("Moving required data to the new snapshot tree root\n"
             "DANGER: Manually canceling this process may corrupt or cause data "
-            "loss!\n Please wait...\n"
+            "loss!\n Please wait…\n"
                             "Processing file %1 of %2 (%4%) \n '%3'")
                                .arg(i+1, 3)
                                .arg(idImgs.size(),  3)
@@ -453,5 +443,33 @@ void SnapManager::doNewRoot(const QStringList& idImgs,
         // Rename temp to root
         QFile::rename(childImgs[k] + ".temp-copy.qcow2", childImgs[k]);
     }
+}
+
+bool SnapManager::checkWriteAccessToDirs(const QStringList& dirsForWriteCheck,
+                                                      QStringList* noWriteDirs){
+    bool writeFlag = true;
+
+    // *** Формирование уникального списка каталогов для проверки записи *** //
+    QStringList checkDirs;
+    QSet<QString> uniqueSet;
+    for (int i = 0; i < dirsForWriteCheck.size(); ++i){
+        uniqueSet.insert(QFileInfo(dirsForWriteCheck[i]).absolutePath());
+    }
+    checkDirs = uniqueSet.values();
+
+    // *** Проверка на запись/удаление путём создания временного файла *** //
+    for (int i = 1; i < checkDirs.size(); ++i){
+        QString writeTestPath = checkDirs[i];
+        QTemporaryFile createTestFile(writeTestPath + "/.writeTestFile-XXXXXX");
+        if (createTestFile.open()){
+            createTestFile.remove();
+        }
+        else {
+            writeFlag = false;
+            noWriteDirs->push_back(checkDirs[i]);
+        }
+    }
+
+    return writeFlag;
 }
 // End snapManager.cpp

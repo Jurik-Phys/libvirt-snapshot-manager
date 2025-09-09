@@ -448,7 +448,7 @@ bool VmDataCollector::loadVmImagesRawInfoOverQEMU(const QString& snapshotsDir){
     // Проверка на доступность (файлы всегда должны быть по логике программы)
     if (basePathFiles.size() == 0){
         qDebug() << "[EE] Error open directory:" << snapshotsDir;
-        emit errorMsg("Directory access error …",
+        emit errorMsg("Directory access error…",
                  "Please check your access to the directory:\n" + snapshotsDir);
         return false;
     }
@@ -813,10 +813,6 @@ void VmDataCollector::writeSnapDescription(const QStringList& uuid,
 
 void VmDataCollector::rmSnapshotXmlElement(const QString& vmUuid,
                                                       const QString& snapUuid ){
-    qDebug() << "[II] rmSnapshotXmlElement";
-    qDebug() << "vmUuid  " << vmUuid;
-    qDebug() << "snapUuid" << snapUuid;
-
     QDomDocument vmXmlDoc = getVmXml(vmUuid);
 
     QDomElement  vmXml = vmXmlDoc.documentElement();

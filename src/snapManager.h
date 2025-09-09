@@ -43,6 +43,9 @@ class SnapManager : public QObject {
                                 const QStringList& idImages,
                                     const QVector<QStringList>& childrenImages);
         void doNewRoot(const QStringList& idImgs, const QStringList& childImgs);
+
+        bool checkWriteAccessToDirs(const QStringList& dirsForWriteCheck,
+                                                      QStringList* noWriteDirs);
 };
 
 #endif
