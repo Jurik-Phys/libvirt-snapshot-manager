@@ -45,7 +45,7 @@ class SnapManager : public QObject {
         void doNewRoot(const QStringList& idImgs, const QStringList& childImgs);
 
         bool checkWriteAccessToDirs(const QStringList& dirsForWriteCheck,
-                                                      QStringList* noWriteDirs);
+                                            QStringList* noWriteDirs = nullptr);
 };
 
 #endif

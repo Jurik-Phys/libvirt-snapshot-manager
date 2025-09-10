@@ -235,14 +235,40 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
 
     // Загрузка данных о qcow2 файлах, из каталогов сохранения цепочек состояний
     m_vmImagesRawInfo.clear();
-    bool isOkLoadRawInfo = false;
+    QVector<VmImageRawInfo> vmImagesRawInfo;
+    bool isOkLoadRawInfo = true;
     for ( int i = 0; i < vm.snapshotsDirs.size(); ++i ){
-        isOkLoadRawInfo = loadVmImagesRawInfoOverQEMU(vm.snapshotsDirs[i]);
+        QString dir = vm.snapshotsDirs[i];
+        vmImagesRawInfo += loadVmImagesRawInfoOverQEMU(dir, &isOkLoadRawInfo);
         // *** Прекращение работы при первой же ошибке получения данных *** //
         if (!isOkLoadRawInfo){
             return vm;
         }
     }
+
+    // ****************************** Теория ******************************  //
+    // > Тезис. В цепочке снапшотов необходимо не учитывать ранее созданные  //
+    //   цепочки из backing-файлов используемых хранилищ.                    //
+    //                                                                       //
+    // > Объяснение. Ранее созданные backing-файлы для разных хранилищ       //
+    //   не обязаны быть синхронизированы между собой т.е., у одного диска   //
+    //   цепочка сохранений может быть  из одного backing-файла, а у другого //
+    //   диска из трёх файлов, созданных внешними средствами или вручную.    //
+    //                                                                       //
+    // > Реализация. Отсечь выше стоящую ветку сохранений по отсутствию id.  //
+    //   Добавлять в цепочку сохранений только файлы у которых:              //
+    //   - у самих есть id;                                                  //
+    //   - у самих нет id, но они примонтированы                             //
+    //   - у самих нет id, но являются родителем/backing-файлом              //
+    //                   для кого-то с id; (крайний без id, корень цепочки)  //
+    //                                                                       //
+    // > Этап реализации. После сбора сырых данных в vmImagesRawInfo, этот   //
+    //   вектор можно редуцировать с учётом выполнения описанных требований. //
+    //   В итоге libvirt-snap-manager будет оперировать крайними точками     //
+    //   внешних цепочек сохранения.                                         //
+    // ********************************************************************  //
+
+    m_vmImagesRawInfo = rmExtBackingInfo(vmImagesRawInfo, vm.mountStorages);
 
     // Определение корневых файлов для каждой цепочки сохранения
     for (int i = 0; i < vm.mountStorages.size(); ++i){
@@ -435,7 +461,8 @@ bool VmDataCollector::isVMachineImage(const QString& imageFullName){
     return vmImage;
 }
 
-bool VmDataCollector::loadVmImagesRawInfoOverQEMU(const QString& snapshotsDir){
+QVector<VmImageRawInfo> VmDataCollector::loadVmImagesRawInfoOverQEMU(
+                            const QString& snapshotsDir, bool* isOkLoadRawInfo){
     QVector<VmImageRawInfo> vmImagesRawInfo;
 
     // Получение списка всех файлов из каталога цепочки сохранения состояний
@@ -450,7 +477,8 @@ bool VmDataCollector::loadVmImagesRawInfoOverQEMU(const QString& snapshotsDir){
         qDebug() << "[EE] Error open directory:" << snapshotsDir;
         emit errorMsg("Directory access error…",
                  "Please check your access to the directory:\n" + snapshotsDir);
-        return false;
+        *isOkLoadRawInfo = false;
+        return vmImagesRawInfo;
     }
 
     // В 'snapshotsDir' символические ссылки отбрасыаются:
@@ -489,11 +517,12 @@ bool VmDataCollector::loadVmImagesRawInfoOverQEMU(const QString& snapshotsDir){
                                                  + vmImageRawInfo.backFullName);
                 vmImageRawInfo.backFullName = "[Not found] "
                                                   + vmImageRawInfo.backFullName;
-                return false;
+                *isOkLoadRawInfo = false;
+                return vmImagesRawInfo;
             }
 
             vmImageRawInfo.inChain = false;
-            m_vmImagesRawInfo.push_back(vmImageRawInfo);
+            vmImagesRawInfo.push_back(vmImageRawInfo);
 
             // qDebug() << "        > File Index ="  << vmDiskCount;
             // qDebug() << "    [i] >" << vmImageRawInfo.imageFullName;
@@ -501,7 +530,56 @@ bool VmDataCollector::loadVmImagesRawInfoOverQEMU(const QString& snapshotsDir){
         }
     }
 
-    return true;
+    return vmImagesRawInfo;
+}
+
+QVector<VmImageRawInfo>
+       VmDataCollector::rmExtBackingInfo(
+                                const QVector<VmImageRawInfo>& imgsRawInfo,
+                                            const QStringList& mountStorages) {
+    // > Реализация. Отсечь выше стоящую ветку сохранений по отсутствию id.  //
+    //   Добавлять в цепочку сохранений только файлы у которых:              //
+    //   - у самих есть id;                                                  //
+    //   - у самих нет id, но они примонтированы                             //
+    //   - у самих нет id, но являются родителем/backing-файлом              //
+    //                   для кого-то с id; (крайний без id, корень цепочки)  //
+
+    QVector<VmImageRawInfo> res;
+
+    for (int i = 0; i < imgsRawInfo.size(); ++i){
+        QString imageFullName = imgsRawInfo[i].imageFullName;
+        // есть id
+        if (getFileNameId(imageFullName) > 0){
+            res.push_back(imgsRawInfo[i]);
+        }
+        // нет id
+        else {
+            bool mountFlag = false;
+            for (int j = 0; j < mountStorages.size(); ++j){
+                // нет id, но примонтированы к VM
+                if (imageFullName == mountStorages[j]){
+                    res.push_back(imgsRawInfo[i]);
+                    mountFlag = true;
+                }
+            }
+
+            if (!mountFlag){
+                for (int k = 0; k < imgsRawInfo.size(); ++k){
+                    QString childBackingFile = imgsRawInfo[k].backFullName;
+                    QString childImageFullName = imgsRawInfo[k].imageFullName;
+                    // нет id, но являются родителем для кого-то с id;
+                    if (imageFullName == childBackingFile
+                                     && getFileNameId(childImageFullName) > 0 ){
+                        res.push_back(imgsRawInfo[i]);
+                        // Скрываем от libvirt-snapshot-manager информацию
+                        // о том, что есть ещё внешние backing файлы
+                        res.last().backFullName = "-1";
+                    }
+                }
+            }
+        }
+    }
+    return res;
 }
 
 QString VmDataCollector::getBackFullNameQEMU(const VmImageRawInfo& vmImgRawInf){
@@ -615,6 +693,19 @@ QString VmDataCollector::getNodeUuid(const QString& fName){
                                     "{12329e42e-d24e-4ad0-84dd-9e03b8b33e7}"),
                                                                         fName);
     return uuid.toString(QUuid::WithoutBraces);
+}
+
+int VmDataCollector::getFileNameId(const QString& imgFileName){
+    int id = -1;
+
+    static const QRegularExpression re(R"(-id-(\d{10}))");
+    QRegularExpressionMatch match = re.match(imgFileName);
+
+    if (match.hasMatch()){
+        id = match.captured(1).toInt();
+    }
+
+    return id;
 }
 
 void VmDataCollector::process(){

@@ -69,12 +69,16 @@ class VmDataCollector : public QObject {
         void setSnapChainData(VMachine& vm);
         void setChildrenData(VMachine& vm);
         bool isVMachineImage(const QString& imageFullName);
-        bool loadVmImagesRawInfoOverQEMU(const QString& dir);
+        QVector<VmImageRawInfo> loadVmImagesRawInfoOverQEMU(const QString& dir,
+                                                         bool* isOkLoadRawInfo);
+        QVector<VmImageRawInfo> rmExtBackingInfo(const QVector<VmImageRawInfo>&,
+                                              const QStringList& mountStorages);
         QString getBackFullNameQEMU(const VmImageRawInfo&);
         QString getBackFullNameFast(const QString& fullFileName);
         QString getRootFullName(const QString& fileFullName);
         QVector<VmImageRawInfo> m_vmImagesRawInfo;
         QString getNodeUuid(const QString& imgFileName);
+        int getFileNameId(const QString& imgFileName);
 
         QWidget* parentWindow;
         QTimer*  m_getListTimer;
