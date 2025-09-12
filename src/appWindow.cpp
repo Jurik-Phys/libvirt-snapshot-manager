@@ -106,24 +106,33 @@ void QAppWindow::setVmBtnFrame(){
 
     QHBoxLayout* vmBtnFrameHLayout = new QHBoxLayout(vmBtnFrame);
 
+    QIcon startBtnIcon(":/btn-vm-start.png");
     m_startBtn = new QToolButton(vmBtnFrame);
     m_startBtn->setText("Start");
     m_startBtn->setFixedHeight(m_btnHeight);
     m_startBtn->setFixedWidth(m_btnWidth);
     m_startBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    m_startBtn->setAutoRaise(true);
+    m_startBtn->setIcon(startBtnIcon);
+    m_startBtn->setIconSize(QSize(48,48));
     QObject::connect(m_startBtn, &QToolButton::clicked,
                                                     this, &QAppWindow::startVM);
     m_startBtn->setEnabled(false);
 
+    QIcon pauseBtnIcon(":/btn-vm-pause.png");
     m_pauseBtn = new QToolButton(vmBtnFrame);
     m_pauseBtn->setText("Pause");
     m_pauseBtn->setFixedHeight(m_btnHeight);
     m_pauseBtn->setFixedWidth(m_btnWidth);
     m_pauseBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     m_pauseBtn->setEnabled(false);
+    m_pauseBtn->setAutoRaise(true);
+    m_pauseBtn->setIcon(pauseBtnIcon);
+    m_pauseBtn->setIconSize(QSize(48,48));
     QObject::connect(m_pauseBtn, &QToolButton::clicked,
                                               this, &QAppWindow::togglePauseVM);
 
+    QIcon stopBtnIcon(":/btn-vm-stop.png");
     m_stopBtn = new QToolButton(vmBtnFrame);
     m_stopBtn->setText("Stop");
     m_stopBtn->setFixedHeight(m_btnHeight);
@@ -131,6 +140,9 @@ void QAppWindow::setVmBtnFrame(){
     m_stopBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     m_stopBtn->setPopupMode(QToolButton::InstantPopup);
     m_stopBtn->setEnabled(false);
+    m_stopBtn->setAutoRaise(true);
+    m_stopBtn->setIcon(stopBtnIcon);
+    m_stopBtn->setIconSize(QSize(48,48));
 
     // *** Два варианта меню для кнопки stop *** //
     m_fullStopBtnMenu = new QMenu(m_stopBtn);
@@ -163,11 +175,15 @@ void QAppWindow::setVmBtnFrame(){
     QColor borderColor = vmBtnFrame->palette().color(QPalette::Mid);
     vLine->setStyleSheet(QString("color: %1;").arg(borderColor.name()));
 
+    QIcon openBtnIcon(":/btn-vm-open.png");
     m_openBtn = new QToolButton(vmBtnFrame);
     m_openBtn->setText("Open");
     m_openBtn->setFixedHeight(m_btnHeight);
     m_openBtn->setFixedWidth(m_btnWidth);
     m_openBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    m_openBtn->setAutoRaise(true);
+    m_openBtn->setIcon(openBtnIcon);
+    m_openBtn->setIconSize(QSize(48,48));
     QObject::connect(m_openBtn, &QToolButton::clicked, this,
                                                            &QAppWindow::openVM);
 
@@ -237,21 +253,29 @@ void QAppWindow::setSnapBtnFrame(){
 
     QHBoxLayout* snapBtnFrameHLayout = new QHBoxLayout(snapBtnFrame);
 
+    QIcon gotoBtnIcon(":/btn-goto-snapshot.png");
     m_gotoBtn = new QToolButton(snapBtnFrame);
     m_gotoBtn->setText("Go to");
     m_gotoBtn->setFixedHeight(m_btnHeight);
     m_gotoBtn->setFixedWidth(m_btnWidth);
     m_gotoBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     m_gotoBtn->setEnabled(false);
+    m_gotoBtn->setAutoRaise(true);
+    m_gotoBtn->setIcon(gotoBtnIcon);
+    m_gotoBtn->setIconSize(QSize(48,48));
     QObject::connect(m_gotoBtn, &QToolButton::clicked, this,
                                                      &QAppWindow::gotoSnapshot);
 
+    QIcon deleteBtnIcon(":/btn-delete-snapshot.png");
     m_deleteBtn = new QToolButton(snapBtnFrame);
     m_deleteBtn->setText("Delete");
     m_deleteBtn->setFixedHeight(m_btnHeight);
     m_deleteBtn->setFixedWidth(m_btnWidth);
     m_deleteBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     m_deleteBtn->setEnabled(false);
+    m_deleteBtn->setAutoRaise(true);
+    m_deleteBtn->setIcon(deleteBtnIcon);
+    m_deleteBtn->setIconSize(QSize(48,48));
     QObject::connect(m_deleteBtn, &QToolButton::clicked, this,
                                                    &QAppWindow::deleteSnapshot);
     QFrame* vLine = new QFrame(snapBtnFrame);
@@ -262,20 +286,28 @@ void QAppWindow::setSnapBtnFrame(){
     QColor borderColor = snapBtnFrame->palette().color(QPalette::Mid);
     vLine->setStyleSheet(QString("color: %1;").arg(borderColor.name()));
 
+    QIcon takeSnapBtnIcon(":/btn-take-snapshot.png");
     m_takeSnapBtn = new QToolButton(snapBtnFrame);
     m_takeSnapBtn->setText("Take");
     m_takeSnapBtn->setFixedHeight(m_btnHeight);
     m_takeSnapBtn->setFixedWidth(m_btnWidth);
     m_takeSnapBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     m_takeSnapBtn->setEnabled(false);
+    m_takeSnapBtn->setAutoRaise(true);
+    m_takeSnapBtn->setIcon(takeSnapBtnIcon);
+    m_takeSnapBtn->setIconSize(QSize(48,48));
     QObject::connect(m_takeSnapBtn, &QToolButton::clicked, this,
                                                        &QAppWindow::doSnapshot);
 
+    QIcon exitBtnIcon(":/btn-app-exit.png");
     QToolButton* exitBtn = new QToolButton(snapBtnFrame);
     exitBtn->setText("Exit");
     exitBtn->setFixedHeight(m_btnHeight);
     exitBtn->setFixedWidth(m_btnWidth);
     exitBtn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    exitBtn->setAutoRaise(true);
+    exitBtn->setIcon(exitBtnIcon);
+    exitBtn->setIconSize(QSize(48,48));
     QObject::connect(exitBtn, &QToolButton::clicked, this,&QAppWindow::appExit);
 
     snapBtnFrameHLayout->addWidget(m_gotoBtn);
@@ -921,9 +953,13 @@ void QAppWindow::btnManagePause(){
 
 void QAppWindow::btnManageStop(){
     if (m_vmList[m_selectedVmIndex].state == "shut off"){
+        // *** Скрыть menu-indicator *** //
+        m_stopBtn->setStyleSheet("QToolButton::menu-indicator { image:none;}");
         m_stopBtn->setEnabled(false);
     }
     else {
+        // *** Сброс скрытия menu-indicator *** //
+        m_stopBtn->setStyleSheet("");
         m_stopBtn->setEnabled(true);
     }
 }
@@ -1134,6 +1170,7 @@ void QAppWindow::menuForceShutdownVM(){
     QObject::connect(&process, &QProcess::finished,
                 [&](int, QProcess::ExitStatus){
                     btnManageGoDel();
+                    btnManageStop();
                     loop.quit();
                 });
     process.start("virsh", {"destroy", m_currentVmName});
@@ -1154,6 +1191,9 @@ void QAppWindow::menuStopBtnSelect(){
             m_stopBtn->setText(text);
         }
     }
+    QIcon stopBtnIcon(":/btn-vm-stop.png");
+    m_stopBtn->setIcon(stopBtnIcon);
+    m_stopBtn->setIconSize(QSize(48,48));
 }
 
 void QAppWindow::viewOnlyMode(){

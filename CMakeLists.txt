@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(manager-for-external-snapshots-for-libvirt)
+project(libvirt-snapshot-manager)
 
 set(CMAKE_CXX_STANDART 17)
 set(CMAKE_CXX_STANDART_REQUIRED ON)
@@ -12,10 +12,12 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Xml)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
+qt_add_resources(RESOURCES ${CMAKE_SOURCE_DIR}/res/resources.qrc)
+
 set(SOURCE_EXE main.cpp)
 
 add_subdirectory(src)
 
-add_executable(libvirt-snapshot-manager ${SOURCE_EXE})
+add_executable(libvirt-snapshot-manager ${SOURCE_EXE} ${RESOURCES})
 
 target_link_libraries(libvirt-snapshot-manager PRIVATE src-lib Qt6::Widgets Qt6::Xml)
