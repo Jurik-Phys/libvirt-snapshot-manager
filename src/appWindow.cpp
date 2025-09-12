@@ -860,9 +860,9 @@ void QAppWindow::resizeEvent(QResizeEvent* event) {
 
 void QAppWindow::btnManageTake(){
     if (m_mountStorages.size() > 0
-                            && m_vmList[m_selectedVmIndex].state == "shut off"){
+                            && m_vmList[m_selectedVmIndex].state == "shut off"
+                                            && m_snapTreeModel->rowCount() > 0){
         m_takeSnapBtn->setEnabled(true);
-
     }
     else {
         m_takeSnapBtn->setEnabled(false);

@@ -40,7 +40,6 @@ struct VmImageRawInfo {
     QString imageBasePath;     // Каталог хранения образа жёсткого диска
     QString imageFullName;     // Полное имя образа жёсткого диска
     QString backFullName;      // Полное имя backing (родительского) файла
-       bool inChain;           // Флаг отнесения к цепочке сохранения состояний
 };
 
 const QStringList nodeNameList = {

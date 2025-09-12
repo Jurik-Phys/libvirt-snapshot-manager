@@ -79,7 +79,13 @@ class VmDataCollector : public QObject {
         QVector<VmImageRawInfo> m_vmImagesRawInfo;
         QString getNodeUuid(const QString& imgFileName);
         int getFileNameId(const QString& imgFileName);
-
+        bool checkExtBackChainFiles(const QVector<VmImageRawInfo>& imgsRawInfo,
+                                                    const QString& backingFile);
+        bool checkBackingFile(const QVector<VmImageRawInfo>& imgsRawInfo,
+                                                    const QString& backingFile);
+        bool checkNodeFilesCount(const QVector<VmImageRawInfo>& imgsRawInfo,
+                                const QSet<int>& idSet,
+                                const QStringList& mountStorages);
         QWidget* parentWindow;
         QTimer*  m_getListTimer;
         QTimer*  m_getActualVmGeneralInfoTimer;
