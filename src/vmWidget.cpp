@@ -5,9 +5,9 @@
 bool VmWidget::m_isLoading = false;
 
 VmWidget::VmWidget(const VMachine& inVm, QWidget* parent){
-    m_vmIcon   = new QFrame(this);
+    m_vmIcon   = new QLabel(this);
 
-    m_vmIcon->setStyleSheet("background-color: red;");
+    m_vmIcon->setScaledContents(true);
     m_vmIcon->setFixedSize(QSize(m_vmIconSize, m_vmIconSize));
 
     m_vmVTextLayout = new QVBoxLayout();
@@ -17,15 +17,17 @@ VmWidget::VmWidget(const VMachine& inVm, QWidget* parent){
     m_vmName  = new QLabel(this);
     setName(inVm.name);
 
-    // m_vmName->setAlignment(Qt::AlignBottom);
+    m_vmVTextLayout->addStretch();
     m_vmVTextLayout->addWidget(m_vmName);
+    m_vmVTextLayout->addSpacing(4);
 
     // Virtual machine status
     m_vmState = new QLabel(this);
-    // m_vmState->setStyleSheet("background-color: orange;");
     setState(inVm.state);
+    setStateIcon(inVm.state);
 
     m_vmVTextLayout->addWidget(m_vmState);
+    m_vmVTextLayout->addStretch();
 
     m_vmHFrameLayout = new QHBoxLayout(this);
     m_vmHFrameLayout->addWidget(m_vmIcon);
@@ -88,6 +90,7 @@ void VmWidget::setLoadingFlag(bool isLoad){
 void VmWidget::setProperties(const VMachine& inVm){
     setName(inVm.name);
     setState(inVm.state);
+    setStateIcon(inVm.state);
 }
 
 void VmWidget::setName(const QString& vmName){
@@ -103,6 +106,21 @@ void VmWidget::setState(const QString& inVmState){
     }
     else {
         m_vmState->setText(vmState);
+    }
+}
+
+void VmWidget::setStateIcon(const QString& inVmState){
+
+    if (inVmState == "shut off"){
+        m_vmIcon->setPixmap(QPixmap(":/vm-status-stop.png"));
+    }
+
+    if (inVmState == "running"){
+        m_vmIcon->setPixmap(QPixmap(":/vm-status-play.png"));
+    }
+
+    if (inVmState == "paused"){
+        m_vmIcon->setPixmap(QPixmap(":/vm-status-pause.png"));
     }
 }
 

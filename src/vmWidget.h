@@ -30,7 +30,7 @@ class VmWidget : public QFrame {
         void mousePressEvent(QMouseEvent*) override;
 
     private:
-        QFrame* m_vmIcon;
+        QLabel* m_vmIcon;
         QLabel* m_vmName;
         QLabel* m_vmState;
         QHBoxLayout* m_vmHFrameLayout;
@@ -47,6 +47,7 @@ class VmWidget : public QFrame {
 
         void setName(const QString&  vmName);
         void setState(const QString& vmState);
+        void setStateIcon(const QString& vmState);
 };
 
 #endif
