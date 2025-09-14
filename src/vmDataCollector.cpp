@@ -330,7 +330,6 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
                 // т.е., выполняет роль хранителя состояния, снимка,
                 // его тип "snap". По умолчанию тип состояния "work"
                 QString imageFullName = vm.rootFullName[mntIdx];
-                QString imageFileName = QFileInfo(imageFullName).fileName();
                 // Есть ли у корневого диска потомки?
                 for (int i = 0; i < m_vmImagesRawInfo.size(); ++i){
                     if (imageFullName == m_vmImagesRawInfo[i].backFullName){
@@ -341,9 +340,8 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
                 node.imagesFullNames.push_back(imageFullName);
                 node.backFullNames.push_back("None");
 
-                // Имя узла задано на основе хеша + списка словосочетаний
-                node.name = getNodeName(imageFileName, node.imagesType);
-                node.uuid = getNodeUuid(imageFileName);
+                node.name = getNodeName(imageFullName);
+                node.uuid = getNodeUuid(imageFullName);
             }
             // Формирование всех остальных узлов в цепочке сохранений
             else {
@@ -363,7 +361,6 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
                 for (int i = 0; i < m_vmImagesRawInfo.size(); ++i){
                     QString& backFullName = m_vmImagesRawInfo[i].backFullName;
                     QString& imageFullName = m_vmImagesRawInfo[i].imageFullName;
-                    QString imageFileName = QFileInfo(imageFullName).fileName();
 
                     if (parentImage == backFullName ){
                         // Фиксируем некоторые параметры узла цепочки снапшотов
@@ -380,9 +377,8 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
                             }
                         }
 
-                        // Имя узла по его хешу и списку словосочетаний
-                        node.name = getNodeName(imageFileName, node.imagesType);
-                        node.uuid = getNodeUuid(imageFileName);
+                        node.name = getNodeName(imageFullName);
+                        node.uuid = getNodeUuid(imageFullName);
 
                         // Если точка без потомков (work) и совпадает с точкой
                         // монтирования к ВМ, то это активная рабочая точка
@@ -696,11 +692,12 @@ QString VmDataCollector::getRootFullName(const QString& imageFullName){
     return rootFullName;
 }
 
- QString VmDataCollector::getNodeName(const QString& name, const QString& type){
+ QString VmDataCollector::getNodeName(const QString& imageFullName){
 
     // Получаем SHA256 хеш от строки (минимизация коллизий в именах)
     QByteArray hash;
-    hash = QCryptographicHash::hash(name.toUtf8(), QCryptographicHash::Sha256);
+    hash = QCryptographicHash::hash(imageFullName.toUtf8(),
+                                                    QCryptographicHash::Sha256);
 
     // Берём первые 4 байта (можно больше, но 4 достаточно для uint)
     quint32 hashValue;

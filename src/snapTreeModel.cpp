@@ -305,6 +305,7 @@ bool SnapTreeModel::insertRows(int row, int count, const QModelIndex& index){
     }
 
     beginInsertRows(index, row, row + count - 1);
+        VmDataCollector vmDataCollect;
         // *** Изменение параметров активного узла в данный момент *** //
         m_nodes[activeIndex].imagesType = "snap";
         m_nodes[activeIndex].childrenImagesFullNames
@@ -316,8 +317,7 @@ bool SnapTreeModel::insertRows(int row, int count, const QModelIndex& index){
         // parentId
         newNode.parentId = m_nodes[activeIndex].id;
         // uuid
-        QString fileName = QFileInfo(m_snapImagesFullNames.last()).fileName();
-        newNode.uuid = getNodeUuid(fileName);
+        newNode.uuid = vmDataCollect.getNodeUuid(m_snapImagesFullNames.last());
         // imagesType
         newNode.imagesType = "active";
         // imagesFullNames
@@ -328,9 +328,7 @@ bool SnapTreeModel::insertRows(int row, int count, const QModelIndex& index){
                             .push_back(m_nodes[activeIndex].imagesFullNames[i]);
         }
         // name
-        VmDataCollector vmDataCollector;
-        QString file = QFileInfo(m_snapImagesFullNames.last()).fileName();
-        newNode.name = vmDataCollector.getNodeName(file, newNode.imagesType);
+        newNode.name = vmDataCollect.getNodeName(m_snapImagesFullNames.last());
         // *** Добавление нового узла в данные модели *** //
         m_nodes.push_back(newNode);
     endInsertRows();
@@ -359,6 +357,7 @@ bool SnapTreeModel::insertRowAt(int row, const QModelIndex& parentIndex){
     }
 
     beginInsertRows(parentIndex, row, row - 1);
+        VmDataCollector vmDataCollect;
         // *** Изменение параметров активного узла в данный момент *** //
         m_nodes[activeIndex].imagesType = "work";
 
@@ -372,8 +371,7 @@ bool SnapTreeModel::insertRowAt(int row, const QModelIndex& parentIndex){
         // parentId
         newNode.parentId = m_nodes[parentNodeIdx].id;
         // uuid
-        QString fileName = QFileInfo(m_snapImagesFullNames.last()).fileName();
-        newNode.uuid = getNodeUuid(fileName);
+        newNode.uuid = vmDataCollect.getNodeUuid(m_snapImagesFullNames.last());
         // imagesType
         newNode.imagesType = "active";
         // imagesFullNames
@@ -384,9 +382,7 @@ bool SnapTreeModel::insertRowAt(int row, const QModelIndex& parentIndex){
                           .push_back(m_nodes[parentNodeIdx].imagesFullNames[i]);
         }
         // name
-        VmDataCollector vmDataCollector;
-        QString file = QFileInfo(m_snapImagesFullNames.last()).fileName();
-        newNode.name = vmDataCollector.getNodeName(file, newNode.imagesType);
+        newNode.name = vmDataCollect.getNodeName(m_snapImagesFullNames.last());
         // *** Добавление нового узла в данные модели *** //
         m_nodes.push_back(newNode);
     endInsertRows();
@@ -448,14 +444,6 @@ void SnapTreeModel::setActive(const QModelIndex& newActiveIndex){
     }
 
     emit dataChanged(newActiveIndex, newActiveIndex, {Qt::DisplayRole});
-}
-
-QString SnapTreeModel::getNodeUuid(const QString& fName){
-
-    QUuid uuid = QUuid::createUuidV5(QUuid::fromString(
-                                    "{12329e42e-d24e-4ad0-84dd-9e03b8b33e7}"),
-                                                                        fName);
-    return uuid.toString(QUuid::WithoutBraces);
 }
 
 // End snapTreeModel.cpp
