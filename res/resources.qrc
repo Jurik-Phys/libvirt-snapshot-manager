@@ -3,8 +3,9 @@
         <file>btn-goto-snapshot.png</file>
         <file>btn-goto-snapshot-16.png</file>
         <file>btn-delete-snapshot.png</file>
+        <file>btn-delete-snapshot-48.png</file>
         <file>btn-delete-snapshot-16.png</file>
-        <file>btn-take-snapshot.png</file>
+        <file>btn-take-snapshot-48.png</file>
         <file>btn-take-snapshot-16.png</file>
         <file>btn-app-exit.png</file>
         <file>btn-vm-start.png</file>

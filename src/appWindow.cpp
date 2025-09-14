@@ -266,7 +266,7 @@ void QAppWindow::setSnapBtnFrame(){
     QObject::connect(m_gotoBtn, &QToolButton::clicked, this,
                                                      &QAppWindow::gotoSnapshot);
 
-    QIcon deleteBtnIcon(":/btn-delete-snapshot.png");
+    QIcon deleteBtnIcon(":/btn-delete-snapshot-48.png");
     m_deleteBtn = new QToolButton(snapBtnFrame);
     m_deleteBtn->setText("Delete");
     m_deleteBtn->setFixedHeight(m_btnHeight);
@@ -286,7 +286,7 @@ void QAppWindow::setSnapBtnFrame(){
     QColor borderColor = snapBtnFrame->palette().color(QPalette::Mid);
     vLine->setStyleSheet(QString("color: %1;").arg(borderColor.name()));
 
-    QIcon takeSnapBtnIcon(":/btn-take-snapshot.png");
+    QIcon takeSnapBtnIcon(":/btn-take-snapshot-48.png");
     m_takeSnapBtn = new QToolButton(snapBtnFrame);
     m_takeSnapBtn->setText("Take");
     m_takeSnapBtn->setFixedHeight(m_btnHeight);
