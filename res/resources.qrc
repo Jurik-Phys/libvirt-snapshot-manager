@@ -1,10 +1,14 @@
 <RCC>
     <qresource>
         <file>btn-goto-snapshot.png</file>
+        <file>btn-goto-snapshot-16.png</file>
         <file>btn-delete-snapshot.png</file>
+        <file>btn-delete-snapshot-16.png</file>
         <file>btn-take-snapshot.png</file>
+        <file>btn-take-snapshot-16.png</file>
         <file>btn-app-exit.png</file>
         <file>btn-vm-start.png</file>
+        <file>btn-vm-start-16.png</file>
         <file>btn-vm-pause.png</file>
         <file>btn-vm-stop.png</file>
         <file>btn-vm-open.png</file>
