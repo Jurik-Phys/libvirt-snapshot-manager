@@ -411,6 +411,14 @@ bool VmInfoWidget::eventFilter(QObject *obj, QEvent* event){
                                           || keyEvent->key() == Qt::Key_Enter) {
                 return true;
             }
+            else {
+                if (keyEvent->key() == Qt::Key_Tab){
+                    QTextEdit* edt = qobject_cast<QTextEdit*>(m_colBWidgets[1]);
+                    edt->setFocus();
+                    edt->moveCursor(QTextCursor::End);
+                    return true;
+                }
+            }
         }
         return QWidget::eventFilter(obj, event);
 }
