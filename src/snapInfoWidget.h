@@ -32,6 +32,8 @@ class SnapInfoWidget : public QFrame {
                                                    const QStringList& snapInfo);
         void writeSnapDescriptionRequested(const QStringList& uuid,
                                                    const QStringList& snapInfo);
+        void removeEmptySnapshotInfoRequested(const QStringList& uuid);
+
     private:
         QVBoxLayout*      m_vScrollLayout;
         void fixScrollBar(QTextEdit*);

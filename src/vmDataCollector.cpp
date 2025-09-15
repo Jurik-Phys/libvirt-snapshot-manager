@@ -1071,8 +1071,11 @@ void VmDataCollector::writeSnapDescription(const QStringList& uuid,
     pushVmXml(vmXmlDoc);
 }
 
-void VmDataCollector::rmSnapshotXmlElement(const QString& vmUuid,
-                                                      const QString& snapUuid ){
+void VmDataCollector::rmSnapshotXmlElement(const QStringList& uuid){
+
+    QString vmUuid = uuid[0];
+    QString snapUuid = uuid[1];
+
     QDomDocument vmXmlDoc = getVmXml(vmUuid);
 
     QDomElement  vmXml = vmXmlDoc.documentElement();

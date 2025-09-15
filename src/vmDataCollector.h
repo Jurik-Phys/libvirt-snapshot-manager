@@ -50,8 +50,7 @@ class VmDataCollector : public QObject {
                                                    const QStringList& snapInfo);
         void writeSnapDescription(const QStringList& uuid,
                                                    const QStringList& snapInfo);
-        void rmSnapshotXmlElement(const QString& vmUuid,
-                                                       const QString& snapUuid);
+        void rmSnapshotXmlElement(const QStringList& uuid);
 
     public slots:
         void process();

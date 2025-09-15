@@ -81,6 +81,10 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     QObject::connect(m_snapInfoWidget,
                 &SnapInfoWidget::writeSnapDescriptionRequested,
                      m_vmDataCollector, &VmDataCollector::writeSnapDescription);
+    // *** Remove empty snapshot information entries *** //
+    QObject::connect(m_snapInfoWidget,
+                &SnapInfoWidget::removeEmptySnapshotInfoRequested,
+                     m_vmDataCollector, &VmDataCollector::rmSnapshotXmlElement);
 
     addVmToFrame();
 }
@@ -799,7 +803,7 @@ void QAppWindow::deleteSnapshot(){
     m_snapInfoWidget->clearData();
 
     // *** Удалить запись о снапшоте из xml документа ВМ *** //
-    m_vmDataCollector->rmSnapshotXmlElement(m_currentVmUUID, node.uuid);
+    m_vmDataCollector->rmSnapshotXmlElement({m_currentVmUUID, node.uuid});
 }
 
 void QAppWindow::startVM(){

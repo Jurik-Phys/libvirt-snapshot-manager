@@ -355,24 +355,38 @@ void SnapInfoWidget::writeSnapTitle(){
     QString snap_name  = m_node.name;
     QString snap_title;
     snap_title = qobject_cast<QTextEdit*>(m_colBWidgets[0])->toPlainText();
+    QString snap_desc;
+    snap_desc = qobject_cast<QTextEdit*>(m_colBWidgets[1])->toPlainText();
 
     QStringList uuid = {vm_uuid, snap_uuid};
     QStringList snapInfo = {snap_name, snap_title};
 
-    emit writeSnapTitleRequested(uuid, snapInfo);
+    if (snap_title.size() == 0 && snap_desc.size() == 0){
+        emit removeEmptySnapshotInfoRequested(uuid);
+    }
+    else {
+        emit writeSnapTitleRequested(uuid, snapInfo);
+    }
 }
 
 void SnapInfoWidget::writeSnapDescription(){
     QString vm_uuid          = m_vm.uuid;
     QString snap_uuid        = m_node.uuid;
     QString snap_name        = m_node.name;
+    QString snap_title;
+    snap_title = qobject_cast<QTextEdit*>(m_colBWidgets[0])->toPlainText();
     QString snap_desc;
     snap_desc = qobject_cast<QTextEdit*>(m_colBWidgets[1])->toPlainText();
 
     QStringList uuid = {vm_uuid, snap_uuid};
     QStringList snapInfo = {snap_name, snap_desc};
 
-    emit writeSnapDescriptionRequested(uuid, snapInfo);
+    if (snap_title.size() == 0 && snap_desc.size() == 0){
+        emit removeEmptySnapshotInfoRequested(uuid);
+    }
+    else {
+        emit writeSnapDescriptionRequested(uuid, snapInfo);
+    }
 }
 
 void SnapInfoWidget::setReadOnly(bool ro){
