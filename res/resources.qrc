@@ -2,19 +2,17 @@
     <qresource>
         <file>btn-goto-snapshot.png</file>
         <file>btn-goto-snapshot-16.png</file>
-        <file>btn-delete-snapshot.png</file>
-        <file>btn-delete-snapshot-48.png</file>
+        <file>btn-delete-snapshot.svg</file>
         <file>btn-delete-snapshot-16.png</file>
-        <file>btn-take-snapshot-48.png</file>
-        <file>btn-take-snapshot-16.png</file>
+        <file>btn-take-snapshot.svg</file>
         <file>btn-app-exit.png</file>
-        <file>btn-vm-start.png</file>
-        <file>btn-vm-start-16.png</file>
-        <file>btn-vm-pause.png</file>
-        <file>btn-vm-stop.png</file>
+        <file>btn-vm-start.svg</file>
+        <file>btn-vm-pause.svg</file>
+        <file>btn-vm-stop.svg</file>
         <file>btn-vm-open.png</file>
         <file>vm-status-pause.png</file>
         <file>vm-status-play.png</file>
         <file>vm-status-stop.png</file>
+        <file>app-logo.svg</file>
     </qresource>
 </RCC>

@@ -34,11 +34,11 @@ void SnapTreeView::contextMenuEvent(QContextMenuEvent* event){
     QMenu menu(this);
     if (node.imagesType == "active"){
         QAction* runVmAction  = menu.addAction("Start VM at this state");
-        QIcon runVmActionIcon = QIcon(":/btn-vm-start-16.png");
+        QIcon runVmActionIcon = QIcon(":/btn-vm-start.svg");
         runVmAction->setIcon(runVmActionIcon);
 
         QAction* takeAction   = menu.addAction("Take snapshot…");
-        QIcon takeActionIcon = QIcon(":/btn-take-snapshot-16.png");
+        QIcon takeActionIcon = QIcon(":/btn-take-snapshot.svg");
         takeAction->setIcon(takeActionIcon);
 
         QObject::connect(runVmAction, &QAction::triggered,

@@ -106,7 +106,7 @@ void QAppWindow::setVmBtnFrame(){
 
     QHBoxLayout* vmBtnFrameHLayout = new QHBoxLayout(vmBtnFrame);
 
-    QIcon startBtnIcon(":/btn-vm-start.png");
+    QIcon startBtnIcon(":/btn-vm-start.svg");
     m_startBtn = new QToolButton(vmBtnFrame);
     m_startBtn->setText("Start");
     m_startBtn->setFixedHeight(m_btnHeight);
@@ -119,7 +119,7 @@ void QAppWindow::setVmBtnFrame(){
                                                     this, &QAppWindow::startVM);
     m_startBtn->setEnabled(false);
 
-    QIcon pauseBtnIcon(":/btn-vm-pause.png");
+    QIcon pauseBtnIcon(":/btn-vm-pause.svg");
     m_pauseBtn = new QToolButton(vmBtnFrame);
     m_pauseBtn->setText("Pause");
     m_pauseBtn->setFixedHeight(m_btnHeight);
@@ -132,7 +132,7 @@ void QAppWindow::setVmBtnFrame(){
     QObject::connect(m_pauseBtn, &QToolButton::clicked,
                                               this, &QAppWindow::togglePauseVM);
 
-    QIcon stopBtnIcon(":/btn-vm-stop.png");
+    QIcon stopBtnIcon(":/btn-vm-stop.svg");
     m_stopBtn = new QToolButton(vmBtnFrame);
     m_stopBtn->setText("Stop");
     m_stopBtn->setFixedHeight(m_btnHeight);
@@ -266,7 +266,7 @@ void QAppWindow::setSnapBtnFrame(){
     QObject::connect(m_gotoBtn, &QToolButton::clicked, this,
                                                      &QAppWindow::gotoSnapshot);
 
-    QIcon deleteBtnIcon(":/btn-delete-snapshot-48.png");
+    QIcon deleteBtnIcon(":/btn-delete-snapshot.svg");
     m_deleteBtn = new QToolButton(snapBtnFrame);
     m_deleteBtn->setText("Delete");
     m_deleteBtn->setFixedHeight(m_btnHeight);
@@ -286,7 +286,7 @@ void QAppWindow::setSnapBtnFrame(){
     QColor borderColor = snapBtnFrame->palette().color(QPalette::Mid);
     vLine->setStyleSheet(QString("color: %1;").arg(borderColor.name()));
 
-    QIcon takeSnapBtnIcon(":/btn-take-snapshot-48.png");
+    QIcon takeSnapBtnIcon(":/btn-take-snapshot.svg");
     m_takeSnapBtn = new QToolButton(snapBtnFrame);
     m_takeSnapBtn->setText("Take");
     m_takeSnapBtn->setFixedHeight(m_btnHeight);
@@ -1192,7 +1192,7 @@ void QAppWindow::menuStopBtnSelect(){
             m_stopBtn->setText(text);
         }
     }
-    QIcon stopBtnIcon(":/btn-vm-stop.png");
+    QIcon stopBtnIcon(":/btn-vm-stop.svg");
     m_stopBtn->setIcon(stopBtnIcon);
     m_stopBtn->setIconSize(QSize(48,48));
 }
