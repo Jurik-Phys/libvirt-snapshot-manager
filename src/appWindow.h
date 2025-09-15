@@ -32,6 +32,7 @@ class QAppWindow : public QWidget {
         ~QAppWindow();
 
         void appExit();
+        void closeEvent(QCloseEvent *event) override;
         void doSnapshot();
         void gotoSnapshot();
         void startVM();

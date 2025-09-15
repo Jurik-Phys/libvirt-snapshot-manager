@@ -89,11 +89,18 @@ QAppWindow::~QAppWindow(){
 }
 
 void QAppWindow::appExit(){
+    this->close();
+}
+
+void QAppWindow::closeEvent(QCloseEvent *event) {
    QMessageBox::StandardButton reply = QMessageBox::question(
         this, "Exit confirmation", "Do you really want to exit?",
                                             QMessageBox::Yes | QMessageBox::No);
     if (reply == QMessageBox::Yes) {
-        QApplication::quit();
+        event->accept();
+    }
+    else{
+        event->ignore();
     }
 }
 
