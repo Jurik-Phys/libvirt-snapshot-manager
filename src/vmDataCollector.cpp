@@ -953,8 +953,6 @@ void VmDataCollector::getSnapshotXmlInfo(ChainNode& node){
 
 void VmDataCollector::writeVmTitle(const QString& vm_uuid,
                                                      const QString& newVmTitle){
-    qDebug() << "[II] writeVmTitle:" << vm_uuid << newVmTitle;
-
     QDomDocument vmXmlDoc = getVmXml(vm_uuid);
     QDomElement  vmXml = vmXmlDoc.documentElement();
     QDomElement titleVmXml = vmXml.firstChildElement("title");
@@ -981,8 +979,6 @@ void VmDataCollector::writeVmTitle(const QString& vm_uuid,
 
 void VmDataCollector::writeVmDescription(const QString& vm_uuid,
                                                const QString& newVmDescription){
-    qDebug() << "[II] writeVmDescription" << vm_uuid << newVmDescription;
-
     QDomDocument vmXmlDoc = getVmXml(vm_uuid);
     QDomElement  vmXml = vmXmlDoc.documentElement();
     QDomElement descriptionVmXml = vmXml.firstChildElement("description");

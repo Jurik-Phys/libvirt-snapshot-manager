@@ -111,16 +111,20 @@ void VmWidget::setState(const QString& inVmState){
 
 void VmWidget::setStateIcon(const QString& inVmState){
 
+    if (inVmState == "Preparing to start, please wait…"){
+        m_vmIcon->setPixmap(QPixmap(":/vm-status-loading.svg"));
+    }
+
     if (inVmState == "shut off"){
-        m_vmIcon->setPixmap(QPixmap(":/vm-status-stop.png"));
+        m_vmIcon->setPixmap(QPixmap(":/vm-status-stop.svg"));
     }
 
     if (inVmState == "running"){
-        m_vmIcon->setPixmap(QPixmap(":/vm-status-play.png"));
+        m_vmIcon->setPixmap(QPixmap(":/vm-status-play.svg"));
     }
 
     if (inVmState == "paused"){
-        m_vmIcon->setPixmap(QPixmap(":/vm-status-pause.png"));
+        m_vmIcon->setPixmap(QPixmap(":/vm-status-pause.svg"));
     }
 }
 

@@ -10,9 +10,10 @@
         <file>btn-vm-pause.svg</file>
         <file>btn-vm-stop.svg</file>
         <file>btn-vm-open.png</file>
-        <file>vm-status-pause.png</file>
-        <file>vm-status-play.png</file>
-        <file>vm-status-stop.png</file>
+        <file>vm-status-loading.svg</file>
+        <file>vm-status-pause.svg</file>
+        <file>vm-status-play.svg</file>
+        <file>vm-status-stop.svg</file>
         <file>app-logo.svg</file>
     </qresource>
 </RCC>

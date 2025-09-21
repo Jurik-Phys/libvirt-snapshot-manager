@@ -823,23 +823,14 @@ void QAppWindow::startVM(){
     QProcess process;
     QEventLoop loop;
 
-    bool stepOneDone = false;
     QObject::connect(&process, &QProcess::finished,
                     [&](int, QProcess::ExitStatus){
-                        if (!stepOneDone){
-                            stepOneDone = true;
-
-                            // Запуск второго этапа старта виртуальной машины
-                            process.start("virsh", {"start", m_currentVmName});
-                        }
-                        else{
-                            loop.quit();
-                            emit startVmEnd();
-                        }
+                        emit startVmEnd();
+                        loop.quit();
                     });
-    // *** Первый этап запуска ВМ *** //
-    process.start("virt-manager", {"--connect=qemu:///system",
-                                    "--show-domain-console", m_currentVmName});
+
+    process.start("virsh", {"--connect=qemu:///system","start",
+                                                              m_currentVmName});
     loop.exec();
 }
 
