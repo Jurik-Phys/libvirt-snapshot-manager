@@ -12,6 +12,7 @@
 #include <QScrollArea>
 #include <QBoxLayout>
 #include <QToolButton>
+#include <QStandardPaths>
 #include "vmWidget.h"
 #include "snapManager.h"
 #include "snapTreeView.h"
@@ -40,6 +41,7 @@ class QAppWindow : public QWidget {
         void togglePauseVM();
         void deleteSnapshot();
         VMachine getActiveVm();
+        bool checkExternalVmUtilities();
 
     signals:
         void vmListProcessingStarted();
@@ -135,6 +137,9 @@ class QAppWindow : public QWidget {
         void menuStopBtnSelect();
 
         void viewOnlyMode();
+
+        bool checkVmUtilityAvailable(const QString&);
+        bool checkVmUtilityExecutable(const QString&);
 };
 
 #endif

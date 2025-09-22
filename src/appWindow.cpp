@@ -629,6 +629,73 @@ VMachine QAppWindow::getActiveVm(){
     return vm;
 }
 
+bool QAppWindow::checkExternalVmUtilities(){
+    QStringList utilsList = {"virsh", "qemu-img", "virt-manager"};
+    bool res = true;
+
+    for (int i = 0; i < utilsList.size(); ++i){
+        if (!checkVmUtilityAvailable(utilsList[i])){
+            res = false;
+            break;
+        }
+        else {
+            if (!checkVmUtilityExecutable(utilsList[i])){
+                res = false;
+                break;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool QAppWindow::checkVmUtilityAvailable(const QString& utilityName){
+    bool res = false;
+    QString path = QStandardPaths::findExecutable(utilityName);
+    res = !path.isEmpty();
+    qDebug().nospace()
+        << "[II] checkVmUtilityAvailable " << utilityName << ". Result " << res;
+    return res;
+}
+
+bool QAppWindow::checkVmUtilityExecutable(const QString& utility){
+    bool res = false;
+
+    QEventLoop loop;
+    QProcess process;
+
+    QObject::connect(&process, &QProcess::finished, [&](){
+
+            // ************************** Теория **************************** //
+            // Для проверки запуска утилиты, производится попытка её запуска  //
+            // с параметром "--help" для вывода справочной информации.        //
+            // Успешный анализ справочной информации, общепринято содержащей  //
+            // описание параметров "--help" или "-h" считается успешным       //
+            // запуском исследуемой утилиты.                                  //
+            // ************************************************************** //
+
+            QString output = process.readAllStandardOutput();
+            static const QRegularExpression re(R"(-h|--help)");
+            QRegularExpressionMatchIterator it = re.globalMatch(output);
+
+            int count = 0;
+            while (it.hasNext()) {
+                QRegularExpressionMatch match = it.next();
+                count++;
+            }
+
+            if (count > 0){
+                res = true;
+            }
+            loop.quit();
+        });
+
+    process.start(utility, {"--help"});
+    loop.exec();
+
+    return res;
+}
+
 void QAppWindow::doSnapshot(){
     QStringList  snapFullNames;
     SnapManager* snapManager = new SnapManager(this);

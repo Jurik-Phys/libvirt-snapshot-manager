@@ -11,11 +11,15 @@ int main(int argc, char** argv){
     app.setWindowIcon(appIcon);
 
     QAppWindow appWindow;
-    appWindow.show();
 
-    int res = app.exec();
-
-    return res;
+    if (appWindow.checkExternalVmUtilities()){
+        appWindow.show();
+        int res = app.exec();
+        return res;
+    }
+    else {
+        return EXIT_FAILURE;
+    }
 }
 
 // End main.cpp
