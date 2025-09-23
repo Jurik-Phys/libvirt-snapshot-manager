@@ -29,7 +29,11 @@ QVector<VMachine> VmDataCollector::getVmList(bool* isOk){
     QVector<VMachine> vmList;
     QVector<VMachine> uuidVmList;
 
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("LANG", "C");
+
     QProcess process;
+    process.setProcessEnvironment(env);
     QEventLoop loop;
 
     bool stepOneDone = false;
