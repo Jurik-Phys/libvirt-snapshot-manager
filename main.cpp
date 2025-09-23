@@ -10,11 +10,15 @@ int main(int argc, char** argv){
     QIcon appIcon(":/app-logo.svg");
     app.setWindowIcon(appIcon);
 
+    QAppWindow* appWindow = nullptr;
+
     try {
-        QAppWindow appWindow;
-        appWindow.show();
-    } catch (const std::runtime_error &e) {
+        appWindow = new QAppWindow();
+        appWindow->show();
+    }
+    catch (const std::runtime_error &e) {
         qDebug() << e.what();
+        delete appWindow;
         return EXIT_FAILURE;
     }
 

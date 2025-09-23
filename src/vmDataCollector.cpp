@@ -61,7 +61,7 @@ QVector<VMachine> VmDataCollector::getVmList(bool* isOk){
                 }
 
                 // Запуск второго этапа получени uuid виртуальных машин
-                process.start("virsh", {"--connect", m_libVirtConnectURI,
+                process.start("virsh", {"--connect=" + m_libVirtConnectURI,
                                           "list", "--all", "--uuid", "--name"});
             }
             else{
@@ -106,7 +106,7 @@ QVector<VMachine> VmDataCollector::getVmList(bool* isOk){
             }
         });
 
-    process.start("virsh", {"--connect", m_libVirtConnectURI, "list", "--all"});
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI, "list", "--all"});
     loop.exec();
     return vmList;
 }
@@ -302,7 +302,7 @@ QDomDocument VmDataCollector::getVmXml(const QString& uuid){
             loop.quit();
         });
 
-    process.start("virsh", {"--connect", m_libVirtConnectURI, "dumpxml", uuid});
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI, "dumpxml", uuid});
     loop.exec();
 
     return vmXmlDoc;
@@ -1144,7 +1144,7 @@ void VmDataCollector::pushVmXml(const QDomDocument& vmXmlDoc){
            loop.quit();
         });
 
-    process.start("virsh", {"--connect", m_libVirtConnectURI,
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
                                                            "define", fileName});
     loop.exec();
 }
