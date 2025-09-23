@@ -10,16 +10,15 @@ int main(int argc, char** argv){
     QIcon appIcon(":/app-logo.svg");
     app.setWindowIcon(appIcon);
 
-    QAppWindow appWindow;
-
-    if (appWindow.checkExternalVmUtilities()){
+    try {
+        QAppWindow appWindow;
         appWindow.show();
-        int res = app.exec();
-        return res;
-    }
-    else {
+    } catch (const std::runtime_error &e) {
+        qDebug() << e.what();
         return EXIT_FAILURE;
     }
+
+    return app.exec();
 }
 
 // End main.cpp

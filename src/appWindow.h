@@ -66,6 +66,7 @@ class QAppWindow : public QWidget {
         const int m_btnWidth = 1.2*m_btnHeight;
         const int m_vmIconSize = 48;
         int m_selectedVmIndex = -1;
+        const QString m_libVirtConnectURI = "qemu:///system";
 
 
         VmDataCollector* m_vmDataCollector;
@@ -140,6 +141,8 @@ class QAppWindow : public QWidget {
 
         bool checkVmUtilityAvailable(const QString&);
         bool checkVmUtilityExecutable(const QString&);
+        bool checkLocalHypervisorConnection();
+        bool isLibvirtPolkitEnabled();
 };
 
 #endif

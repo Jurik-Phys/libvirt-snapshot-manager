@@ -3,6 +3,15 @@
 #include "appWindow.h"
 
 QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
+
+    if (!this->checkExternalVmUtilities()){
+        throw std::runtime_error("External utilities failure");
+    }
+
+    if (!this->checkLocalHypervisorConnection()){
+        throw std::runtime_error("Local hypervisor connection failed");
+    }
+    qDebug() << " - Check complete - ";
     this->resize(m_appWindowWidth, m_appWindowHeight);
     this->setWindowTitle("Graphical Manager for External Snapshots (libvirt)");
 
@@ -646,19 +655,25 @@ bool QAppWindow::checkExternalVmUtilities(){
         }
     }
 
-    return true;
+    return res;
 }
 
 bool QAppWindow::checkVmUtilityAvailable(const QString& utilityName){
     bool res = false;
     QString path = QStandardPaths::findExecutable(utilityName);
     res = !path.isEmpty();
-    qDebug().nospace()
-        << "[II] checkVmUtilityAvailable " << utilityName << ". Result " << res;
+
+    if (!res){
+        QString title = "External utilities failure";
+        QString message = "Utility \"" + utilityName
+                                          + "\" not found. Please install it.";
+        QMessageBox::critical(nullptr, title, message);
+    }
+
     return res;
 }
 
-bool QAppWindow::checkVmUtilityExecutable(const QString& utility){
+bool QAppWindow::checkVmUtilityExecutable(const QString& utilityName){
     bool res = false;
 
     QEventLoop loop;
@@ -690,8 +705,100 @@ bool QAppWindow::checkVmUtilityExecutable(const QString& utility){
             loop.quit();
         });
 
-    process.start(utility, {"--help"});
+    process.start(utilityName, {"--help"});
     loop.exec();
+
+    return res;
+}
+
+bool QAppWindow::checkLocalHypervisorConnection(){
+    // ******************************* Теория ******************************* //
+    // > Проблема. Не существует способа проверить и возможность подключения  //
+    //   к гипервизору и не взывать диалог авторизации Polkit'а,              //
+    //   если он испльзуется для контроля доступа к гипервизору.              //
+    //   Даже вызов функции virConnectOpen() библиотеки libvirt из данной     //
+    //   программы вызывает диалог авторизации (занавес).                     //
+    //                                                                        //
+    // > Решение. п.1. Определить через парсинг файла настроек демона libvirt //
+    //   "/etc/libvirt/libvirtd.conf" значение параметра "auth_unix_rw".      //
+    //   Если параметра не существует или он закомментирован, то по умолчанию //
+    //   polkit, если параметр равен "polkit", то тоже используется Polkit.   //
+    //   п.2. Проверить права управления гипервизором текущего пользователя   //
+    //   через анализ Exit code команды                                       //
+    //            "pkcheck --action-id org.libvirt.unix.manage --process $$"  //
+    //   При наличии прав вывод у команды будет пустой и exit code "0",       //
+    //   при ошибках доступа или отсутствия зарегистрированного правила на    //
+    //   стандартном выводе появитя соответствущее собщение и код выхода      //
+    //   будет отличен от нуля.                                               //
+    // ********************************************************************** //
+
+    bool res = false;
+
+    if (isLibvirtPolkitEnabled()){
+        QString util = "pkcheck";
+        if (checkVmUtilityAvailable(util) && checkVmUtilityExecutable(util)){
+            QProcess process;
+            process.start("pkcheck", {"--action-id",
+                                            "org.libvirt.unix.manage",
+                                                                "--process",
+                          QString::number(QCoreApplication::applicationPid())});
+            process.waitForFinished();
+
+            QString output = process.readAllStandardOutput();
+            int code = process.exitCode();
+
+            if (code == 0) {
+                res = true;
+            }
+        }
+    }
+    else {
+        QProcess process;
+        process.setProcessChannelMode(QProcess::MergedChannels);
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        env.insert("LANG", "C");
+        process.setProcessEnvironment(env);
+        process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                              "list", "--all"});
+        process.waitForFinished();
+        QString output = process.readAllStandardOutput();
+        if (!output.contains("failed to connect to the hypervisor")){
+            res = true;
+        }
+    }
+
+    if (!res){
+        QString title = "Hypervisor access denied";
+        QString message = "Hypervisor user access check failed.\n"
+            "Use the following command to manually check access:\n"
+            "$ virsh --connect=" + m_libVirtConnectURI + " list --all";
+        QMessageBox::critical(nullptr, title, message);
+    }
+
+    return res;
+}
+
+bool QAppWindow::isLibvirtPolkitEnabled(){
+    bool res = true;
+    QString libvirtConfFileName = "/etc/libvirt/libvirtd.conf";
+    QFile libvirtConfFile(libvirtConfFileName);
+
+    if (libvirtConfFile.open(QIODevice::ReadOnly | QIODevice::Text)){
+        while (!libvirtConfFile.atEnd()){
+            QByteArray line = libvirtConfFile.readLine();
+            QString trStr = line.trimmed();
+            if (trStr.size() > 0){
+                if (trStr.at(0) != "#" && trStr.contains("auth_unix_rw")
+                                                  && !trStr.contains("polkit")){
+                    res = false;
+                }
+            }
+        }
+    }
+    else {
+        throw std::runtime_error(("Error read " +
+                                     libvirtConfFileName).toLocal8Bit().data());
+    }
 
     return res;
 }
@@ -896,7 +1003,7 @@ void QAppWindow::startVM(){
                         loop.quit();
                     });
 
-    process.start("virsh", {"--connect=qemu:///system","start",
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,"start",
                                                               m_currentVmName});
     loop.exec();
 }
@@ -936,7 +1043,7 @@ void QAppWindow::openVM(){
                                                 [&](int, QProcess::ExitStatus){
                                                     loop.quit();
                                                 });
-    process.start("virt-manager", {"--connect=qemu:///system",
+    process.start("virt-manager", {"--connect=" + m_libVirtConnectURI,
                                     "--show-domain-console", m_currentVmName});
     loop.exec();
 }

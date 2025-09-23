@@ -63,6 +63,7 @@ class VmDataCollector : public QObject {
 
     private:
         VMachine m_vm;
+        const QString m_libVirtConnectURI = "qemu:///system";
         VMachine getVmFullInfo(const VMachine& vm);
         QDomDocument getVmXml(const QString& vmUuid);
         void pushVmXml(const QDomDocument& vmXmlDoc);
