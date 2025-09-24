@@ -1037,15 +1037,8 @@ void QAppWindow::togglePauseVM(){
 
 void QAppWindow::openVM(){
     QProcess process;
-    QEventLoop loop;
-
-    QObject::connect(&process, &QProcess::finished,
-                                                [&](int, QProcess::ExitStatus){
-                                                    loop.quit();
-                                                });
-    process.start("virt-manager", {"--connect=" + m_libVirtConnectURI,
-                                    "--show-domain-console", m_currentVmName});
-    loop.exec();
+    process.startDetached("virt-manager", {"--connect=" + m_libVirtConnectURI,
+                                     "--show-domain-console", m_currentVmName});
 }
 
 void QAppWindow::onTreeItemClicked(const QModelIndex& index){
