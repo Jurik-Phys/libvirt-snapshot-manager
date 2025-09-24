@@ -173,7 +173,7 @@ VMachine VmDataCollector::getVmShortInfo(const QString& uuid, bool* isOk){
                                                     + threads.captured() + ")";
     }
     else {
-        vm.cpu = vm.cpu + " (sockets " + vm.cpu + " ·  cores 1 · threads 1)";
+        vm.cpu = vm.cpu + " (sockets " + vm.cpu + " · cores 1 · threads 1)";
     }
     QDomElement devices = vmXml.firstChildElement("devices");
     QDomNodeList diskNodes  = devices.elementsByTagName("disk");
