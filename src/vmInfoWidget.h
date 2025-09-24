@@ -67,6 +67,7 @@ class VmInfoWidget : public QFrame {
 
         int m_titleChangedCounter = 0;
         int m_descriptionChangedCounter = 0;
+        int calcOptimalFontSize(const QStringList&);
 };
 
 #endif

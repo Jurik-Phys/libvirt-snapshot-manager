@@ -17,6 +17,10 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
     vFrameLayout->setContentsMargins(7, 5, 0, 0);
 
     QLabel* headline = new QLabel(this);
+    QFont headlineFont = headline->font();
+    int headlineOriginalFontSize = headlineFont.pointSize();
+    headlineFont.setPointSize(headlineOriginalFontSize);
+    headline->setFont(headlineFont);
     headline->setText("<b>Snapshot overview</b>");
     vFrameLayout->addWidget(headline);
 
@@ -45,12 +49,12 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
                             "Type & children:",
                             "Image files:"};
 
-    int colAWidth = 90;
+    int colAWidth = 107;
     QVector<QHBoxLayout*> hLayoutArray;
     // *** Создание горизонтальных layout'ов и установка отсупов *** //
     for (int i = 0; i < colAList.size(); ++i){
         hLayoutArray.push_back(new QHBoxLayout);
-        hLayoutArray[i]->setContentsMargins(5, 0, 0, 0);
+        hLayoutArray[i]->setContentsMargins(0, 0, 0, 0);
     }
 
     // *** Генерация виджетов первого столбца *** //
@@ -155,6 +159,14 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
 
     m_vScrollLayout->addWidget(imageFiles);
     m_vScrollLayout->addStretch();
+
+    // *** Dynamic font size *** //
+    QFont font = this->font();
+    int newFontSize = calcOptimalFontSize(colAList);
+    font.setPointSize(newFontSize);
+    this->setFont(font);
+    qobject_cast<QTextEdit*>(m_colBWidgets[0])->setFont(font);
+    imageFiles->setFont(font);
 }
 
 SnapInfoWidget::~SnapInfoWidget(){
@@ -434,6 +446,40 @@ void SnapInfoWidget::clearData(){
                                ->itemAt(m_vScrollLayout->count() - 2)->widget();
     QTextEdit* imageFiles = qobject_cast<QTextEdit*>(editWidget);
     imageFiles->clear();
+}
+
+int SnapInfoWidget::calcOptimalFontSize(const QStringList& text){
+    int res;
+    int maxColAWidgetWidth = 0;
+    int maxTextSize = 0;
+    QString maxLengthText;
+
+    QFont f = this->font();
+    res = f.pointSize();
+    QFontMetrics fm(f);
+
+    for (int i = 2; i < m_colAWidgets.size(); ++i){
+        int widgetWidth = qobject_cast<QLabel*>(m_colAWidgets[i])->width();
+        int textSize = qobject_cast<QLabel*>(m_colAWidgets[i])->text().size();
+
+        if (maxColAWidgetWidth < widgetWidth){
+            maxColAWidgetWidth = widgetWidth;
+        }
+
+        if (maxTextSize < textSize){
+           maxTextSize = textSize;
+           maxLengthText = qobject_cast<QLabel*>(m_colAWidgets[i])->text();
+        }
+    }
+
+    while (fm.horizontalAdvance(maxLengthText) > maxColAWidgetWidth
+                                                          && f.pointSize() > 6){
+        --res;
+        f.setPointSize(res);
+        fm = QFontMetrics(f);
+    }
+
+    return res;
 }
 
 // End snapInfoWidget.cpp

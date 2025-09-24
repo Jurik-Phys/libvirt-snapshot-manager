@@ -58,7 +58,7 @@ class SnapInfoWidget : public QFrame {
 
         QString m_vmUUID;
         QString m_snapUUID;
-
+        int calcOptimalFontSize(const QStringList&);
 };
 
 #endif
