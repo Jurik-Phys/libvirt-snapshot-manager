@@ -62,9 +62,10 @@ class QAppWindow : public QWidget {
         const int m_headFrameHeight = 90;
         const int m_infoFrameHeight = 328;
 
-        const int m_btnHeight = 66;
+        const int m_btnHeight = 70;
         const int m_btnWidth = 1.2*m_btnHeight;
         const int m_vmIconSize = 48;
+        const int m_vmWidgetHeight = m_vmIconSize + 4;
         int m_selectedVmIndex = -1;
         const QString m_libVirtConnectURI = "qemu:///system";
 

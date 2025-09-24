@@ -430,6 +430,7 @@ void QAppWindow::addVmToFrame(){
     // *** Непосредственная вставка *** //
     for (int i = 0; i < m_vmList.size(); ++i){
         VmWidget* vmWidget = new VmWidget(m_vmList[i], this);
+        vmWidget->setFixedHeight(m_vmWidgetHeight);
         m_vVmLayout->addWidget(vmWidget);
         m_vVmLayout->setSpacing(3);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
