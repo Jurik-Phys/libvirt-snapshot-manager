@@ -168,12 +168,12 @@ VMachine VmDataCollector::getVmShortInfo(const QString& uuid, bool* isOk){
         QRegularExpressionMatch sockets = socketsRe.match(vm.cpu);
         QRegularExpressionMatch cores   = coresRe.match(vm.cpu);
         QRegularExpressionMatch threads = threadsRe.match(vm.cpu);
-        vm.cpu = allCpu.captured(1) + " (" + sockets.captured() + "; "
-                                                 + cores.captured() + "; "
+        vm.cpu = allCpu.captured(1) + " (" + sockets.captured() + " · "
+                                                 + cores.captured() + " · "
                                                     + threads.captured() + ")";
     }
     else {
-        vm.cpu = vm.cpu + " (sockets " + vm.cpu + "; cores 1; threads 1)";
+        vm.cpu = vm.cpu + " (sockets " + vm.cpu + " ·  cores 1 · threads 1)";
     }
     QDomElement devices = vmXml.firstChildElement("devices");
     QDomNodeList diskNodes  = devices.elementsByTagName("disk");
