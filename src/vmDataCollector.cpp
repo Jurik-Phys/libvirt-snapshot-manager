@@ -160,9 +160,21 @@ VMachine VmDataCollector::getVmShortInfo(const QString& uuid, bool* isOk){
     }
     vm.cpu.chop(2);
     if (cpuAttribues.count() > 0) {
-        vm.cpu = vm.cpu + ")";
+        static const QRegularExpression allRe(R"((\d+) \()");
+        static const QRegularExpression socketsRe(R"(sockets (\d+))");
+        static const QRegularExpression coresRe(R"(cores (\d+))");
+        static const QRegularExpression threadsRe(R"(threads (\d+))");
+        QRegularExpressionMatch allCpu = allRe.match(vm.cpu);
+        QRegularExpressionMatch sockets = socketsRe.match(vm.cpu);
+        QRegularExpressionMatch cores   = coresRe.match(vm.cpu);
+        QRegularExpressionMatch threads = threadsRe.match(vm.cpu);
+        vm.cpu = allCpu.captured(1) + " (" + sockets.captured() + "; "
+                                                 + cores.captured() + "; "
+                                                    + threads.captured() + ")";
     }
-
+    else {
+        vm.cpu = vm.cpu + " (sockets " + vm.cpu + "; cores 1; threads 1)";
+    }
     QDomElement devices = vmXml.firstChildElement("devices");
     QDomNodeList diskNodes  = devices.elementsByTagName("disk");
     for (int i = 0; i < diskNodes.count(); ++i){

@@ -11,7 +11,6 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     if (!this->checkLocalHypervisorConnection()){
         throw std::runtime_error("Local hypervisor connection failed");
     }
-    qDebug() << " - Check complete - ";
     this->resize(m_appWindowWidth, m_appWindowHeight);
     this->setWindowTitle("Graphical Manager for External Snapshots (libvirt)");
 
