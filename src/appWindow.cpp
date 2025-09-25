@@ -923,14 +923,14 @@ void QAppWindow::deleteSnapshot(){
     }
 
     if (isMount){
-        QMessageBox::information(this, "Deleting snapshot…",
+        QMessageBox::information(this, "Deleting snapshot",
                   "The active state of the virtual machine cannot be deleted.");
         return;
     }
 
     // *** Запрет удаления корневого узла при наличии нескольких потомков *** //
     if (node.childrenImagesFullNames.size() > 1 && node.parentId == -1 ) {
-        QMessageBox::information(this,"Root chain node deletion…",
+        QMessageBox::information(this,"Root chain node deletion",
                 "Info: The root snapshot can only be removed with one child.");
         return;
     }

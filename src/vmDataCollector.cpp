@@ -191,7 +191,7 @@ VMachine VmDataCollector::getVmShortInfo(const QString& uuid, bool* isOk){
                 QFileInfo file(mountStorage);
                 bool mountStorageErrorFlag = false;
                 if (!file.exists()){
-                    emit errorMsg("File access error …",
+                    emit errorMsg("File access error",
                         "Please check your access to the storage file:\n"
                         + QString(" - File name: ") + QFileInfo(mountStorage)
                                                                 .fileName()+"\n"
@@ -297,7 +297,7 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
         }
 
         if (isLostMountFile){
-            emit errorMsg("File access error…",
+            emit errorMsg("File access error",
                 "Please check your access to the VM image file:\n"
                     + QString(" - File name: ")
                         + QFileInfo(vm.mountStorages[i]).fileName()+"\n"
@@ -513,7 +513,7 @@ QVector<VmImageRawInfo> VmDataCollector::loadVmImagesRawInfoOverQEMU(
     // Проверка на доступность (файлы всегда должны быть по логике программы)
     if (basePathFiles.size() == 0){
         qDebug() << "[EE] Error open directory:" << snapshotsDir;
-        emit errorMsg("Directory access error…",
+        emit errorMsg("Directory access error",
                  "Please check your access to the directory:\n" + snapshotsDir);
         *isOkLoadRawInfo = false;
         return vmImagesRawInfo;
@@ -785,7 +785,7 @@ bool VmDataCollector::checkExtBackChainFiles(const QVector<VmImageRawInfo>&
 
         if (!backingFileFlag){
             res = false;
-            emit errorMsg("File access error…",
+            emit errorMsg("File access error",
                      "Please check your access to the backing file:\n"
                         + QString(" - File name: ") + QFileInfo(bName)
                                                                 .fileName()+"\n"
@@ -816,7 +816,7 @@ bool VmDataCollector::checkBackingFile(const QVector<VmImageRawInfo>&
 
     if (!backingFileFlag){
         res = false;
-        emit errorMsg("File access error…",
+        emit errorMsg("File access error",
                "Please check your access to the backing file:\n"
                         + QString(" - File name: ") + QFileInfo(backingFile)
                                                                 .fileName()+"\n"
@@ -898,7 +898,7 @@ bool VmDataCollector::checkNodeFilesCount(
                 if (!inside){
                     QString problemImage = mountStorage + "-id-"
                                         + QString::number(problemId) + ".qcow2";
-                    emit errorMsg("File access error…",
+                    emit errorMsg("File access error",
                      "Please check your access to the workpoint file:\n"
                         + QString(" - File name: ") + QFileInfo(problemImage)
                                                                 .fileName()+"\n"
