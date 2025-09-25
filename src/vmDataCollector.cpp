@@ -282,6 +282,31 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
 
     m_vmImagesRawInfo = rmExtBackingInfo(vmImagesRawInfo, vm.mountStorages);
 
+    // *** Проверка наличия примонтированных файлов в списке файлов *** //
+    // > Актуально для случая единственного примонтированного файла     //
+    //   без цепочки сохранения и отсутсвии прав доступа на чтение      //
+    //   у данной программы. Виртуальная машина будет работать,         //
+    //   а дерево снапшотов не построится т.к., к файлу нет доступа.    //
+
+    for (int i = 0; i < vm.mountStorages.size(); ++i){
+        int isLostMountFile = true;
+        for (int j = 0; j < m_vmImagesRawInfo.size(); ++j){
+            if (vm.mountStorages[i] == m_vmImagesRawInfo[j].imageFullName){
+                isLostMountFile = false;
+            }
+        }
+
+        if (isLostMountFile){
+            emit errorMsg("File access error…",
+                "Please check your access to the VM image file:\n"
+                    + QString(" - File name: ")
+                        + QFileInfo(vm.mountStorages[i]).fileName()+"\n"
+                    + QString(" - Base path: ")
+                        + QFileInfo(vm.mountStorages[i]).absolutePath());
+            return vm;
+        }
+    }
+
     // *** Пропуск действий, если ранее был получен пустой ответ *** //
     if (m_vmImagesRawInfo.size() == 0){
         return vm;
