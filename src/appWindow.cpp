@@ -466,6 +466,7 @@ void QAppWindow::addVmToFrame(const QVector<VMachine>& toAddvmList){
         m_vmList.insert(indexWidget, toAddvmList[i]);
 
         VmWidget* vmWidget = new VmWidget(toAddvmList[i], this);
+        vmWidget->setFixedHeight(m_vmWidgetHeight);
         m_vVmLayout->insertWidget(indexWidget, vmWidget);
         QObject::connect(vmWidget, &VmWidget::clicked, this,
             [this, vmWidget](){
