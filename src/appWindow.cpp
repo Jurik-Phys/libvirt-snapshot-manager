@@ -106,7 +106,7 @@ void QAppWindow::appExit(){
 
 void QAppWindow::closeEvent(QCloseEvent *event) {
    QMessageBox::StandardButton reply = QMessageBox::question(
-        this, "Exit confirmation", "Do you really want to exit?",
+        this, "Confirm exit", "Do you really want to exit?",
                                             QMessageBox::Yes | QMessageBox::No);
     if (reply == QMessageBox::Yes) {
         event->accept();
@@ -1018,7 +1018,8 @@ void QAppWindow::togglePauseVM(){
                     [&](int, QProcess::ExitStatus){
                         loop.quit();
                     });
-        process.start("virsh", {"resume", m_currentVmName});
+        process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                    "resume", m_currentVmName});
         loop.exec();
     }
 
@@ -1030,7 +1031,8 @@ void QAppWindow::togglePauseVM(){
                     [&](int, QProcess::ExitStatus){
                         loop.quit();
                     });
-        process.start("virsh", {"suspend", m_currentVmName});
+        process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                   "suspend", m_currentVmName});
         loop.exec();
     }
 }
@@ -1308,7 +1310,8 @@ void QAppWindow::menuRebootVM(){
                 [&](int, QProcess::ExitStatus){
                     loop.quit();
                 });
-    process.start("virsh", {"reboot", m_currentVmName});
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                    "reboot", m_currentVmName});
     loop.exec();
 };
 
@@ -1319,7 +1322,8 @@ void QAppWindow::menuShutDownVM(){
                 [&](int, QProcess::ExitStatus){
                     loop.quit();
                 });
-    process.start("virsh", {"shutdown", m_currentVmName});
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                  "shutdown", m_currentVmName});
     loop.exec();
 }
 
@@ -1330,7 +1334,8 @@ void QAppWindow::menuForceRebootVM(){
                 [&](int, QProcess::ExitStatus){
                     loop.quit();
                 });
-    process.start("virsh", {"reset", m_currentVmName});
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                     "reset", m_currentVmName});
     loop.exec();
 }
 
@@ -1343,7 +1348,8 @@ void QAppWindow::menuForceShutdownVM(){
                     btnManageStop();
                     loop.quit();
                 });
-    process.start("virsh", {"destroy", m_currentVmName});
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                   "destroy", m_currentVmName});
     loop.exec();
 }
 
