@@ -34,7 +34,6 @@ class SnapManager : public QObject {
     private:
         VMachine m_vm;
         QWidget* parentWindow;
-        QProgressDialog* m_progress;
 
         QString getSnapName(const QString& imgName, const QString& id);
         void switchVmMountStorages(const QString& vmName,
@@ -46,6 +45,8 @@ class SnapManager : public QObject {
 
         bool checkWriteAccessToDirs(const QStringList& dirsForWriteCheck,
                                             QStringList* noWriteDirs = nullptr);
+        QProgressDialog* createNewQProgressDialog(const int& maxValue,
+                                                     QWidget* parent = nullptr);
 };
 
 #endif

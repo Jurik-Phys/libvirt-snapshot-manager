@@ -97,7 +97,6 @@ QStringList SnapManager::gotoSnapshot(const QString& vmName,
 bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
 
     if ( node.parentId == -1 ){
-        qDebug() << node.childrenImagesFullNames.size();
         if (node.childrenImagesFullNames.size() > 1 ) {
             QMessageBox::information(parentWindow,"Root chain node deletion…",
                 "Info: The root snapshot can only be removed with one child.");
@@ -106,7 +105,7 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
         else {
             // *** Delete confirmation in this specific case (one child)  *** //
             QMessageBox::StandardButton reply = QMessageBox::question(
-                                parentWindow, "Delete confirmation…",
+                                parentWindow, "Delete confirmation",
                                 "Do you really want to delete the snapshot?\n\n"
                        "Deleting root snapshot may take a long time \n"
                         "and temporarily require additional disk space.",
@@ -126,7 +125,7 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
     }
 
     QMessageBox::StandardButton reply = QMessageBox::question(
-                                parentWindow, "Delete confirmation…",
+                                parentWindow, "Delete confirmation",
                                    "Do you really want to delete the snapshot?",
                                             QMessageBox::Yes | QMessageBox::No);
     if (reply == QMessageBox::No) {
@@ -137,7 +136,7 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
     QStringList noWriteDirs;
     bool isWrite = checkWriteAccessToDirs(node.imagesFullNames, &noWriteDirs);
     if (!isWrite){
-        QMessageBox::critical(parentWindow, "Snapshot operation error…",
+        QMessageBox::critical(parentWindow, "Snapshot operation error",
             "Unable to delete file. "
                 "Please check your write access:\n" + noWriteDirs.join("\n"));
         return false;
@@ -284,22 +283,9 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
         }
     }
 
-    // Настройка диалога перебазирования файлов
-    m_progress = new QProgressDialog("", "", -1, 100*totalFiles, parentWindow);
-    m_progress->setWindowTitle("Rebasing snapshot chain…");
-    m_progress->setCancelButton(nullptr);
-    m_progress->setMinimumWidth(445);
-    m_progress->setWindowModality(Qt::WindowModal);
-    // *** Окно иногда появляется не в центре родительского окна *** //
-    //        Возможно, принудительное задание позиции поможет       //
-    //         (Интересно, как оно будет работать в Wayland)         //
-    QRect parentGeom = parentWindow->geometry();
-    QSize dlgSize = m_progress->size();
-    int x = parentGeom.x() + (parentGeom.width() - dlgSize.width()) / 2;
-    int y = parentGeom.y() + (parentGeom.height() - dlgSize.height()) / 2 - 60;
-    m_progress->move(x, y);
-    // ************************************************************* //
-    m_progress->show();
+    QProgressDialog* progress = nullptr;
+    progress = createNewQProgressDialog(100*totalFiles, parentWindow);
+    progress->show();
     // QApplication::processEvents();
     QString partInfo, info;
     int doneFiles = 0;
@@ -317,7 +303,7 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
                                .arg(totalFiles,  3)
                                .arg(QFileInfo(childrenImages[i][j]).fileName());
             info = partInfo.arg(0, 3, 10, QChar('0'));
-            m_progress->setLabelText(info);
+            progress->setLabelText(info);
 
             // *** Debug rebase *** //
             // QEventLoop loopT;
@@ -343,8 +329,8 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
                         QString valueStr = match.captured(1); // "12.01"
                         int value  = qRound(valueStr.toFloat());
                         info = partInfo.arg(value, 3, 10, QChar('0'));
-                        m_progress->setLabelText(info);
-                        m_progress->setValue(100*doneFiles + value);
+                        progress->setLabelText(info);
+                        progress->setValue(100*doneFiles + value);
                     }
                 });
 
@@ -366,21 +352,18 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
             file.remove();
         }
     }
-    m_progress->setValue(totalFiles);
-    m_progress->close();
+    progress->setValue(totalFiles);
+    progress->close();
+    progress->deleteLater();
 
     return true;
 }
 
 void SnapManager::doNewRoot(const QStringList& idImgs,
                                                 const QStringList& childImgs){
-    m_progress = new QProgressDialog("", "", -1, childImgs.size()*100,
-                                                                  parentWindow);
-    m_progress->setWindowTitle("Data transfer…");
-    m_progress->setCancelButton(nullptr);
-    m_progress->setMinimumWidth(445);
-    m_progress->setWindowModality(Qt::WindowModal);
-    m_progress->show();
+    QProgressDialog* progress = nullptr;
+    progress = createNewQProgressDialog(100*childImgs.size(), parentWindow);
+    progress->show();
     QString partInfo, info;
 
     for (int i = 0; i < idImgs.size(); ++i){
@@ -393,7 +376,7 @@ void SnapManager::doNewRoot(const QStringList& idImgs,
                                .arg(idImgs.size(),  3)
                                .arg(QFileInfo(childImgs[i]).fileName());
         info = partInfo.arg(0, 3, 10, QChar('0'));
-        m_progress->setLabelText(info);
+        progress->setLabelText(info);
 
         QProcess process;
         QEventLoop loop;
@@ -413,8 +396,8 @@ void SnapManager::doNewRoot(const QStringList& idImgs,
                     QString valueStr = match.captured(1); // "12.01"
                     int value  = qRound(valueStr.toFloat());
                     info = partInfo.arg(value, 3, 10, QChar('0'));
-                    m_progress->setLabelText(info);
-                    m_progress->setValue(100*i + value);
+                    progress->setLabelText(info);
+                    progress->setValue(100*i + value);
                 }
             });
 
@@ -443,6 +426,10 @@ void SnapManager::doNewRoot(const QStringList& idImgs,
         // Rename temp to root
         QFile::rename(childImgs[k] + ".temp-copy.qcow2", childImgs[k]);
     }
+
+    progress->setValue(childImgs.size()*100);
+    progress->close();
+    progress->deleteLater();
 }
 
 bool SnapManager::checkWriteAccessToDirs(const QStringList& dirsForWriteCheck,
@@ -471,5 +458,28 @@ bool SnapManager::checkWriteAccessToDirs(const QStringList& dirsForWriteCheck,
     }
 
     return writeFlag;
+}
+
+QProgressDialog* SnapManager::createNewQProgressDialog(const int& maxValue,
+                                                        QWidget* parentWindow){
+    QProgressDialog* progress = new QProgressDialog("", "", -1,
+                                                        maxValue, parentWindow);
+    progress->setWindowTitle("Data transfer");
+    progress->setCancelButton(nullptr);
+    progress->setWindowFlags(Qt::Dialog
+                            | Qt::WindowTitleHint
+                            | Qt::CustomizeWindowHint);
+    progress->setMinimumWidth(445);
+    progress->setWindowModality(Qt::WindowModal);
+    // *** Окно иногда появляется не в центре родительского окна *** //
+    //        Возможно, принудительное задание позиции поможет       //
+    //         (Интересно, как оно будет работать в Wayland)         //
+    QRect parentGeom = parentWindow->geometry();
+    QSize dlgSize = progress->size();
+    int x = parentGeom.x() + (parentGeom.width() - dlgSize.width()) / 2;
+    int y = parentGeom.y() + (parentGeom.height() - dlgSize.height()) / 2 - 60;
+    progress->move(x, y);
+    // ************************************************************* //
+    return progress;
 }
 // End snapManager.cpp
