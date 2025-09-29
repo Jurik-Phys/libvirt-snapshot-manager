@@ -47,6 +47,8 @@ class SnapManager : public QObject {
                                             QStringList* noWriteDirs = nullptr);
         QProgressDialog* createNewQProgressDialog(const int& maxValue,
                                                      QWidget* parent = nullptr);
+        long int getRebaseDataValue(const QString& backFullName,
+                                                    const QString& rebaseImage);
 };
 
 #endif

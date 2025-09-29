@@ -274,9 +274,7 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
         for (int j = 0; j < childImages; ++j){ // Images loop
                 QFileInfo file(childrenImages[i][j]);
                 if (!file.isWritable()) {
-                    qDebug() << "[EE] Error: The file must be writable"
-                                                        << childrenImages[i][j];
-                    QMessageBox::critical(parentWindow, "Permission error…",
+                    QMessageBox::critical(parentWindow, "Permission error",
                        "Error: The file must be writable:\n" + file.fileName());
                     return false;
                 }
@@ -286,7 +284,7 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
     QProgressDialog* progress = nullptr;
     progress = createNewQProgressDialog(100*totalFiles, parentWindow);
     progress->show();
-    // QApplication::processEvents();
+
     QString partInfo, info;
     int doneFiles = 0;
 
@@ -305,42 +303,35 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
             info = partInfo.arg(0, 3, 10, QChar('0'));
             progress->setLabelText(info);
 
-            // *** Debug rebase *** //
-            // QEventLoop loopT;
-            // QTimer::singleShot(500, &loopT, &QEventLoop::quit);
-            // loopT.exec();
+            QTimer rebaseFileProgressTimer;
+            rebaseFileProgressTimer.setInterval(500);
 
             QProcess process;
-
             QEventLoop loop;
+
+            long int rebaseDataValue = getRebaseDataValue(idImages[j],
+                                                          childrenImages[i][j]);
+            long int fSizeOld = QFileInfo(childrenImages[i][j]).size();
+
+            QObject::connect(&rebaseFileProgressTimer, &QTimer::timeout,[&](){
+                    long int fSize = QFileInfo(childrenImages[i][j]).size();
+                    int value = qRound(100.0*(fSize-fSizeOld)/rebaseDataValue);
+                    info = partInfo.arg(value, 3, 10, QChar('0'));
+                    progress->setLabelText(info);
+                    progress->setValue(100*doneFiles + value);
+
+                });
 
             QObject::connect(&process, &QProcess::finished, &loop,
                                                              &QEventLoop::quit);
-
-            QObject::connect(&process, &QProcess::readyReadStandardOutput,
-                [&](){
-                    QString output = process.readAllStandardOutput();
-
-                    // (12.01/100%)
-                    QRegularExpression re(R"(\((\d+(?:\.\d+)?)/(\d+)%\))");
-                    QRegularExpressionMatch match = re.match(output);
-
-                    if (match.hasMatch()) {
-                        QString valueStr = match.captured(1); // "12.01"
-                        int value  = qRound(valueStr.toFloat());
-                        info = partInfo.arg(value, 3, 10, QChar('0'));
-                        progress->setLabelText(info);
-                        progress->setValue(100*doneFiles + value);
-                    }
-                });
 
             QStringList qemuArgs = {"rebase","-p", "-f", "qcow2", "-F", "qcow2",
                                    "-b", parentImages[j], childrenImages[i][j]};
 
             process.start("qemu-img", qemuArgs);
-
+            rebaseFileProgressTimer.start();
             loop.exec();
-
+            rebaseFileProgressTimer.stop();
             doneFiles++;
         }
     }
@@ -352,6 +343,7 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
             file.remove();
         }
     }
+
     progress->setValue(totalFiles);
     progress->close();
     progress->deleteLater();
@@ -481,5 +473,45 @@ QProgressDialog* SnapManager::createNewQProgressDialog(const int& maxValue,
     progress->move(x, y);
     // ************************************************************* //
     return progress;
+}
+
+long int SnapManager::getRebaseDataValue(const QString& backFullName,
+                                                    const QString& rebaseImage){
+    long int resBlockData = 0;
+    QString backingFile = QFile(backFullName).fileName();
+
+    // *** Через qemu-img map <rebaseImage> идёт сбор числа блоков *** //
+    //     данных расположеных в родительском файле. Для каждого блока //
+    //     вычисляется размер и по общему размеру определяется размер  //
+    //     данных для rebasing'а                                       //
+    // *************************************************************** //
+
+    QProcess process;
+    QEventLoop loop;
+
+    QObject::connect(&process, &QProcess::finished, [&](){
+            QString output = process.readAllStandardOutput();
+                QStringList outputLines = output.split('\n',Qt::SkipEmptyParts);
+                for (int i = 0; i < outputLines.size(); ++i){
+                    if (i > 1){
+                        QString line = outputLines[i];
+                        QStringList parts = line.simplified().split(" ");
+                        if (parts.size() >=4 && line.contains(backingFile)){
+                            QString hexDataSize = parts.at(1);
+                            bool ok;
+                            long int blockData = hexDataSize.toLong(&ok, 16);
+                            if (ok){
+                                resBlockData+=blockData;
+                            }
+                        }
+                    }
+                }
+                loop.quit();
+            });
+
+    process.start("qemu-img", {"map", rebaseImage});
+    loop.exec();
+
+    return resBlockData;
 }
 // End snapManager.cpp
