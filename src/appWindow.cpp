@@ -805,9 +805,18 @@ bool QAppWindow::isLibvirtPolkitEnabled(){
 }
 
 void QAppWindow::doSnapshot(){
+    // *** Имя снапшота определяется на базе полного пути образа диска, *** //
+    //     последненго из списка дисков VM, что можно использовать для      //
+    //     получения имени активного т.е., используемого при работе         //
+    //     виртуальной машины, узла                                         //
+    // ******************************************************************** //
+    QString mountedNodeName;
+    mountedNodeName = m_vmDataCollector->getNodeName(m_mountStorages.last());
+
     QStringList  snapFullNames;
     SnapManager* snapManager = new SnapManager(this);
-    snapFullNames = snapManager->doSnapshot(m_currentVmName, m_mountStorages);
+    snapFullNames = snapManager->doSnapshot(m_currentVmName, mountedNodeName,
+                                                               m_mountStorages);
     // *** Снапшотов не получилось, пропуск дальнейших действий *** //
     if (snapFullNames.size() == 0){
         return;
@@ -939,7 +948,8 @@ void QAppWindow::deleteSnapshot(){
     // *** Удаление снапшота с диска *** //
     SnapManager* snapManager = new SnapManager(this);
     bool doneDelete;
-    doneDelete = snapManager->deleteSnapshot(m_currentVmName, node);
+    QString snapName = m_activeNode.name;
+    doneDelete = snapManager->deleteSnapshot(m_currentVmName, snapName, node);
     snapManager->deleteLater();
 
     if (doneDelete == false){

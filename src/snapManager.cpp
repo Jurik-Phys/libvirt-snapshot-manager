@@ -8,15 +8,16 @@ SnapManager::SnapManager(QWidget* parent) : parentWindow(parent){
 SnapManager::~SnapManager(){
 }
 
-QStringList SnapManager::doSnapshot(const QString& name,
+QStringList SnapManager::doSnapshot(const QString& vmName,
+                                    const QString& snapName,
                                     const QStringList& workDisks, bool silence){
     // *** Подтверждение создания снапшота *** //
     if (!silence) {
         QMessageBox::StandardButton reply = QMessageBox::question(
-                    parentWindow, "Take Snapshot - " + name,
-                        "Do you really want to take a snapshot of '"+ name +"'",
+                    parentWindow, "Take Snapshot",
+                            "Do you really want to take the snapshot\n \""
+                                + snapName + "\" for the VM \"" + vmName +"\"",
                                             QMessageBox::Yes | QMessageBox::No);
-
         if (reply == QMessageBox::No) {
             return QStringList();
         }
@@ -72,7 +73,7 @@ QStringList SnapManager::doSnapshot(const QString& name,
     }
 
     // Смена точки монтирования в VM
-    switchVmMountStorages(name, snapshotsFullNames);
+    switchVmMountStorages(vmName, snapshotsFullNames);
     return snapshotsFullNames;
 }
 
@@ -87,14 +88,16 @@ QStringList SnapManager::gotoSnapshot(const QString& vmName,
     }
     else {
         // *** В случае "snap" сначала необходимо сделать "work" снапшот *** //
-        res = doSnapshot(vmName, node.imagesFullNames, true);
+        //     Режим 'silence', поэтому имя узла не требуется "fakeSnapName" //
+        res = doSnapshot(vmName, "fakeSnapName", node.imagesFullNames, true);
     }
 
     // *** Фактически возвращения списка подключенных к ВМ хранилищ *** //
     return res;
 }
 
-bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
+bool SnapManager::deleteSnapshot(const QString& vmName, const QString& snapName,
+                                                         const ChainNode& node){
 
     if ( node.parentId == -1 ){
         if (node.childrenImagesFullNames.size() > 1 ) {
@@ -106,9 +109,10 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
             // *** Delete confirmation in this specific case (one child)  *** //
             QMessageBox::StandardButton reply = QMessageBox::question(
                                 parentWindow, "Delete confirmation",
-                                "Do you really want to delete the snapshot?\n\n"
-                       "Deleting root snapshot may take a long time \n"
-                        "and temporarily require additional disk space.",
+                                "Do you really want to delete the snapshot "
+                                                  "\"" + snapName + "\"?\n\n"
+                        "Info: Deleting root snapshot may take a long time \n"
+                               "and temporarily require additional disk space.",
                                             QMessageBox::Yes | QMessageBox::No);
             if (reply == QMessageBox::No) {
                 return false;
@@ -126,7 +130,8 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const ChainNode& node){
 
     QMessageBox::StandardButton reply = QMessageBox::question(
                                 parentWindow, "Delete confirmation",
-                                   "Do you really want to delete the snapshot?",
+                                "Do you really want to delete the snapshot "
+                                                     "\"" + snapName + "\"?\n",
                                             QMessageBox::Yes | QMessageBox::No);
     if (reply == QMessageBox::No) {
         return false;
