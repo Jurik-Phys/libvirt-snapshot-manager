@@ -358,6 +358,11 @@ void QAppWindow::setSnapFrame(){
     // Установка кастомного стиля, для отображения веток дерева
     m_snapTreeView->setStyle(new TreeLinesStyle());
 
+    // *** Белый цвет для основного цвета в виджетах *** //
+    QPalette pal = m_snapTreeView->palette();
+    pal.setColor(QPalette::Base, Qt::white);
+    m_snapTreeView->setPalette(pal);
+
     m_vRColumnLayout->addWidget(m_snapTreeView);
 
     m_snapTreeView->setModel(m_snapTreeModel);
