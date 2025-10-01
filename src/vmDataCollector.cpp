@@ -245,7 +245,9 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
         return vm;
     }
 
-    // Загрузка данных о qcow2 файлах, из каталогов сохранения цепочек состояний
+    // *** Загрузка данных о qcow2 файлах, из каталогов сохранения *** //
+    //     цепочек состояний, с помощью утилиты qemu-img               //
+    // *************************************************************** //
     m_vmImagesRawInfo.clear();
     QVector<VmImageRawInfo> vmImagesRawInfo;
     bool isOkLoadRawInfo = true;
@@ -256,6 +258,51 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
         if (!isOkLoadRawInfo){
             return vm;
         }
+    }
+
+    // *** Проверка на наличие вновь примонтированных хранилищ *** //
+    // > Теория. Вновь примонтированными считаются хранилища,      //
+    //   у которых в соседях есть хранилища с id, а у самих id     //
+    //   отсутсвует. Например, к виртуальной машине добавили диск  //
+    //   через VirtManager или иным образом.                       //
+    //                                                             //
+    // > Проблема добавленные извне файлы проблематично встрочить  //
+    //   в уже существующую систему снапшотов. Самый беспроблемый  //
+    //   подход состоит в том, чтобы добавляемый диск "размножить" //
+    //   на все существующие узлы дерева сохранений, но это надо   //
+    //   сделать даже при просмотре информации, что очень криво.   //
+    //                                                             //
+    // > Решение. На данном этапе надо реализовать запрет          //
+    //   на внешнее добавление дисков в какой-либо снапшот,        //
+    //   технически можно добавлять хранилища только в корень      //
+    //   цепочки сохранения (т.е., необходимо удалить все снапшоты //
+    //   и тогда с помощью внешних утилит добавить хранилище),     //
+    //   а затем уже строить новое дерево сохранений.              //
+    //                                                             //
+    // > Далее. Реализовать добавление/удаление дисков виртуальной //
+    //   машины из программы с синхронизацией числа дисков по всем //
+    //   точкам сохранения (добавление/удаление backing фалов)     //
+    // *********************************************************** //
+
+    QStringList extMountedStorages;
+    extMountedStorages = getExtMountStorages(vmImagesRawInfo, vm.mountStorages);
+    if (extMountedStorages.size() > 0){
+        QString extMountStorageStr;
+        for (int i = 0; i < extMountedStorages.size(); ++i){
+            QString problemImage = extMountedStorages[i];
+            extMountStorageStr +=
+                        QString("\n - File name: ") + QFileInfo(problemImage)
+                                                                .fileName()+"\n"
+                      + QString(" - Base path: ") + QFileInfo(problemImage)
+                                                               .absolutePath();
+        }
+
+        emit errorMsg("Mounted file error",
+               "Error. An external attachment the storages has been detected.\n"
+                "External attachment within snapshot tree are not allowed."
+                   + extMountStorageStr + "\nSnapshot tree build canceled!\n"
+               "Try to remove these storage devices from the virtual machine.");
+        return vm;
     }
 
     // ****************************** Теория ******************************  //
@@ -287,12 +334,19 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
     //   без цепочки сохранения и отсутсвии прав доступа на чтение      //
     //   у данной программы. Виртуальная машина будет работать,         //
     //   а дерево снапшотов не построится т.к., к файлу нет доступа.    //
+    //                                                                  //
+    // > Проверка должна проводится по черновым данным т.к., после      //
+    //   rmExtBackingInfo(), если где-то была "потеря", то отбросится   //
+    //   вся цепочка вплоть до актуальной точки монтирования на дальней //
+    //   ветке дерева сохранения состояний.                             //
+    // **************************************************************** //
 
     for (int i = 0; i < vm.mountStorages.size(); ++i){
         int isLostMountFile = true;
-        for (int j = 0; j < m_vmImagesRawInfo.size(); ++j){
-            if (vm.mountStorages[i] == m_vmImagesRawInfo[j].imageFullName){
+        for (int j = 0; j < vmImagesRawInfo.size(); ++j){
+            if (vm.mountStorages[i] == vmImagesRawInfo[j].imageFullName){
                 isLostMountFile = false;
+                break;
             }
         }
 
@@ -308,6 +362,9 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
     }
 
     // *** Пропуск действий, если ранее был получен пустой ответ *** //
+    //     Пустым ответ приходит, когда в rmExtBackingInfo() есть    //
+    //     потери файлов, ожидаемых в цепочке сохранения состяний.   //
+    // ************************************************************* //
     if (m_vmImagesRawInfo.size() == 0){
         return vm;
     }
@@ -860,11 +917,26 @@ bool VmDataCollector::checkNodeFilesCount(
         }
 
         int counter = 0;
+        bool skipRoot = false;
         for (int i = 0; i < imgsRawInfo.size(); ++i){
-            int tmpId = getFileNameId(imgsRawInfo[i].imageFullName);
+            // *** Даже если у файла есть физически id, но по факту *** //
+            //     у него нет родителей, то он корневой и его id = -1   //
+            int tmpId;
+            if (imgsRawInfo[i].backFullName == "-1"){
+                tmpId = -1;
+                skipRoot = true;
+            }
+            else {
+                tmpId = getFileNameId(imgsRawInfo[i].imageFullName);
+            }
+
             if (tmpId == id && tmpId != -1){
                 counter++;
             }
+        }
+
+        if (skipRoot){
+            continue;
         }
 
         if (counter != mountStorages.size()){
@@ -1230,6 +1302,43 @@ void VmDataCollector::writeQDomElementText(QDomDocument& doc, QDomElement& el,
         QDomText text = doc.createTextNode(value);
         el.appendChild(text);
     }
+}
+
+QStringList VmDataCollector::getExtMountStorages(
+                                const QVector<VmImageRawInfo>& imgsRawInfo,
+                                            const QStringList& mountStorages) {
+    QStringList res;
+    int id = -1;
+
+    for (int i = 0; i < mountStorages.size(); ++i){
+        id = getFileNameId(mountStorages[i]);
+        if (id != -1){
+            // *** Файл с id может быть корнем цепочки сохранения *** //
+            // Необходимо проверить, наличие у него родителей, если   //
+            // родителей нет, то это действительно корень и сброс     //
+            // id, полученного из имени файла, в "-1"                 //
+            // ****************************************************** //
+            for (int k = 0; k < imgsRawInfo.size(); ++k){
+                if (imgsRawInfo[k].imageFullName == mountStorages[i]){
+                    QString backFullName = imgsRawInfo[k].backFullName;
+                    if (backFullName == "-1"){
+                        id = -1;
+                    }
+                }
+            }
+            break;
+        }
+    }
+
+    if (id != -1){
+        for (int i = 0; i < mountStorages.size(); ++i){
+            if (getFileNameId(mountStorages[i]) == -1){
+                res.push_back(mountStorages[i]);
+            }
+        }
+    }
+
+    return res;
 }
 
 // End vmDataCollector.cpp

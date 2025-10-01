@@ -99,6 +99,8 @@ class VmDataCollector : public QObject {
 
         void writeQDomElementText(QDomDocument& doc, QDomElement& el,
                                                           const QString& value);
+        QStringList getExtMountStorages(const QVector<VmImageRawInfo>&,
+                                              const QStringList& mountStorages);
 };
 
 #endif
