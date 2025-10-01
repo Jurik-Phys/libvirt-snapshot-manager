@@ -328,7 +328,7 @@ bool SnapTreeModel::insertRows(int row, int count, const QModelIndex& index){
                             .push_back(m_nodes[activeIndex].imagesFullNames[i]);
         }
         // name
-        newNode.name = vmDataCollect.getNodeName(m_snapImagesFullNames.last());
+        newNode.name = vmDataCollect.getNodeName(newNode.uuid);
         // *** Добавление нового узла в данные модели *** //
         m_nodes.push_back(newNode);
     endInsertRows();
@@ -382,7 +382,7 @@ bool SnapTreeModel::insertRowAt(int row, const QModelIndex& parentIndex){
                           .push_back(m_nodes[parentNodeIdx].imagesFullNames[i]);
         }
         // name
-        newNode.name = vmDataCollect.getNodeName(m_snapImagesFullNames.last());
+        newNode.name = vmDataCollect.getNodeName(newNode.uuid);
         // *** Добавление нового узла в данные модели *** //
         m_nodes.push_back(newNode);
     endInsertRows();

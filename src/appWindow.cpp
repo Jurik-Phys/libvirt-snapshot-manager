@@ -810,14 +810,12 @@ bool QAppWindow::isLibvirtPolkitEnabled(){
 }
 
 void QAppWindow::doSnapshot(){
-    // *** Имя снапшота определяется на базе полного пути образа диска, *** //
-    //     последненго из списка дисков VM, что можно использовать для      //
-    //     получения имени активного т.е., используемого при работе         //
-    //     виртуальной машины, узла                                         //
-    // ******************************************************************** //
-    QString mountedNodeName;
-    mountedNodeName = m_vmDataCollector->getNodeName(m_mountStorages.last());
-
+    // ***** Имя снапшота определяется на базе id его файлов. ***** //
+    //     Принято, что id должны быть у всех файлов снапшота.      //
+    // ************************************************************ //
+    QString mountedNodeUuid, mountedNodeName;
+    mountedNodeUuid = m_vmDataCollector->getNodeUuid(m_mountStorages.last());
+    mountedNodeName = m_vmDataCollector->getNodeName(mountedNodeUuid);
     QStringList  snapFullNames;
     SnapManager* snapManager = new SnapManager(this);
     snapFullNames = snapManager->doSnapshot(m_currentVmName, mountedNodeName,

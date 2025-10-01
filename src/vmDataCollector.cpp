@@ -414,9 +414,12 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
     while (true){
         ChainNode node;
         node.imagesType = "work";
+        bool usedVmUUID = false;
+        int rootStoragesCounter = 0;
         for (int mntIdx = 0; mntIdx  < vm.mountStorages.size(); ++mntIdx){
             // Формирование корневого узла в цепочке сохранений;
             if (parentId == -1){
+                rootStoragesCounter++;
                 node.id = id;
                 node.parentId = parentId;
                 node.imagesType = "active";
@@ -434,8 +437,25 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
                 node.imagesFullNames.push_back(imageFullName);
                 node.backFullNames.push_back("None");
 
-                node.uuid = getNodeUuid(imageFullName, true);
-                node.name = getNodeName(node.uuid);
+                // *** Проверка того, что в корне есть диск без id *** //
+                // Если в одном из случаев не найден файл id, то надо  //
+                // испльзовать vm.uuid, в противном случае использвать //
+                // надо id файла. Таким образом, при удалении снапшота //
+                // и перемещении N+1 на место корня, его UUID останется//
+                // валидным.                                           //
+                // *************************************************** //
+                static const QRegularExpression re(R"(-id-(\d{10}))");
+                QRegularExpressionMatch match = re.match(imageFullName);
+
+                if (!match.hasMatch()){
+                    usedVmUUID = true;
+                }
+
+                if (rootStoragesCounter == vm.mountStorages.size()){
+                    node.uuid = getNodeUuid(imageFullName, usedVmUUID);
+                    node.name = getNodeName(node.uuid);
+                    rootStoragesCounter = 0;
+                }
             }
             // Формирование всех остальных узлов в цепочке сохранений
             else {
