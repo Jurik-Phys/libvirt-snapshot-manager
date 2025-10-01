@@ -434,8 +434,8 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
                 node.imagesFullNames.push_back(imageFullName);
                 node.backFullNames.push_back("None");
 
-                node.name = getNodeName(imageFullName);
-                node.uuid = getNodeUuid(imageFullName);
+                node.uuid = getNodeUuid(imageFullName, true);
+                node.name = getNodeName(node.uuid);
             }
             // Формирование всех остальных узлов в цепочке сохранений
             else {
@@ -471,8 +471,8 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
                             }
                         }
 
-                        node.name = getNodeName(imageFullName);
                         node.uuid = getNodeUuid(imageFullName);
+                        node.name = getNodeName(node.uuid);
 
                         // Если точка без потомков (work) и совпадает с точкой
                         // монтирования к ВМ, то это активная рабочая точка
@@ -804,11 +804,29 @@ QString VmDataCollector::getRootFullName(const QString& imageFullName){
     return nodeNameList[index];
 }
 
-QString VmDataCollector::getNodeUuid(const QString& fName){
+QString VmDataCollector::getNodeUuid(const QString& fName, bool isRoot){
+    // *** Чтобы UUID узла не зависел от конкретного имени файла *** //
+    // UUID будет рассчитываться на базе id из файла "0123456789",   //
+    // У корневых файлов id нет, там за основу будет взят uuid       //
+    // виртуальной машины.                                           //
+    // ************************************************************* //
+    QString baseData = "baseDataExapmle";
+
+    if (isRoot){
+        baseData = m_vm.uuid;
+    }
+    else {
+        static const QRegularExpression re(R"(-id-(\d{10}))");
+        QRegularExpressionMatch match = re.match(fName);
+
+        if (match.hasMatch()){
+            baseData = match.captured(1);
+        }
+    }
 
     QUuid uuid = QUuid::createUuidV5(QUuid::fromString(
                                     "{12329e42e-d24e-4ad0-84dd-9e03b8b33e7}"),
-                                                                        fName);
+                                                                      baseData);
     return uuid.toString(QUuid::WithoutBraces);
 }
 

@@ -31,7 +31,7 @@ class VmDataCollector : public QObject {
         VMachine getVmFullInfo();
         VMachine getVmShortInfo(const QString& uuid, bool* isOk = nullptr);
         QString getNodeName(const QString& imageFullName);
-        QString getNodeUuid(const QString& imageFullName);
+        QString getNodeUuid(const QString& imageFullName, bool isRoot = false);
 
         void vmListStartTimer();
         void vmListStopTimer();
