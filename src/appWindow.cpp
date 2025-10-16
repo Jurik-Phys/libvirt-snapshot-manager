@@ -774,11 +774,14 @@ bool QAppWindow::checkLocalHypervisorConnection(){
     }
 
     if (!res){
+        QString user = qEnvironmentVariable("USER");
         QString title = "Hypervisor access denied";
-        QString message = "Hypervisor user access check failed.\n"
-            "Use the following command to manually check access:\n"
+        QString msg = "Failed to check user access to the hypervisor!\n"
+            "\nTry adding the \"" + user + "\" to the \"libvirt\":\n"
+            "$ sudo usermod -a -G libvirt " + user + "\n"
+            "\nYou can manually verify access with:\n"
             "$ virsh --connect=" + m_libVirtConnectURI + " list --all";
-        QMessageBox::critical(nullptr, title, message);
+        QMessageBox::critical(nullptr, title, msg);
     }
 
     return res;
