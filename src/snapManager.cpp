@@ -197,7 +197,8 @@ void SnapManager::switchVmMountStorages(const QString& vmName,
 
     QProcess process;
     process.setProcessEnvironment(env);
-    process.start("virsh", {"dumpxml", vmName});
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                            "dumpxml", vmName});
 
     if (!process.waitForStarted()){
         return;
@@ -249,7 +250,8 @@ void SnapManager::switchVmMountStorages(const QString& vmName,
     file.close();
 
     // *** Применение новых настроек через virsh *** //
-    process.start("virsh", {"define", fileName});
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                           "define", fileName});
 
     if (!process.waitForStarted()){
         return;

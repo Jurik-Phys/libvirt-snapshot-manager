@@ -842,6 +842,12 @@ QString VmDataCollector::getNodeUuid(const QString& fName, bool isRoot){
         if (match.hasMatch()){
             baseData = match.captured(1);
         }
+        else {
+            // *** Корректное определение текущего id при создании *** //
+            //           первого снапшота от корневого файла.          //
+            // ******************************************************* //
+            baseData = m_vm.uuid;
+        }
     }
 
     QUuid uuid = QUuid::createUuidV5(QUuid::fromString(
