@@ -56,6 +56,10 @@ class SnapTreeModel : public QAbstractItemModel {
         bool insertRowAt(int row, const QModelIndex& parent);
 
         void setSnapImagesFullName(QStringList imagesFullNames);
+
+        // *** Modification list of images disk *** //
+        void addNewVmImages(const QStringList& newImageInfo);
+        void delVmImages(const QString& imageFullName);
     private:
         QVector<ChainNode> m_nodes;
         QStringList m_snapImagesFullNames;
@@ -63,6 +67,8 @@ class SnapTreeModel : public QAbstractItemModel {
         int findChildIdByRow(int parentId, int row) const;
         const ChainNode& findNodeById(int id) const;
         int rowOfChild(int childId, int parentId) const;
+
+        QString getSnapName(const QString& imgName, const QString& id);
 };
 
 #endif

@@ -98,6 +98,13 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
             QWidget* widget = m_colBWidgets.last();
             QTextEdit* edit = qobject_cast<QTextEdit*>(widget);
             // *** Увеличение числа отображемых строк в поле ввода до 4 *** //
+            // *** a) корректировка шрифта *** //
+            QFont font = this->font();
+            int newFontSize = calcOptimalFontSize(colAList);
+            font.setPointSize(newFontSize);
+            this->setFont(font);
+            edit->setFont(font);
+            // *** б) Изменение числа строк *** //
             QFontMetrics fm(edit->font());
             int rowHeight = fm.lineSpacing();
             int docMargin = edit->document()->documentMargin();
@@ -147,15 +154,65 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
     for (int i = 0; i < m_colAWidgets.size(); ++i){
         hLayoutArray[i]->addWidget(m_colAWidgets[i]);
         hLayoutArray[i]->addWidget(m_colBWidgets[i]);
+        switch (i){
+            case 7: // Add edit mounted drives button
+                m_editImagesBtn = new QToolButton();
+                m_editImagesBtn->setAutoRaise(true);
+                m_editImagesBtn->setText("⋮");
+                m_editImagesBtn->setPopupMode(QToolButton::InstantPopup);
+                QFontMetrics fm(this->font());
+                int lineSize = fm.lineSpacing();
+                m_editImagesBtn->setFixedHeight(lineSize);
+                m_editImagesBtn->setFixedWidth(lineSize);
+                m_editImagesBtn->
+                    setStyleSheet("QToolButton::menu-indicator { image:none;}");
+                QFont btnFont = m_editImagesBtn->font();
+                btnFont.setWeight(QFont::Bold);
+                m_editImagesBtn->setFont(btnFont);
+                m_editImagesBtn->setVisible(false);
+
+                QMenu* editImgsMenu = new QMenu(m_editImagesBtn);
+                QAction* actNewImages = editImgsMenu->addAction("New images…");
+                QAction* actDelImages = editImgsMenu->addAction("Del images…");
+
+                m_editImagesBtn->setMenu(editImgsMenu);
+
+                QObject::connect(actNewImages, &QAction::triggered,
+                                           this, &VmInfoWidget::addNewVmImages);
+                QObject::connect(actDelImages, &QAction::triggered,
+                                              this, &VmInfoWidget::delVmImages);
+
+                hLayoutArray[i]->addWidget(m_editImagesBtn);
+                break;
+        }
     }
 
     // *** Добавление hLayout'ов в основной вертикальный layout *** //
+    //     Также дополнительный статичный контейнер                 //
+    //     для верхних виджетов, необходимый для предотвращения     //
+    //     "прыжков" виджетов при добавлении нового диска           //
+    //     П.С. впрочем, проблема прыжков может быть решена через   //
+    //     изменение размера виджета по таймеру, но менее надёжно.  //
+    // ************************************************************ //
+    QWidget*     staticContainerWidget = new QWidget();
+    QVBoxLayout* staticContainerLayout = new QVBoxLayout();
+    staticContainerWidget->setContentsMargins(0, 0, 0, 0);
+    staticContainerLayout->setContentsMargins(0, 0, 0, 0);
+    // staticContainerLayout->setSpacing(0);
+    staticContainerWidget->setLayout(staticContainerLayout);
     for (int i = 0; i < hLayoutArray.size(); ++i){
-        m_vScrollLayout->addLayout(hLayoutArray[i]);
+        staticContainerLayout->addLayout(hLayoutArray[i]);
+        // m_vScrollLayout->addLayout(hLayoutArray[i]);
     }
+    staticContainerWidget->setSizePolicy(QSizePolicy::Expanding,
+                                                            QSizePolicy::Fixed);
+    int height = staticContainerWidget->sizeHint().height();
+    staticContainerWidget->setMinimumHeight(height);
+    m_vScrollLayout->addWidget(staticContainerWidget);
 
     // *** Добавление и настройка виджета для отображения списка дисков *** //
     QTextEdit* storageList = new QTextEdit();
+
     storageList->setLineWrapMode(QTextEdit::NoWrap);
     storageList->setReadOnly(true);
     storageList->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -163,9 +220,6 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
     storageList->viewport()->setStyleSheet("background-color: white;");
     storageList->setStyleSheet("QTextEdit {" "border: none;" "}");
     fixScrollBar(storageList);
-    m_vScrollLayout->addWidget(storageList);
-
-    m_vScrollLayout->addStretch();
 
     // *** Dynamic font size *** //
     QFont font = this->font();
@@ -174,6 +228,9 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
     this->setFont(font);
     qobject_cast<QTextEdit*>(m_colBWidgets[0])->setFont(font);
     storageList->setFont(font);
+
+    m_vScrollLayout->addWidget(storageList);
+    m_vScrollLayout->addStretch();
 }
 
 VmInfoWidget::~VmInfoWidget(){
@@ -275,6 +332,7 @@ void VmInfoWidget::setData(const VMachine& vm){
     QString mountStoragesCount = QString::number(vm.mountStorages.size());
     qobject_cast<QLabel*>(m_colBWidgets[7])->setText(mountStoragesCount);
     setStorageList(vm.mountStorages);
+    m_editImagesBtn->setVisible(true);
 }
 
 QString VmInfoWidget::humanMemory(const QString& rawRam){
@@ -550,6 +608,25 @@ int VmInfoWidget::calcOptimalFontSize(const QStringList& text){
     }
 
     return res;
+}
+
+void VmInfoWidget::addNewVmImages(){
+    DialogAddNewImage addNewImageDialog(this);
+
+    if (addNewImageDialog.exec() == QDialog::Accepted){
+        QString imageFullName = addNewImageDialog.getImageFullName();
+        QString imageSize = addNewImageDialog.getImageSize();
+        qDebug() << "[II] Dialog accepted";
+        emit addNewVmImagesRequested({imageFullName, imageSize});
+    }
+    else {
+        qDebug() << "[II] Dialog canceled";
+    }
+}
+
+void VmInfoWidget::delVmImages(){
+    qDebug() << "[II] [VmInfoWidget] Del vmImages now";
+    emit delVmImagesRequested("/var/lib/libvirt/images/rwx.qcow2");
 }
 
 // End vmInfoWidget.cpp

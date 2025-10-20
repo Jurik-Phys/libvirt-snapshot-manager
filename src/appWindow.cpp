@@ -94,6 +94,12 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
                 &SnapInfoWidget::removeEmptySnapshotInfoRequested,
                      m_vmDataCollector, &VmDataCollector::rmSnapshotXmlElement);
 
+    // *** Manage vmImages *** //
+    QObject::connect(m_vmInfoWidget, &VmInfoWidget::addNewVmImagesRequested,
+                                             this, &QAppWindow::addNewVmImages);
+    QObject::connect(m_vmInfoWidget, &VmInfoWidget::delVmImagesRequested,
+                                                this, &QAppWindow::delVmImages);
+
     addVmToFrame();
 }
 
@@ -1443,6 +1449,48 @@ void QAppWindow::onNewVmInfoReady(const VMachine& vmNew){
     if (vmNew.osId != vmOld.osId && vmNew.uuid == vmOld.uuid){
         m_vmInfoWidget->setOsId(vmNew.osId);
     }
+}
+
+bool QAppWindow::addNewVmImages(const QStringList& newImageInfo){
+
+    bool res = false;
+
+    QString imageFullName = newImageInfo.first();
+    QString imageSize = newImageInfo.last();
+    qDebug() << "[II] [QAppWindow] addNewVmImages now"
+             << imageFullName
+             << imageSize << "GiB";
+
+    if (m_mountStorages.size() > 0){
+        m_snapTreeModel->addNewVmImages(newImageInfo);
+
+        // *** Обновление списка дисков текущего узла *** //
+        // *** Доступ к данным через QItemSelectionModel *** //
+        QItemSelectionModel* selectionModel = m_snapTreeView->selectionModel();
+        QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
+
+        // *** Выделение одиночное, в списке максимум один элемент *** //
+        QModelIndex selIndex = selectedIndexes[0];
+
+        // *** Получение данных выделенного узла *** //
+        const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(selIndex);
+
+        m_snapInfoWidget->setStorageList(node.imagesFullNames);
+        // ***********************************************//
+
+    }
+    else {
+        qDebug() << "[II] Diskless VM";
+    }
+
+    return res;
+}
+
+bool QAppWindow::delVmImages(const QString& imageFullName){
+    bool res = false;
+    qDebug() << "[II] [QAppWindow] delVmImages now" << imageFullName;
+
+    return res;
 }
 
 // End appWindow.cpp

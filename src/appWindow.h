@@ -43,6 +43,10 @@ class QAppWindow : public QWidget {
         VMachine getActiveVm();
         bool checkExternalVmUtilities();
 
+        // *** Manage VM images *** //
+        bool addNewVmImages(const QStringList& newImageInfo);
+        bool delVmImages(const QString& imageFullName);
+
     signals:
         void vmListProcessingStarted();
         void vmListProcessingCompleted();

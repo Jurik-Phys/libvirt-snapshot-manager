@@ -29,9 +29,8 @@ class SnapManager : public QObject {
         QStringList doSnapshot(const QString& vmName, const QString& snapName,
                       const QStringList& mntStorages, bool silenceFlag = false);
         QStringList gotoSnapshot(const QString& vmName, const ChainNode& node);
-         bool deleteSnapshot(const QString& vmName, const QString& snapName,
+        bool deleteSnapshot(const QString& vmName, const QString& snapName,
                                                          const ChainNode& node);
-        QString getActiveNodeName();
 
     private:
         VMachine m_vm;

@@ -12,6 +12,12 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
     m_saveDescriptionTimer->setInterval(1000);
     m_saveDescriptionTimer->setSingleShot(true);
 
+    m_updateImageFilesTimer = new QTimer();
+    m_updateImageFilesTimer->setInterval(10);
+    m_updateImageFilesTimer->setSingleShot(true);
+    QObject::connect(m_updateImageFilesTimer, &QTimer::timeout,
+                                    this, &SnapInfoWidget::doResizeImageFiles);
+
     QVBoxLayout* vFrameLayout = new QVBoxLayout(this);
     vFrameLayout->setAlignment(Qt::AlignTop);
     vFrameLayout->setContentsMargins(7, 5, 0, 0);
@@ -95,10 +101,17 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
             QWidget* widget = m_colBWidgets.last();
             QTextEdit* edit = qobject_cast<QTextEdit*>(widget);
             // *** Увеличение числа отображемых строк в поле ввода до 7 *** //
+            // *** a) корректировка шрифта *** //
+            QFont font = this->font();
+            int newFontSize = calcOptimalFontSize(colAList);
+            font.setPointSize(newFontSize);
+            this->setFont(font);
+            edit->setFont(font);
+            // *** б) Изменение числа строк *** //
             QFontMetrics fm(edit->font());
             int rowHeight = fm.lineSpacing();
             int docMargin = edit->document()->documentMargin();
-            edit->setFixedHeight(rowHeight * 7
+            edit->setFixedHeight(rowHeight * 7.6
                                       + 2 * edit->frameWidth() + 2 * docMargin);
             edit->viewport()->setStyleSheet("background-color: white;");
             fixScrollBar(edit);
@@ -143,22 +156,39 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
     }
 
     // *** Добавление hLayout'ов в основной вертикальный layout *** //
+    //     Также дополнительный статичный контейнер                 //
+    //     для верхних виджетов, необходимый для предотвращения     //
+    //     "прыжков" виджетов при добавлении нового диска           //
+    //     П.С. впрочем, проблема прыжков может быть решена через   //
+    //     изменение размера виджета по таймеру, но менее надёжно.  //
+    // ************************************************************ //
+    QWidget*     staticContainerWidget = new QWidget();
+    QVBoxLayout* staticContainerLayout = new QVBoxLayout();
+    staticContainerWidget->setContentsMargins(0, 0, 0, 0);
+    staticContainerLayout->setContentsMargins(0, 0, 0, 0);
+    // staticContainerLayout->setSpacing(0);
+    staticContainerWidget->setLayout(staticContainerLayout);
     for (int i = 0; i < hLayoutArray.size(); ++i){
-        m_vScrollLayout->addLayout(hLayoutArray[i]);
+        staticContainerLayout->addLayout(hLayoutArray[i]);
     }
+    staticContainerWidget->setSizePolicy(QSizePolicy::Expanding,
+                                                            QSizePolicy::Fixed);
+    int height = staticContainerWidget->sizeHint().height();
+    staticContainerWidget->setMinimumHeight(height);
+    m_vScrollLayout->addWidget(staticContainerWidget);
 
     // *** Добавление и настройка виджета списка файлов снапшота *** //
-    QTextEdit* imageFiles = new QTextEdit();
-    imageFiles->setLineWrapMode(QTextEdit::NoWrap);
-    imageFiles->setReadOnly(true);
-    imageFiles->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    imageFiles->setLineWrapMode(QTextEdit::NoWrap);
-    imageFiles->viewport()->setStyleSheet("background-color: white;");
-    imageFiles->setStyleSheet("QTextEdit {" "border: none;" "}");
-    fixScrollBar(imageFiles);
+    m_imageFiles = new QTextEdit();
 
-    m_vScrollLayout->addWidget(imageFiles);
-    m_vScrollLayout->addStretch();
+    m_imageFiles->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_imageFiles->setMaximumHeight(32);
+    m_imageFiles->setLineWrapMode(QTextEdit::NoWrap);
+    m_imageFiles->setReadOnly(true);
+    m_imageFiles->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_imageFiles->setLineWrapMode(QTextEdit::NoWrap);
+    m_imageFiles->viewport()->setStyleSheet("background-color: white;");
+    m_imageFiles->setStyleSheet("QTextEdit {" "border: none;" "}");
+    fixScrollBar(m_imageFiles);
 
     // *** Dynamic font size *** //
     QFont font = this->font();
@@ -166,7 +196,12 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
     font.setPointSize(newFontSize);
     this->setFont(font);
     qobject_cast<QTextEdit*>(m_colBWidgets[0])->setFont(font);
-    imageFiles->setFont(font);
+    m_imageFiles->setFont(font);
+
+    // m_vScrollLayout->setSpacing(1.5*newFontSize);
+    m_vScrollLayout->addWidget(m_imageFiles);
+    m_vScrollLayout->addStretch();
+
 }
 
 SnapInfoWidget::~SnapInfoWidget(){
@@ -316,26 +351,39 @@ void SnapInfoWidget::setData(const ChainNode& node){
         }
     }
     qobject_cast<QLabel*>(m_colBWidgets[4])->setText(typeOut);
-    qobject_cast<QLabel*>(m_colBWidgets[5])
-                          ->setText(QString::number(node.backFullNames.size()));
+    setStorageList(node.imagesFullNames);
+}
 
-    QWidget* editWidget =  m_vScrollLayout
-                               ->itemAt(m_vScrollLayout->count() - 2)->widget();
-    QTextEdit* imageFiles = qobject_cast<QTextEdit*>(editWidget);
+void SnapInfoWidget::setStorageList(const QStringList& imagesFullNames){
+    // *** Сначала установка текста (c добавлением номеров в списке) *** //
+    QStringList listData;
+    for (int i = 0; i < imagesFullNames.size(); ++i){
+        listData.push_back(QString::number(i+1) + ". " + imagesFullNames[i]);
+    }
+
+    m_imageFiles->setText(listData.join("\n"));
+    // *** Изменение размера виджета через задержку таймера т.к. *** //
+    //      в противном случае текст мигает/скачет над виджетом      //
+    m_updateImageFilesTimer->start();
+
+    qobject_cast<QLabel*>(m_colBWidgets[5])
+                             ->setText(QString::number(imagesFullNames.size()));
+}
+
+void SnapInfoWidget::doResizeImageFiles(){
+    m_imageFiles->setUpdatesEnabled(false);
 
     // *** Изменение вертикального размера, исключение прокрутки *** //
-    QFontMetrics fm(imageFiles->font());
+    QFontMetrics fm(m_imageFiles->font());
     int rowHeight = fm.lineSpacing();
-    int docMargin = imageFiles->document()->documentMargin();
-    imageFiles->setFixedHeight(rowHeight * node.imagesFullNames.size()
-                                + 2 * imageFiles->frameWidth() + 4 * docMargin);
-    // *** Добавление номеров к списку файлов *** //
-    QStringList listData;
-    for (int i = 0; i < node.imagesFullNames.size(); ++i){
-        listData.push_back(QString::number(i+1) + ". "
-                                                     + node.imagesFullNames[i]);
-    }
-    imageFiles->setText(listData.join("\n"));
+    // int newHeight= 2*rowHeight * imagesFullNames.size() + 0.8 * rowHeight;
+    int imagesCount = m_imageFiles->document()->blockCount();
+    int docMargin = m_imageFiles->document()->documentMargin() + 4;
+    int newHeight = rowHeight * imagesCount + docMargin;
+
+    m_imageFiles->setFixedHeight(newHeight);
+
+    m_imageFiles->setUpdatesEnabled(true);
 }
 
 void SnapInfoWidget::restartSaveTitleTimer(){
@@ -441,11 +489,8 @@ void SnapInfoWidget::clearData(){
     qobject_cast<QLabel*>(m_colBWidgets[3])->setText("—");
     qobject_cast<QLabel*>(m_colBWidgets[4])->setText("—");
     qobject_cast<QLabel*>(m_colBWidgets[5])->setText("—");
-    // *** Список файлов снимка *** //
-    QWidget* editWidget =  m_vScrollLayout
-                               ->itemAt(m_vScrollLayout->count() - 2)->widget();
-    QTextEdit* imageFiles = qobject_cast<QTextEdit*>(editWidget);
-    imageFiles->clear();
+    m_imageFiles->clear();
+    m_imageFiles->setFixedHeight(32);
 }
 
 int SnapInfoWidget::calcOptimalFontSize(const QStringList& text){

@@ -9,7 +9,8 @@ set(SOURCE_LIB  appWindow.cpp
                 treeLinesStyle.cpp
                 vmInfoWidget.cpp
                 snapInfoWidget.cpp
-                vmWidget.cpp)
+                vmWidget.cpp
+                dialogs.cpp)
 
 add_library(src-lib STATIC ${SOURCE_LIB})
 

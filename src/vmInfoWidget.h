@@ -12,10 +12,13 @@
 #include <QKeyEvent>
 #include <QEvent>
 #include <QDomDocument>
+#include <QToolButton>
+#include <QMenu>
 #include <QFile>
 #include <QLabel>
 #include <QTimer>
 #include "vmDataStructs.h"
+#include "dialogs.h"
 
 class VmInfoWidget : public QFrame {
 
@@ -45,6 +48,8 @@ class VmInfoWidget : public QFrame {
                                                         const QString& vmTitle);
         void writeVmDescriptionRequested(const QString& vm_uuid,
                                                   const QString& vmDescription);
+        void addNewVmImagesRequested(const QStringList& newImageInfo);
+        void delVmImagesRequested(const QString& imageFullName);
 
     private:
         QVBoxLayout* m_vScrollLayout;
@@ -54,6 +59,8 @@ class VmInfoWidget : public QFrame {
         QVector<QWidget*> m_colAWidgets;
         QVector<QWidget*> m_colBWidgets;
         QString humanMemory(const QString&);
+
+        QToolButton* m_editImagesBtn;
 
         QString m_uuid;
         void writeVmTitle();
@@ -68,6 +75,9 @@ class VmInfoWidget : public QFrame {
         int m_titleChangedCounter = 0;
         int m_descriptionChangedCounter = 0;
         int calcOptimalFontSize(const QStringList&);
+
+        void addNewVmImages();
+        void delVmImages();
 };
 
 #endif

@@ -13,6 +13,7 @@
 #include <QScrollArea>
 #include <QScrollBar>
 #include "vmDataStructs.h"
+#include <QPropertyAnimation>
 
 class SnapInfoWidget : public QFrame {
 
@@ -23,6 +24,7 @@ class SnapInfoWidget : public QFrame {
         ~SnapInfoWidget();
 
         void setData(const ChainNode& node);
+        void setStorageList(const QStringList& imagesFullNames);
         void setData(const VMachine& vm);
         void setReadOnly(bool);
         void clearData();
@@ -47,6 +49,9 @@ class SnapInfoWidget : public QFrame {
         ChainNode m_node;
         QTimer* m_saveTitleTimer;
         QTimer* m_saveDescriptionTimer;
+        QTimer* m_updateImageFilesTimer;
+
+        QTextEdit* m_imageFiles;
 
         void restartSaveTitleTimer();
         void restartSaveDescriptionTimer();
@@ -59,6 +64,10 @@ class SnapInfoWidget : public QFrame {
         QString m_vmUUID;
         QString m_snapUUID;
         int calcOptimalFontSize(const QStringList&);
+
+        void doResizeImageFiles();
+
+
 };
 
 #endif

@@ -394,6 +394,58 @@ void SnapTreeModel::setSnapImagesFullName(QStringList imagesFullNames){
     m_snapImagesFullNames = imagesFullNames;
 }
 
+void SnapTreeModel::addNewVmImages(const QStringList& newImageInfo){
+    qDebug() << "[II] [SnapTreeModel]" << "addNewVmImages";
+    static const QRegularExpression re(R"(-id-(\d{10}))");
+
+    for (int n = 0; n < m_nodes.size(); ++n){
+        qDebug() << "[" << n << "]";
+        qDebug() << "[id]" <<       m_nodes[n].id;
+        qDebug() << "[parentId]" << m_nodes[n].parentId;
+        qDebug() << "[name]" <<     m_nodes[n].name;
+        qDebug() << "[uuid]" <<     m_nodes[n].uuid;
+
+        if ((m_nodes[n].id == 1) && (m_nodes[n].parentId == -1 )){
+            m_nodes[n].imagesFullNames.push_back(newImageInfo.first());
+            m_nodes[n].backFullNames.push_back("None");
+        }
+        else {
+            QString localIFullName = m_nodes[n].imagesFullNames.first();
+            QString localBFullName = m_nodes[n].backFullNames.first();
+
+            QRegularExpressionMatch imgMatch = re.match(localIFullName);
+            QRegularExpressionMatch backingMatch = re.match(localBFullName);
+
+            QString imgUUID =imgMatch.captured(1);
+            QString backingUUID = backingMatch.captured(1);
+
+            QString iFullName = getSnapName(newImageInfo.first(), imgUUID);
+            QString bFullName = getSnapName(newImageInfo.first(), backingUUID);
+
+            m_nodes[n].imagesFullNames.push_back(iFullName);
+            m_nodes[n].backFullNames.push_back(bFullName);
+        }
+        qDebug() << "- - - - - - - - - - - - -";
+    }
+}
+
+// *** Формирование имени файла в узлах, аналог SnapManager::getSnapName *** //
+QString SnapTreeModel::getSnapName(const QString& imgName, const QString& id){
+    QString snapName = imgName;
+
+    if (snapName.endsWith(".qcow2", Qt::CaseInsensitive)) {
+        snapName.chop(6);
+    }
+
+    snapName += "-id-" + id + ".qcow2";
+    return snapName;
+}
+
+
+void SnapTreeModel::delVmImages(const QString& imageFullName){
+    qDebug() << "[II] [SnapTreeModel]" << "delVmImages";
+}
+
 QModelIndex SnapTreeModel::getActiveStateIndex(){
     QModelIndex res;
 
