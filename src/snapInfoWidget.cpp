@@ -75,11 +75,16 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
             m_colBWidgets.push_back(new QTextEdit(this));
             QWidget* widget = m_colBWidgets.last();
             QTextEdit* line = qobject_cast<QTextEdit*>(widget);
+            // *** a) корректировка шрифта *** //
+            QFont font = this->font();
+            int newFontSize = calcOptimalFontSize(colAList);
+            font.setPointSize(newFontSize);
+            this->setFont(font);
+            line->setFont(font);
+            // *** б) установка высоты виджета *** //
             QFontMetrics fm(line->font());
             int rowHeight = fm.lineSpacing();
-            int docMargin = line->document()->documentMargin();
-            line->setFixedHeight(rowHeight
-                                      + 2 * line->frameWidth() + 2 * docMargin);
+            line->setFixedHeight(rowHeight * 1.8);
             line->viewport()->setStyleSheet("background-color: white;");
             line->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
             line->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -164,17 +169,16 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
     QVBoxLayout* staticContainerLayout = new QVBoxLayout();
     staticContainerWidget->setContentsMargins(0, 0, 0, 0);
     staticContainerLayout->setContentsMargins(0, 0, 0, 0);
-    QFontMetrics fm(this->font());
-    int rowHeight = fm.lineSpacing();
-    staticContainerLayout->setSpacing(0.4*rowHeight);
     staticContainerWidget->setLayout(staticContainerLayout);
     for (int i = 0; i < hLayoutArray.size(); ++i){
         staticContainerLayout->addLayout(hLayoutArray[i]);
     }
     staticContainerWidget->setSizePolicy(QSizePolicy::Expanding,
                                                             QSizePolicy::Fixed);
-    int height = staticContainerWidget->sizeHint().height();
-    staticContainerWidget->setMinimumHeight(height);
+    QFontMetrics fm(this->font());
+    int rowHeight = fm.lineSpacing();
+    staticContainerWidget->setFixedHeight(17*rowHeight);
+
     m_vScrollLayout->setSpacing(0.4*rowHeight);
     m_vScrollLayout->addWidget(staticContainerWidget);
 
