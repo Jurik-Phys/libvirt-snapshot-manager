@@ -100,7 +100,7 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
             m_colBWidgets.push_back(new QTextEdit(this));
             QWidget* widget = m_colBWidgets.last();
             QTextEdit* edit = qobject_cast<QTextEdit*>(widget);
-            // *** Увеличение числа отображемых строк в поле ввода до 7 *** //
+            // *** Увеличение числа отображемых строк в поле ввода до 7+ *** //
             // *** a) корректировка шрифта *** //
             QFont font = this->font();
             int newFontSize = calcOptimalFontSize(colAList);
@@ -110,9 +110,7 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
             // *** б) Изменение числа строк *** //
             QFontMetrics fm(edit->font());
             int rowHeight = fm.lineSpacing();
-            int docMargin = edit->document()->documentMargin();
-            edit->setFixedHeight(rowHeight * 7.6
-                                      + 2 * edit->frameWidth() + 2 * docMargin);
+            edit->setFixedHeight(rowHeight * 8.3);
             edit->viewport()->setStyleSheet("background-color: white;");
             fixScrollBar(edit);
             edit->setReadOnly(true);
@@ -198,7 +196,6 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
     qobject_cast<QTextEdit*>(m_colBWidgets[0])->setFont(font);
     m_imageFiles->setFont(font);
 
-    // m_vScrollLayout->setSpacing(1.5*newFontSize);
     m_vScrollLayout->addWidget(m_imageFiles);
     m_vScrollLayout->addStretch();
 
@@ -376,7 +373,6 @@ void SnapInfoWidget::doResizeImageFiles(){
     // *** Изменение вертикального размера, исключение прокрутки *** //
     QFontMetrics fm(m_imageFiles->font());
     int rowHeight = fm.lineSpacing();
-    // int newHeight= 2*rowHeight * imagesFullNames.size() + 0.8 * rowHeight;
     int imagesCount = m_imageFiles->document()->blockCount();
     int docMargin = m_imageFiles->document()->documentMargin() + 4;
     int newHeight = rowHeight * imagesCount + docMargin;

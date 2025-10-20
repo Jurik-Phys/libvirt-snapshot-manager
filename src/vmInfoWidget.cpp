@@ -107,9 +107,7 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
             // *** б) Изменение числа строк *** //
             QFontMetrics fm(edit->font());
             int rowHeight = fm.lineSpacing();
-            int docMargin = edit->document()->documentMargin();
-            edit->setFixedHeight(rowHeight * 4
-                                      + 2 * edit->frameWidth() + 2 * docMargin);
+            edit->setFixedHeight(rowHeight * 4.8);
             edit->viewport()->setStyleSheet("background-color: white;");
             fixScrollBar(edit);
             edit->setReadOnly(true);
