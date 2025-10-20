@@ -110,7 +110,7 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
             // *** б) Изменение числа строк *** //
             QFontMetrics fm(edit->font());
             int rowHeight = fm.lineSpacing();
-            edit->setFixedHeight(rowHeight * 8.3);
+            edit->setFixedHeight(rowHeight * 8.2);
             edit->viewport()->setStyleSheet("background-color: white;");
             fixScrollBar(edit);
             edit->setReadOnly(true);
@@ -164,7 +164,9 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
     QVBoxLayout* staticContainerLayout = new QVBoxLayout();
     staticContainerWidget->setContentsMargins(0, 0, 0, 0);
     staticContainerLayout->setContentsMargins(0, 0, 0, 0);
-    // staticContainerLayout->setSpacing(0);
+    QFontMetrics fm(this->font());
+    int rowHeight = fm.lineSpacing();
+    staticContainerLayout->setSpacing(0.4*rowHeight);
     staticContainerWidget->setLayout(staticContainerLayout);
     for (int i = 0; i < hLayoutArray.size(); ++i){
         staticContainerLayout->addLayout(hLayoutArray[i]);
@@ -173,6 +175,7 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
                                                             QSizePolicy::Fixed);
     int height = staticContainerWidget->sizeHint().height();
     staticContainerWidget->setMinimumHeight(height);
+    m_vScrollLayout->setSpacing(0.4*rowHeight);
     m_vScrollLayout->addWidget(staticContainerWidget);
 
     // *** Добавление и настройка виджета списка файлов снапшота *** //
@@ -198,7 +201,6 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
 
     m_vScrollLayout->addWidget(m_imageFiles);
     m_vScrollLayout->addStretch();
-
 }
 
 SnapInfoWidget::~SnapInfoWidget(){

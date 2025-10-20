@@ -196,16 +196,18 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
     QVBoxLayout* staticContainerLayout = new QVBoxLayout();
     staticContainerWidget->setContentsMargins(0, 0, 0, 0);
     staticContainerLayout->setContentsMargins(0, 0, 0, 0);
-    // staticContainerLayout->setSpacing(0);
+    QFontMetrics fm(this->font());
+    int rowHeight = fm.lineSpacing();
+    staticContainerLayout->setSpacing(0.4*rowHeight);
     staticContainerWidget->setLayout(staticContainerLayout);
     for (int i = 0; i < hLayoutArray.size(); ++i){
         staticContainerLayout->addLayout(hLayoutArray[i]);
-        // m_vScrollLayout->addLayout(hLayoutArray[i]);
     }
     staticContainerWidget->setSizePolicy(QSizePolicy::Expanding,
                                                             QSizePolicy::Fixed);
     int height = staticContainerWidget->sizeHint().height();
     staticContainerWidget->setMinimumHeight(height);
+    m_vScrollLayout->setSpacing(0.4*rowHeight);
     m_vScrollLayout->addWidget(staticContainerWidget);
 
     // *** Добавление и настройка виджета для отображения списка дисков *** //
