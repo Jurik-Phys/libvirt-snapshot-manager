@@ -426,10 +426,17 @@ void VmInfoWidget::setStorageList(const QStringList& mountStorages){
     // *** Изменение его вертикального размера для вмещения всех дисков *** //
     QFontMetrics fm(storageList->font());
     int rowHeight = fm.lineSpacing();
+    int imagesCount = listData.size();
     int docMargin = storageList->document()->documentMargin();
-    storageList->setFixedHeight(rowHeight * listData.size()
-                               + 2 * storageList->frameWidth() + 4 * docMargin);
+    int newHeight = rowHeight * imagesCount + docMargin + 4;
+
+    storageList->setFixedHeight(newHeight);
+
     storageList->setText(listData.join("\n"));
+
+    // *** Обновление числа примонтированных дисков (Mounted drives) *** //
+    qobject_cast<QLabel*>(m_colBWidgets[7])
+                                    ->setText(QString::number(listData.size()));
 }
 
 void VmInfoWidget::writeVmTitle(){
@@ -618,10 +625,11 @@ void VmInfoWidget::addNewVmImages(){
     DialogAddNewImage addNewImageDialog(this);
 
     if (addNewImageDialog.exec() == QDialog::Accepted){
-        QString imageFullName = addNewImageDialog.getImageFullName();
-        QString imageSize = addNewImageDialog.getImageSize();
         qDebug() << "[II] Dialog accepted";
-        emit addNewVmImagesRequested({imageFullName, imageSize});
+        QString imageFullName = addNewImageDialog.getImageFullName();
+        QString imageSize     = addNewImageDialog.getImageSize();
+        QString imageBusType  = addNewImageDialog.getImageBusType();
+        emit addNewVmImagesRequested({imageFullName, imageSize, imageBusType});
     }
     else {
         qDebug() << "[II] Dialog canceled";

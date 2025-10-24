@@ -3,9 +3,9 @@
 #include "dialogs.h"
 
 DialogAddNewImage::DialogAddNewImage(QWidget* parent) : QDialog(parent){
-    setWindowTitle("New VM Image (qcow2)");
+    setWindowTitle("New VM drive (qcow2 image)");
     setModal(true);
-    setMinimumWidth(m_leftWidth*4.8);
+    setMinimumWidth(m_leftWidth*5.2);
 
     QVBoxLayout* vDialogLayout = new QVBoxLayout();
     vDialogLayout->setAlignment(Qt::AlignTop);
@@ -31,34 +31,49 @@ DialogAddNewImage::DialogAddNewImage(QWidget* parent) : QDialog(parent){
     fileNameLabel->setFixedWidth(m_leftWidth);
     m_fileNameEdit = new QLineEdit();
     m_fileNameEdit->
-                 setPlaceholderText("Enter image filename (e.g. debian.qcow2)");
+        setPlaceholderText("Enter image filename (e.g. vmName-volName.qcow2)");
     hFileNameLayout->addWidget(fileNameLabel);
     hFileNameLayout->addWidget(m_fileNameEdit);
     vDialogLayout->addLayout(hFileNameLayout);
 
-    // *** Capacity & Error output *** //
+    // *** Capacity *** //
     QHBoxLayout* hCapacityLayout = new QHBoxLayout();
     QLabel* capacityLabel = new QLabel("Capacity:");
     capacityLabel->setFixedWidth(m_leftWidth);
     m_capacitySpinBox = new QDoubleSpinBox();
-    m_capacitySpinBox->setRange(0.0, 99999.9);
+    m_capacitySpinBox->setRange(0.0, 999999.9);
     m_capacitySpinBox->setValue(256.0);
     m_capacitySpinBox->setSingleStep(0.1);
     m_capacitySpinBox->setDecimals(1);
     m_capacitySpinBox->setSuffix(" GiB");
-    m_capacitySpinBox->setFixedWidth(qRound(m_leftWidth * 1.15));
+    m_capacitySpinBox->setFixedWidth(qRound(m_leftWidth * 1.2));
     hCapacityLayout->addWidget(capacityLabel);
     hCapacityLayout->addWidget(m_capacitySpinBox);
+    hCapacityLayout->addStretch();
     m_errorOut = new QLabel();
     m_errorOut->setStyleSheet("font-weight: bold; color: red;");
-    hCapacityLayout->addStretch();
     hCapacityLayout->addWidget(m_errorOut);
     vDialogLayout->addLayout(hCapacityLayout);
+
+    // *** Controller & Error output *** //
+    QHBoxLayout* hControllerLayout = new QHBoxLayout();
+    QLabel* controllerLabel = new QLabel("Bus type:");
+    controllerLabel->setFixedWidth(m_leftWidth);
+    m_controllerBox = new QComboBox();
+    m_controllerBox->addItem("VirtIO [vdX]");
+    m_controllerBox->addItem("SCSI   [sdY]");
+    m_controllerBox->addItem("SATA   [sdZ]");
+    m_controllerBox->setFixedWidth(qRound(m_leftWidth * 1.2));
+    hControllerLayout->addWidget(controllerLabel);
+    hControllerLayout->addWidget(m_controllerBox);
 
     // *** Dialog buttons *** //
     QDialogButtonBox* dlgBtnBox = new QDialogButtonBox(
                                                 QDialogButtonBox::Ok |
-                                                QDialogButtonBox::Cancel, this);
+                                                    QDialogButtonBox::Cancel);
+    hControllerLayout->addWidget(dlgBtnBox);
+    vDialogLayout->addLayout(hControllerLayout);
+
     QObject::connect(dlgBtnBox, &QDialogButtonBox::accepted,
                                    this, &DialogAddNewImage::checkSelectedPath);
     QObject::connect(dlgBtnBox, &QDialogButtonBox::rejected,
@@ -67,6 +82,13 @@ DialogAddNewImage::DialogAddNewImage(QWidget* parent) : QDialog(parent){
 
     // *** Apply vDialogLayout *** //
     setLayout(vDialogLayout);
+
+    // *** Fix vertical window space for QDialogButtonBox *** //
+    QLayoutItem* item = vDialogLayout->takeAt(vDialogLayout->count() - 1);
+    if (item->widget()) {
+        item->widget()->deleteLater();
+    }
+    delete item;
 }
 
 DialogAddNewImage::~DialogAddNewImage(){
@@ -102,7 +124,7 @@ void DialogAddNewImage::checkSelectedPath(){
         createTestFile.remove();
     }
     else {
-        m_errorOut->setText("Directory write access denied.");
+        m_errorOut->setText("Directory write access denied!");
         return;
     }
 
@@ -110,10 +132,10 @@ void DialogAddNewImage::checkSelectedPath(){
     QString fName = m_fileNameEdit->text().trimmed();
     if (!isValidFileName(fName)){
         if (fName.size() < 1){
-            m_errorOut->setText("No image filename.");
+            m_errorOut->setText("No image filename!");
         }
         else {
-            m_errorOut->setText("Invalid filename.");
+            m_errorOut->setText("Invalid filename!");
         }
         return;
     }
@@ -126,7 +148,7 @@ void DialogAddNewImage::checkSelectedPath(){
     // *** Проверка на существование файла *** //
     QFile imageFile(imageBasePath + "/" + fName);
     if (imageFile.exists()){
-        m_errorOut->setText("The file already exists.");
+        m_errorOut->setText("The file already exists!");
         m_fileNameEdit->setText(fName);
         return;
     }
@@ -146,7 +168,8 @@ bool DialogAddNewImage::isValidFileName(const QString& fName){
         res = false;
 
     static const QRegularExpression forbidden(R"([/\\:*?"<>|])");
-    if (forbidden.match(fName).hasMatch())
+    static const QRegularExpression id(R"(-id-(\d{10}))");
+    if (forbidden.match(fName).hasMatch() || id.match(fName).hasMatch())
         res = false;
 
     if (fName.endsWith('.'))
@@ -191,6 +214,22 @@ QString DialogAddNewImage::getImageFullName(){
 
 QString DialogAddNewImage::getImageSize(){
     return m_capacitySpinBox->cleanText().replace(",",".");
+}
+
+QString DialogAddNewImage::getImageBusType(){
+    QString res;
+
+    if (m_controllerBox->currentText() == "VirtIO [vdX]"){
+        res = "VirtIO";
+    }
+    if (m_controllerBox->currentText() == "SCSI   [sdY]"){
+        res = "SCSI";
+    }
+    if (m_controllerBox->currentText() == "SATA   [sdZ]"){
+        res = "SATA";
+    }
+
+    return res;
 }
 
 // End dialogs.cpp

@@ -31,6 +31,12 @@ class SnapManager : public QObject {
         QStringList gotoSnapshot(const QString& vmName, const ChainNode& node);
         bool deleteSnapshot(const QString& vmName, const QString& snapName,
                                                          const ChainNode& node);
+        void mountBlockDevice(const QString& vmName,
+                              const QString& imageFullName,
+                              const QString& blockDevice,
+                              const QString& busType);
+        void createQcow2Image(const QString& imageFile,
+                              const QString& backingFile, const QString& iSize);
 
     private:
         VMachine m_vm;

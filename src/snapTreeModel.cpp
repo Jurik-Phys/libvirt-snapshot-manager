@@ -399,12 +399,6 @@ void SnapTreeModel::addNewVmImages(const QStringList& newImageInfo){
     static const QRegularExpression re(R"(-id-(\d{10}))");
 
     for (int n = 0; n < m_nodes.size(); ++n){
-        qDebug() << "[" << n << "]";
-        qDebug() << "[id]" <<       m_nodes[n].id;
-        qDebug() << "[parentId]" << m_nodes[n].parentId;
-        qDebug() << "[name]" <<     m_nodes[n].name;
-        qDebug() << "[uuid]" <<     m_nodes[n].uuid;
-
         if ((m_nodes[n].id == 1) && (m_nodes[n].parentId == -1 )){
             m_nodes[n].imagesFullNames.push_back(newImageInfo.first());
             m_nodes[n].backFullNames.push_back("None");
@@ -412,12 +406,14 @@ void SnapTreeModel::addNewVmImages(const QStringList& newImageInfo){
         else {
             QString localIFullName = m_nodes[n].imagesFullNames.first();
             QString localBFullName = m_nodes[n].backFullNames.first();
-
+            qDebug() << "[" << n << "]";
             QRegularExpressionMatch imgMatch = re.match(localIFullName);
             QRegularExpressionMatch backingMatch = re.match(localBFullName);
 
             QString imgUUID =imgMatch.captured(1);
             QString backingUUID = backingMatch.captured(1);
+            qDebug() << imgUUID ;
+            qDebug() << backingUUID ;
 
             QString iFullName = getSnapName(newImageInfo.first(), imgUUID);
             QString bFullName = getSnapName(newImageInfo.first(), backingUUID);
@@ -425,8 +421,8 @@ void SnapTreeModel::addNewVmImages(const QStringList& newImageInfo){
             m_nodes[n].imagesFullNames.push_back(iFullName);
             m_nodes[n].backFullNames.push_back(bFullName);
         }
-        qDebug() << "- - - - - - - - - - - - -";
     }
+    qDebug() << "[II] [SnapTreeModel] DONE";
 }
 
 // *** Формирование имени файла в узлах, аналог SnapManager::getSnapName *** //
@@ -437,7 +433,13 @@ QString SnapTreeModel::getSnapName(const QString& imgName, const QString& id){
         snapName.chop(6);
     }
 
-    snapName += "-id-" + id + ".qcow2";
+    if (id.size() > 0){
+        snapName += "-id-" + id + ".qcow2";
+    }
+    else{
+        snapName += ".qcow2";
+    }
+
     return snapName;
 }
 
@@ -496,6 +498,11 @@ void SnapTreeModel::setActive(const QModelIndex& newActiveIndex){
     }
 
     emit dataChanged(newActiveIndex, newActiveIndex, {Qt::DisplayRole});
+}
+
+
+QVector<ChainNode> SnapTreeModel::getVmAllChainNodes(){
+    return m_nodes;
 }
 
 // End snapTreeModel.cpp

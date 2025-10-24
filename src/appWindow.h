@@ -73,7 +73,6 @@ class QAppWindow : public QWidget {
         int m_selectedVmIndex = -1;
         const QString m_libVirtConnectURI = "qemu:///system";
 
-
         VmDataCollector* m_vmDataCollector;
         QVBoxLayout*  m_vLColumnLayout;
         QVBoxLayout*  m_vRColumnLayout;
@@ -148,6 +147,8 @@ class QAppWindow : public QWidget {
         bool checkVmUtilityExecutable(const QString&);
         bool checkLocalHypervisorConnection();
         bool isLibvirtPolkitEnabled();
+
+        int getSnapImagesId(const QString& imageFullName);
 };
 
 #endif

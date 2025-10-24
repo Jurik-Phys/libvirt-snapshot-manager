@@ -1455,9 +1455,10 @@ bool QAppWindow::addNewVmImages(const QStringList& newImageInfo){
 
     bool res = false;
 
-    QString imageFullName = newImageInfo.first();
-    QString imageSize = newImageInfo.last();
-    qDebug() << "[II] [QAppWindow] addNewVmImages now"
+    QString imageFullName = newImageInfo[0];
+    QString imageSize = newImageInfo[1];
+    QString imageBusType = newImageInfo[2].toLower();
+    qDebug() << "[II] [QAppWindow] addNewVmImages [" << imageBusType << "]"
              << imageFullName
              << imageSize << "GiB";
 
@@ -1465,22 +1466,76 @@ bool QAppWindow::addNewVmImages(const QStringList& newImageInfo){
         m_snapTreeModel->addNewVmImages(newImageInfo);
 
         // *** Обновление списка дисков текущего узла *** //
-        // *** Доступ к данным через QItemSelectionModel *** //
         QItemSelectionModel* selectionModel = m_snapTreeView->selectionModel();
         QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
 
         // *** Выделение одиночное, в списке максимум один элемент *** //
-        QModelIndex selIndex = selectedIndexes[0];
+        //       Выделения может не быть, если снапшот не выбран       //
+        if (selectedIndexes.size() > 0){
+            QModelIndex sIdx = selectedIndexes.first();
 
-        // *** Получение данных выделенного узла *** //
-        const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(selIndex);
-
-        m_snapInfoWidget->setStorageList(node.imagesFullNames);
+            // *** Получение данных выделенного узла *** //
+            const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(sIdx);
+            m_snapInfoWidget->setStorageList(node.imagesFullNames);
+        }
         // ***********************************************//
 
+        // *** SnapManager для создания & поключения файлов *** //
+        SnapManager* locSnapManager = new SnapManager(this);
+
+        // *** Фактическое создание цепочек сохранений для нового файла *** //
+        // a) цикл по всем узлам c определением пары imageFile & backingFile
+        QVector<ChainNode> vmNodes = m_snapTreeModel->getVmAllChainNodes();
+        for (int i = 0; i < vmNodes.size(); ++i){
+            qDebug() << "[" << i <<  "]";
+            QString imageFile = vmNodes[i].imagesFullNames.last();
+            QString backingFile = vmNodes[i].backFullNames.last();
+            qDebug() << "[II] Image  " << imageFile;
+            qDebug() << "[II] Backing" << backingFile;
+            locSnapManager->createQcow2Image(imageFile, backingFile, imageSize);
+            qDebug() << "*** *** *** *** *** *** *** *** *** ***";
+        }
+
+        // **************************************************************** //
+
+        // *** Монтирование файла по id примонтированных дисков *** //
+        // а) определение id и полного пути подключемого файла
+        int snapImagesId = getSnapImagesId(m_mountStorages.first());
+        QString newImageMountName;
+
+        if (snapImagesId == -1){
+            newImageMountName = newImageInfo.first();
+        }
+        else {
+            newImageMountName = newImageInfo.first();
+            if (newImageMountName.endsWith(".qcow2", Qt::CaseInsensitive)){
+                newImageMountName.chop(6);
+            }
+            newImageMountName = newImageMountName
+                            + "-id-" + QString::number(snapImagesId) + ".qcow2";
+        }
+        qDebug() << "[II] Try mount" << newImageMountName;
+
+        // б) найти и проверить тип файла c текущим id (может не быть)
+
+        // в) определить свободное устройств sdX/vdX/hdX
+        VmDataCollector vmDataCollector;
+        QString blockDevice = vmDataCollector
+                             .getNextBlockDevice(m_currentVmName, imageBusType);
+        qDebug() << "[II] Target:" << blockDevice;
+
+        // г) примонтировать & добавить информацию о примонтированных дисках
+        locSnapManager->mountBlockDevice(m_currentVmName, newImageMountName,
+                                                     blockDevice, imageBusType);
+        m_mountStorages.push_back(newImageMountName);
+
+        locSnapManager->deleteLater();
+        // д) обновить информацию о примонтированных дисках в vmInfoWidget
+        m_vmInfoWidget->setStorageList(m_mountStorages);
     }
     else {
         qDebug() << "[II] Diskless VM";
+        // *** TODO *** //
     }
 
     return res;
@@ -1489,6 +1544,23 @@ bool QAppWindow::addNewVmImages(const QStringList& newImageInfo){
 bool QAppWindow::delVmImages(const QString& imageFullName){
     bool res = false;
     qDebug() << "[II] [QAppWindow] delVmImages now" << imageFullName;
+
+    return res;
+}
+
+int QAppWindow::getSnapImagesId(const QString& imageFullName){
+    int res;
+
+    const static QRegularExpression idPattern(R"(-id-(\d{10}))");
+    QRegularExpressionMatch imgMatch = idPattern.match(imageFullName);
+
+    if (imgMatch.hasMatch()){
+        res = (imgMatch.captured(1)).toInt();
+        qDebug() << imgMatch.captured(1);
+    }
+    else{
+        res = -1;
+    }
 
     return res;
 }

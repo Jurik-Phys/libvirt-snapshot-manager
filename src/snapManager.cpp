@@ -77,6 +77,42 @@ QStringList SnapManager::doSnapshot(const QString& vmName,
     return snapshotsFullNames;
 }
 
+void SnapManager::mountBlockDevice(const QString& vmName,
+                                                const QString& imageFullName,
+                                                    const QString& blockDevice,
+                                                        const QString& busType){
+    QProcess process;
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI, "attach-disk",
+                            "--domain="  + vmName,
+                            "--source="  + imageFullName,
+                            "--target="  + blockDevice,
+                            "--targetbus=" + busType,
+                            "--subdriver=qcow2", "--persistent"} );
+
+    if (!process.waitForFinished()){
+        return;
+    }
+}
+
+
+void SnapManager::createQcow2Image(const QString& imageFile,
+                              const QString& backingFile, const QString& iSize){
+    QProcess process;
+
+    if (backingFile == "None"){
+        process.start("qemu-img", {"create", "-f", "qcow2",
+                                                       imageFile, iSize + "G"});
+    }
+    else {
+        process.start("qemu-img", {"create", "-f", "qcow2", "-b", backingFile,
+                                                     "-F", "qcow2", imageFile});
+    }
+
+    if (!process.waitForFinished()){
+        return;
+    }
+}
+
 QStringList SnapManager::gotoSnapshot(const QString& vmName,
                                                          const ChainNode& node){
     QStringList res;
@@ -183,7 +219,7 @@ QString SnapManager::getSnapName(const QString& imgName, const QString& id){
         snapName.chop(6);
     }
 
-    QRegularExpression pattern1(R"((-id-\d{10}))");
+    const static QRegularExpression pattern1(R"((-id-\d{10}))");
     snapName = snapName.replace(pattern1, "");
     snapName += "-id-" + id + ".qcow2";
     return snapName;

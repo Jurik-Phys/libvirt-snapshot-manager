@@ -8,6 +8,7 @@
 #include <QLabel>
 #include <QDialog>
 #include <QFileDialog>
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QTemporaryFile>
@@ -23,6 +24,7 @@ class DialogAddNewImage : public QDialog {
 
         QString getImageFullName();
         QString getImageSize();
+        QString getImageBusType();
         long int capacity;
         void setVmName(const QString& vmName);
 
@@ -35,6 +37,7 @@ class DialogAddNewImage : public QDialog {
         QLineEdit*      m_dirPathEdit;
         QDoubleSpinBox* m_capacitySpinBox;
         QLabel*         m_errorOut;
+        QComboBox*      m_controllerBox;
         int m_leftWidth = 100;
 };
 

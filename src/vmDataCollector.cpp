@@ -400,7 +400,8 @@ QDomDocument VmDataCollector::getVmXml(const QString& uuid){
             loop.quit();
         });
 
-    process.start("virsh", {"--connect=" + m_libVirtConnectURI, "dumpxml", uuid});
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                              "dumpxml", uuid});
     loop.exec();
 
     return vmXmlDoc;
@@ -854,6 +855,68 @@ QString VmDataCollector::getNodeUuid(const QString& fName, bool isRoot){
                                     "{12329e42e-d24e-4ad0-84dd-9e03b8b33e7}"),
                                                                       baseData);
     return uuid.toString(QUuid::WithoutBraces);
+}
+
+QString VmDataCollector::getNextBlockDevice(const QString& vmName,
+                                                        const QString& busType){
+    QString newBlockDevice;
+
+    QEventLoop loop;
+    QProcess process;
+
+    QObject::connect(&process, &QProcess::finished,
+        [&](int, QProcess::ExitStatus){
+            QString output = process.readAllStandardOutput();
+            QStringList outputLines = output.split('\n',Qt::SkipEmptyParts);
+
+            QStringList allBlockDev;
+            for (int i = 2; i < outputLines.size(); ++i){
+                QString line = outputLines[i].trimmed();
+                QStringList parts = line.split(" ");
+                allBlockDev.push_back(parts.first());
+            }
+
+            QString devPrefix;
+            if (busType.toLower() == "virtio"){
+                devPrefix = "vd";
+            }
+            else {
+                devPrefix = "sd";
+            }
+
+            QVector<int> busyLetterIds;
+            for (int i = 0; i < allBlockDev.size(); ++i){
+                QString blkDev = allBlockDev[i];
+                if (blkDev.startsWith(devPrefix)){
+                    int blkLetterIndex = blkDev[2].toLower().toLatin1() - 'a';
+                    busyLetterIds.push_back(blkLetterIndex);
+                }
+            }
+
+            int maxBusyLetterIndex = -1;
+            if (busyLetterIds.size() < 26){
+                for (int i = 0; i < busyLetterIds.size(); ++i){
+                    if (busyLetterIds[i] > maxBusyLetterIndex) {
+                        maxBusyLetterIndex = busyLetterIds[i];
+                    }
+                }
+            }
+            else {
+                qDebug() << "[II] No free block devices";
+                newBlockDevice = "";
+                loop.quit();
+            }
+
+            int newLetterIndex = maxBusyLetterIndex + 1;
+            QChar newLetter = QChar('a' + newLetterIndex);
+            newBlockDevice = devPrefix + newLetter;
+            loop.quit();
+        });
+
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                         "domblklist", vmName});
+    loop.exec();
+    return newBlockDevice;
 }
 
 int VmDataCollector::getFileNameId(const QString& imgFileName){

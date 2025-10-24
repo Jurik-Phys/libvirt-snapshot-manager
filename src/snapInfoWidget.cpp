@@ -369,6 +369,7 @@ void SnapInfoWidget::setStorageList(const QStringList& imagesFullNames){
     //      в противном случае текст мигает/скачет над виджетом      //
     m_updateImageFilesTimer->start();
 
+    // *** Обновление числа дисков снапшота (Image files) *** //
     qobject_cast<QLabel*>(m_colBWidgets[5])
                              ->setText(QString::number(imagesFullNames.size()));
 }
