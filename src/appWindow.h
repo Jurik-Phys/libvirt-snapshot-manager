@@ -86,6 +86,7 @@ class QAppWindow : public QWidget {
         SnapInfoWidget* m_snapInfoWidget;
         ChainNode     m_activeNode;
         QStringList   m_mountStorages;
+        QStringList   m_driveBusTypes;
         QString       m_currentVmName;
         QString       m_currentVmUUID;
         QToolButton*  m_takeSnapBtn;

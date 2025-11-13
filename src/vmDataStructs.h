@@ -31,6 +31,7 @@ struct VMachine {
     QString     title;         // Человекочитаемый заголовок
     QString     description;   // Описание виртуальной машины
     QStringList mountStorages; // Примонтированные хранилища данных
+    QStringList driveBusTypes; // Контроллеры устройств [virtio, scsi, sata]
     QStringList rootFullName;  // Полные имена корневых файлов цепочек состояний
     QStringList snapshotsDirs; // Каталоги хранения цепочек сохранения состояний
     QVector<ChainNode> vmStateChain; // Узлы цепочки сохранения состояний ВМ

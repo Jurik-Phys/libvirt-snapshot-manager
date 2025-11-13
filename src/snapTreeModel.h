@@ -58,7 +58,7 @@ class SnapTreeModel : public QAbstractItemModel {
         void setSnapImagesFullName(QStringList imagesFullNames);
 
         // *** Modification list of images disk *** //
-        void addNewVmImages(const QStringList& newImageInfo);
+        void addNewVmImages(const QStringList& newImageInfo, const int& insIdx);
         void delVmImages(const QString& imageFullName);
 
         // *** Export all vm chain nodes *** //

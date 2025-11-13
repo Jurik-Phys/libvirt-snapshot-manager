@@ -215,7 +215,12 @@ VMachine VmDataCollector::getVmShortInfo(const QString& uuid, bool* isOk){
                     vm.mountStorages.push_back(mountStorage);
                 }
 
-                // Установка каталога цепочки сохранения состояния
+                // *** Загрузка данных о "bus type" для mountStorage *** //
+                QString busType = diskNode.firstChildElement("target")
+                                                              .attribute("bus");
+                vm.driveBusTypes.push_back(busType);
+
+                // *** Установка каталога цепочки сохранения состояния *** //
                 QString snapshotsDir = QFileInfo(mountStorage).absolutePath();
                 vm.snapshotsDirs.push_back(snapshotsDir);
             }

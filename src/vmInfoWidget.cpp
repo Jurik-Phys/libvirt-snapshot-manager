@@ -168,8 +168,20 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
                 int lineSize = fm.lineSpacing();
                 m_editImagesBtn->setFixedHeight(lineSize);
                 m_editImagesBtn->setFixedWidth(lineSize);
-                m_editImagesBtn->
-                    setStyleSheet("QToolButton::menu-indicator { image:none;}");
+                m_editImagesBtn->setStyleSheet(R"(
+                        QToolButton:hover {
+                            border: 1px solid #0078d7;
+                            border-radius: 1px;
+                            background-color: rgba(0, 120, 215, 30%);
+                        }
+                        QToolButton:pressed {
+                            border: 1px solid #0078d7;
+                            border-radius: 1px;
+                            background-color: rgba(0, 120, 215, 40%);
+                        }
+                        QToolButton::menu-indicator {
+                            image:none;
+                        })");
                 QFont btnFont = m_editImagesBtn->font();
                 btnFont.setWeight(QFont::Bold);
                 m_editImagesBtn->setFont(btnFont);
@@ -428,7 +440,7 @@ void VmInfoWidget::setStorageList(const QStringList& mountStorages){
     int rowHeight = fm.lineSpacing();
     int imagesCount = listData.size();
     int docMargin = storageList->document()->documentMargin();
-    int newHeight = rowHeight * imagesCount + docMargin + 4;
+    int newHeight = rowHeight * imagesCount + docMargin + 12;
 
     storageList->setFixedHeight(newHeight);
 

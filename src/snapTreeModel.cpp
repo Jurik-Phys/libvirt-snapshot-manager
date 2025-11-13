@@ -394,35 +394,34 @@ void SnapTreeModel::setSnapImagesFullName(QStringList imagesFullNames){
     m_snapImagesFullNames = imagesFullNames;
 }
 
-void SnapTreeModel::addNewVmImages(const QStringList& newImageInfo){
-    qDebug() << "[II] [SnapTreeModel]" << "addNewVmImages";
+void SnapTreeModel::addNewVmImages(const QStringList& newImageInfo,
+                                                           const int& insIndex){
+    QString imageBusType = newImageInfo[2].toLower();
+
     static const QRegularExpression re(R"(-id-(\d{10}))");
 
     for (int n = 0; n < m_nodes.size(); ++n){
         if ((m_nodes[n].id == 1) && (m_nodes[n].parentId == -1 )){
-            m_nodes[n].imagesFullNames.push_back(newImageInfo.first());
-            m_nodes[n].backFullNames.push_back("None");
+            m_nodes[n].imagesFullNames.insert(insIndex, newImageInfo.first());
+            m_nodes[n].backFullNames.insert(insIndex, "None");
         }
         else {
             QString localIFullName = m_nodes[n].imagesFullNames.first();
             QString localBFullName = m_nodes[n].backFullNames.first();
-            qDebug() << "[" << n << "]";
+
             QRegularExpressionMatch imgMatch = re.match(localIFullName);
             QRegularExpressionMatch backingMatch = re.match(localBFullName);
 
             QString imgUUID =imgMatch.captured(1);
             QString backingUUID = backingMatch.captured(1);
-            qDebug() << imgUUID ;
-            qDebug() << backingUUID ;
 
             QString iFullName = getSnapName(newImageInfo.first(), imgUUID);
             QString bFullName = getSnapName(newImageInfo.first(), backingUUID);
 
-            m_nodes[n].imagesFullNames.push_back(iFullName);
-            m_nodes[n].backFullNames.push_back(bFullName);
+            m_nodes[n].imagesFullNames.insert(insIndex, iFullName);
+            m_nodes[n].backFullNames.insert(insIndex, bFullName);
         }
     }
-    qDebug() << "[II] [SnapTreeModel] DONE";
 }
 
 // *** Формирование имени файла в узлах, аналог SnapManager::getSnapName *** //

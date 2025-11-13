@@ -381,8 +381,8 @@ void SnapInfoWidget::doResizeImageFiles(){
     QFontMetrics fm(m_imageFiles->font());
     int rowHeight = fm.lineSpacing();
     int imagesCount = m_imageFiles->document()->blockCount();
-    int docMargin = m_imageFiles->document()->documentMargin() + 4;
-    int newHeight = rowHeight * imagesCount + docMargin;
+    int docMargin = m_imageFiles->document()->documentMargin();
+    int newHeight = rowHeight * imagesCount + docMargin + 12;
 
     m_imageFiles->setFixedHeight(newHeight);
 
