@@ -47,6 +47,14 @@ QStringList SnapManager::doSnapshot(const QString& vmName,
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     env.insert("LANG", "C");
 
+    // *** Когда число примонтированных дисков значительно, *** //
+    //     например, несколько десятков, то процесс создания    //
+    //     снимка занимает ощутимое время.                      //
+    //     Предлагается отображать ход создания снимка.         //
+    QProgressDialog* progress = nullptr;
+    progress = createNewQProgressDialog(snapshotsFullNames.size(),parentWindow);
+    progress->show();
+
     // Индексы у workDisks и snapshotsFullNames согласованы
     for (int n = 0; n < snapshotsFullNames.size(); ++n){
         QEventLoop loop;
@@ -70,11 +78,31 @@ QStringList SnapManager::doSnapshot(const QString& vmName,
         process.start("qemu-img", qemuImgArguments);
 
         loop.exec();
+        progress->setValue(n + 1);
     }
+
+    // *** Закрытие диалогового окна с прогрессом создания снапшота *** //
+    //     Перед закрытием диалог повисит со 100%, чтобы не было        //
+    //     лишнего "мельтешения" в случае короткой по времени операции  //
+    QTimer::singleShot(850,[progress](){
+        progress->close();
+        progress->deleteLater();
+    });
 
     // Смена точки монтирования в VM
     switchVmMountStorages(vmName, snapshotsFullNames);
     return snapshotsFullNames;
+}
+
+void SnapManager::detachBlockDevice(const QString& vmName,
+                                                        const QString& devName){
+    QProcess process;
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                               "detach-disk", vmName, devName, "--persistent"});
+
+    if (!process.waitForFinished()){
+        return;
+    }
 }
 
 void SnapManager::mountBlockDevice(const QString& vmName,
@@ -94,10 +122,40 @@ void SnapManager::mountBlockDevice(const QString& vmName,
     }
 }
 
+void SnapManager::createQcow2Images(const QVector<ChainNode>& vmNodes,
+                      const QString& newImageSize, const int& insertDriveIndex){
+    // *** Когда число сохранённых состояний (cнапшотов) значительно,  *** //
+    //     например, несколько десятков, то процесс дополения всех снимков //
+    //     состояний до полного комплекта занимает ощутимое время.         //
+    //     Предлагается отображать ход дополнения снапшотов.               //
+    QProgressDialog* progress = nullptr;
+    progress = createNewQProgressDialog(vmNodes.size(),parentWindow);
+    progress->show();
+
+    // -> цикл по всем узлам c определением пары imageFile & backingFile
+    for (int i = 0; i < vmNodes.size(); ++i){
+        QString imageFile = vmNodes[i].imagesFullNames[insertDriveIndex];
+        QString backingFile = vmNodes[i].backFullNames[insertDriveIndex];
+        this->createQcow2Image(imageFile, backingFile, newImageSize);
+        progress->setValue(i+1);
+    }
+
+    // *** Закрытие диалогового окна с прогрессом операции *** //
+    //     Перед закрытием диалог повисит со 100%, чтобы       //
+    //     не было "мельтешения" в случае быстрой операции     //
+    QTimer::singleShot(850,[progress](){
+        progress->close();
+        progress->deleteLater();
+    });
+}
 
 void SnapManager::createQcow2Image(const QString& imageFile,
                               const QString& backingFile, const QString& iSize){
     QProcess process;
+    QEventLoop loop;
+
+    QObject::connect(&process, &QProcess::finished, &loop,
+                                                             &QEventLoop::quit);
 
     if (backingFile == "None"){
         process.start("qemu-img", {"create", "-f", "qcow2",
@@ -108,9 +166,7 @@ void SnapManager::createQcow2Image(const QString& imageFile,
                                                      "-F", "qcow2", imageFile});
     }
 
-    if (!process.waitForFinished()){
-        return;
-    }
+    loop.exec();
 }
 
 QStringList SnapManager::gotoSnapshot(const QString& vmName,
@@ -210,6 +266,18 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const QString& snapName,
     }
 
     return false;
+}
+
+bool SnapManager::deleteImageFiles(const QStringList& rmImagesList){
+    bool res = true;
+
+    for (int i = 0; i < rmImagesList.size(); ++i) {
+        QString path = rmImagesList[i];
+        if (!QFile::exists(path) || !QFile::remove(path))
+            res = false;
+    }
+
+    return res;
 }
 
 QString SnapManager::getSnapName(const QString& imgName, const QString& id){
@@ -499,13 +567,15 @@ QProgressDialog* SnapManager::createNewQProgressDialog(const int& maxValue,
                                                         QWidget* parentWindow){
     QProgressDialog* progress = new QProgressDialog("", "", -1,
                                                         maxValue, parentWindow);
-    progress->setWindowTitle("Data transfer");
+    progress->setWindowTitle("Operation progress");
     progress->setCancelButton(nullptr);
     progress->setWindowFlags(Qt::Dialog
                             | Qt::WindowTitleHint
                             | Qt::CustomizeWindowHint);
     progress->setMinimumWidth(445);
     progress->setWindowModality(Qt::WindowModal);
+    progress->setAutoClose(false);
+    progress->setAutoReset(false);
     // *** Окно иногда появляется не в центре родительского окна *** //
     //        Возможно, принудительное задание позиции поможет       //
     //         (Интересно, как оно будет работать в Wayland)         //

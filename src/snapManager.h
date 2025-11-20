@@ -31,13 +31,18 @@ class SnapManager : public QObject {
         QStringList gotoSnapshot(const QString& vmName, const ChainNode& node);
         bool deleteSnapshot(const QString& vmName, const QString& snapName,
                                                          const ChainNode& node);
+        bool deleteImageFiles(const QStringList&);
+
+        void detachBlockDevice(const QString& vmName, const QString&);
         void mountBlockDevice(const QString& vmName,
                               const QString& imageFullName,
                               const QString& blockDevice,
                               const QString& busType);
         void createQcow2Image(const QString& imageFile,
                               const QString& backingFile, const QString& iSize);
-
+        void createQcow2Images(const QVector<ChainNode>& vmNodes,
+                               const QString& newImageSize,
+                               const int& insertDriveIndex);
     private:
         VMachine m_vm;
         QWidget* parentWindow;
@@ -49,6 +54,7 @@ class SnapManager : public QObject {
                                 const QStringList& idImages,
                                     const QVector<QStringList>& childrenImages);
         void doNewRoot(const QStringList& idImgs, const QStringList& childImgs);
+
 
         bool checkWriteAccessToDirs(const QStringList& dirsForWriteCheck,
                                             QStringList* noWriteDirs = nullptr);

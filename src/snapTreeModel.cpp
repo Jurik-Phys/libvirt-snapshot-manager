@@ -402,10 +402,24 @@ void SnapTreeModel::addNewVmImages(const QStringList& newImageInfo,
 
     for (int n = 0; n < m_nodes.size(); ++n){
         if ((m_nodes[n].id == 1) && (m_nodes[n].parentId == -1 )){
+            // *** Update m_nodes.imagesFullNames & m_nodes.backFullNames *** //
             m_nodes[n].imagesFullNames.insert(insIndex, newImageInfo.first());
             m_nodes[n].backFullNames.insert(insIndex, "None");
+
+            // *** Update m_nodes.childrenImagesFullNames *** //
+            int childrenNodesCount = m_nodes[n].childrenImagesFullNames.size();
+            for (int k = 0; k < childrenNodesCount; ++k){
+                QString localIFullName = m_nodes[n]
+                                            .childrenImagesFullNames[k].first();
+                QRegularExpressionMatch imgMatch = re.match(localIFullName);
+                QString imgUUID =imgMatch.captured(1);
+                QString iFullName = getSnapName(newImageInfo.first(), imgUUID);
+                m_nodes[n].childrenImagesFullNames[k]
+                                                    .insert(insIndex,iFullName);
+            }
         }
         else {
+            // *** Update m_nodes.imagesFullNames & m_nodes.backFullNames *** //
             QString localIFullName = m_nodes[n].imagesFullNames.first();
             QString localBFullName = m_nodes[n].backFullNames.first();
 
@@ -420,6 +434,17 @@ void SnapTreeModel::addNewVmImages(const QStringList& newImageInfo,
 
             m_nodes[n].imagesFullNames.insert(insIndex, iFullName);
             m_nodes[n].backFullNames.insert(insIndex, bFullName);
+
+            // *** Update m_nodes.childrenImagesFullNames *** //
+            int childrenNodesCount = m_nodes[n].childrenImagesFullNames.size();
+            for (int k = 0; k < childrenNodesCount; ++k){
+                localIFullName = m_nodes[n].childrenImagesFullNames[k].first();
+                imgMatch = re.match(localIFullName);
+                imgUUID =imgMatch.captured(1);
+                iFullName = getSnapName(newImageInfo.first(), imgUUID);
+                m_nodes[n].childrenImagesFullNames[k]
+                                                    .insert(insIndex,iFullName);
+            }
         }
     }
 }
@@ -443,8 +468,28 @@ QString SnapTreeModel::getSnapName(const QString& imgName, const QString& id){
 }
 
 
-void SnapTreeModel::delVmImages(const QString& imageFullName){
-    qDebug() << "[II] [SnapTreeModel]" << "delVmImages";
+void SnapTreeModel::delVmImagesByIdx(const unsigned int& imgIdx){
+
+    for (int n = 0; n < m_nodes.size(); ++n){
+        m_nodes[n].imagesFullNames.remove(imgIdx);
+        m_nodes[n].backFullNames.remove(imgIdx);
+        // *** У каждого узла "k" узлов потомков, в каждом узле потомке *** //
+        //      полный набор образов файлов, удаление imgIdx требуется      //
+        //                   произвести в каждом из потоков.                //
+        for (int k = 0; k < m_nodes[n].childrenImagesFullNames.size(); ++k){
+            m_nodes[n].childrenImagesFullNames[k].remove(imgIdx);
+        }
+    }
+}
+
+QStringList SnapTreeModel::getDelVmImagesByIdx(const unsigned int& imgIdx){
+    QStringList res;
+
+    for (int n = 0; n < m_nodes.size(); ++n){
+        res.push_back(m_nodes[n].imagesFullNames[imgIdx]);
+    }
+
+    return res;
 }
 
 QModelIndex SnapTreeModel::getActiveStateIndex(){
@@ -502,6 +547,11 @@ void SnapTreeModel::setActive(const QModelIndex& newActiveIndex){
 
 QVector<ChainNode> SnapTreeModel::getVmAllChainNodes(){
     return m_nodes;
+}
+
+void SnapTreeModel::clearData(){
+    m_nodes.clear();
+    m_snapImagesFullNames.clear();
 }
 
 // End snapTreeModel.cpp

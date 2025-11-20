@@ -21,7 +21,7 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
     int headlineOriginalFontSize = headlineFont.pointSize();
     headlineFont.setPointSize(headlineOriginalFontSize);
     headline->setFont(headlineFont);
-    headline->setText("<b>Virtual machine overview</b>");
+    headline->setText("<b>Virtual machine</b>");
     vFrameLayout->addWidget(headline);
 
     QScrollArea* scrollForm = new QScrollArea(parent);
@@ -188,14 +188,16 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
                 m_editImagesBtn->setVisible(false);
 
                 QMenu* editImgsMenu = new QMenu(m_editImagesBtn);
-                QAction* actNewImages = editImgsMenu->addAction("New images…");
-                QAction* actDelImages = editImgsMenu->addAction("Del images…");
+                QAction* actNewImgs = editImgsMenu->addAction("New VM drive…");
+                QAction* actDelImgs = editImgsMenu->addAction("Delete drive…");
 
                 m_editImagesBtn->setMenu(editImgsMenu);
 
-                QObject::connect(actNewImages, &QAction::triggered,
+                QObject::connect(editImgsMenu , &QMenu::aboutToShow,
+                                         this, &VmInfoWidget::manageDeleteItem);
+                QObject::connect(actNewImgs, &QAction::triggered,
                                            this, &VmInfoWidget::addNewVmImages);
-                QObject::connect(actDelImages, &QAction::triggered,
+                QObject::connect(actDelImgs, &QAction::triggered,
                                               this, &VmInfoWidget::delVmImages);
 
                 hLayoutArray[i]->addWidget(m_editImagesBtn);
@@ -349,6 +351,14 @@ void VmInfoWidget::setData(const VMachine& vm){
     qobject_cast<QLabel*>(m_colBWidgets[7])->setText(mountStoragesCount);
     setStorageList(vm.mountStorages);
     m_editImagesBtn->setVisible(true);
+
+    // *** Одним отображением данных дело не обошлось, данные необходимо *** //
+    //     хранить, для передачи, например, в диалог удаления хранилища      //
+    m_driveBusTypes = vm.driveBusTypes;
+    m_driveDevNames = vm.driveDevNames;
+    m_driveVirtSizes = vm.rootVirtSizes;
+    m_mountStorages = vm.mountStorages;
+    m_driveChildren = vm.vmStateChain.size() - 1;
 }
 
 QString VmInfoWidget::humanMemory(const QString& rawRam){
@@ -424,6 +434,9 @@ QString VmInfoWidget::humanMemory(const QString& rawRam){
 }
 
 void VmInfoWidget::setStorageList(const QStringList& mountStorages){
+    // *** Изменение локальных (для vmInfoWidget) данных *** //
+    m_mountStorages = mountStorages;
+
     QStringList listData;
 
     for (int i = 0; i < mountStorages.size(); ++i){
@@ -449,6 +462,22 @@ void VmInfoWidget::setStorageList(const QStringList& mountStorages){
     // *** Обновление числа примонтированных дисков (Mounted drives) *** //
     qobject_cast<QLabel*>(m_colBWidgets[7])
                                     ->setText(QString::number(listData.size()));
+}
+
+void VmInfoWidget::setDriveBusTypeList(const QStringList& driveBusTypes){
+    m_driveBusTypes = driveBusTypes;
+}
+
+void VmInfoWidget::setDriveDevNameList(const QStringList& driveDevNames){
+    m_driveDevNames = driveDevNames;
+}
+
+void VmInfoWidget::setDriveVirtSizeList(const QStringList& driveVirtSizes){
+    m_driveVirtSizes = driveVirtSizes;
+}
+
+void VmInfoWidget::setDriveChildren(const unsigned int& driveChildren){
+    m_driveChildren = driveChildren;
 }
 
 void VmInfoWidget::writeVmTitle(){
@@ -562,17 +591,18 @@ void VmInfoWidget::setOsId(const QString& newOsId){
     qobject_cast<QLabel*>(m_colBWidgets[6])->setText(newOsId);
 }
 
-void VmInfoWidget::setReadOnly(bool ro){
+void VmInfoWidget::setReadOnly(bool roState){
     QTextEdit* title = qobject_cast<QTextEdit*>(m_colBWidgets[0]);
     QTextEdit* description = qobject_cast<QTextEdit*>(m_colBWidgets[1]);
 
-    title->setReadOnly(ro);
-    description->setReadOnly(ro);
+    title->setReadOnly(roState);
+    description->setReadOnly(roState);
+    m_editImagesBtn->setEnabled(!roState);
 
     QString roToolTip = "Can edit only when VM is shut off";
     QString blankToolTip = "";
 
-    if (ro){
+    if (roState){
         title->setToolTip(roToolTip);
         description->setToolTip(roToolTip);
     }
@@ -637,20 +667,43 @@ void VmInfoWidget::addNewVmImages(){
     DialogAddNewImage addNewImageDialog(this);
 
     if (addNewImageDialog.exec() == QDialog::Accepted){
-        qDebug() << "[II] Dialog accepted";
         QString imageFullName = addNewImageDialog.getImageFullName();
         QString imageSize     = addNewImageDialog.getImageSize();
         QString imageBusType  = addNewImageDialog.getImageBusType();
         emit addNewVmImagesRequested({imageFullName, imageSize, imageBusType});
     }
-    else {
-        qDebug() << "[II] Dialog canceled";
-    }
 }
 
 void VmInfoWidget::delVmImages(){
-    qDebug() << "[II] [VmInfoWidget] Del vmImages now";
-    emit delVmImagesRequested("/var/lib/libvirt/images/rwx.qcow2");
+    DialogDeleteImage deleteImageDialog(this);
+
+    // *** Установка параметров для отображения в диалоге *** //
+    deleteImageDialog.setRootStorageList(m_mountStorages);
+    deleteImageDialog.setDriveBusTypeList(m_driveBusTypes);
+    deleteImageDialog.setDriveDevNameList(m_driveDevNames);
+    deleteImageDialog.setDriveVirtSizeList(m_driveVirtSizes);
+    deleteImageDialog.setDriveChildren(m_driveChildren);
+
+    if (deleteImageDialog.exec() == QDialog::Accepted){
+        unsigned int idx = deleteImageDialog.getDeleteImagesIndex();
+        emit delVmImagesRequested(idx);
+    }
+}
+
+void VmInfoWidget::manageDeleteItem(){
+
+    // *** Второй пункт меню - пункт удаления. *** //
+    QAction* delImgAction = m_editImagesBtn->menu()->actions().at(1);
+    if (m_mountStorages.size() > 0){
+        if (!delImgAction->isEnabled()){
+            delImgAction->setEnabled(true);
+        }
+    }
+    else {
+        if (delImgAction->isEnabled()){
+            delImgAction->setEnabled(false);
+        }
+    }
 }
 
 // End vmInfoWidget.cpp

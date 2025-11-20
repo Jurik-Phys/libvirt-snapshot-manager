@@ -45,7 +45,7 @@ class QAppWindow : public QWidget {
 
         // *** Manage VM images *** //
         bool addNewVmImages(const QStringList& newImageInfo);
-        bool delVmImages(const QString& imageFullName);
+        bool delVmImages(const unsigned int&);
 
     signals:
         void vmListProcessingStarted();
@@ -86,7 +86,9 @@ class QAppWindow : public QWidget {
         SnapInfoWidget* m_snapInfoWidget;
         ChainNode     m_activeNode;
         QStringList   m_mountStorages;
+        QStringList   m_rootVirtSizes;
         QStringList   m_driveBusTypes;
+        QStringList   m_driveDevNames;
         QString       m_currentVmName;
         QString       m_currentVmUUID;
         QToolButton*  m_takeSnapBtn;

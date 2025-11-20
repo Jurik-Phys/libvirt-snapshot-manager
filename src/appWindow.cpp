@@ -611,6 +611,8 @@ void QAppWindow::updSnapTree(){
                 m_currentVmName = result.name;
                 m_mountStorages = result.mountStorages;
                 m_driveBusTypes = result.driveBusTypes;
+                m_driveDevNames = result.driveDevNames;
+                m_rootVirtSizes = result.rootVirtSizes;
                 m_currentVmUUID = result.uuid;
 
                 m_vmInfoWidget->setData(result);
@@ -859,6 +861,8 @@ void QAppWindow::doSnapshot(){
 
     // *** Обновление информации о примонтированных дисках *** //
     m_vmInfoWidget->setStorageList(m_mountStorages);
+    m_vmInfoWidget
+           ->setDriveChildren(m_snapTreeModel->getVmAllChainNodes().size() - 1);
 
     // *** Установка параметров виджета вывода информации *** //
     ChainNode updNode = m_snapTreeModel->getChainNodeByIndex(index);
@@ -918,6 +922,8 @@ void QAppWindow::gotoSnapshot(){
 
     // *** Обновление информации о примонтированных дисках *** //
     m_vmInfoWidget->setStorageList(m_mountStorages);
+    m_vmInfoWidget
+           ->setDriveChildren(m_snapTreeModel->getVmAllChainNodes().size() - 1);
 
     // *** Установка параметров виджета вывода информации *** //
     ChainNode updNode = m_snapTreeModel->getChainNodeByIndex(currentModelIndex);
@@ -1002,6 +1008,10 @@ void QAppWindow::deleteSnapshot(){
 
     // *** Удалить запись о снапшоте из xml документа ВМ *** //
     m_vmDataCollector->rmSnapshotXmlElement({m_currentVmUUID, node.uuid});
+
+    // *** Обновить число потомков диска при удалении *** //
+    m_vmInfoWidget
+           ->setDriveChildren(m_snapTreeModel->getVmAllChainNodes().size() - 1);
 }
 
 void QAppWindow::startVM(){
@@ -1462,7 +1472,7 @@ bool QAppWindow::addNewVmImages(const QStringList& newImageInfo){
 
     // Определение свободного устройства sdX/vdX/hdX
     VmDataCollector vmDataCollector;
-    QString blockDevice = vmDataCollector
+    QString imageDevName = vmDataCollector
                              .getNextBlockDevice(m_currentVmName, imageBusType);
 
     // Проблема. Cписок дисков от libvirt сортируется хитрым образом:
@@ -1506,21 +1516,16 @@ bool QAppWindow::addNewVmImages(const QStringList& newImageInfo){
         }
         // ***********************************************//
 
+        QVector<ChainNode> vmNodes = m_snapTreeModel->getVmAllChainNodes();
+
         // *** SnapManager для создания & поключения файлов *** //
         SnapManager* locSnapManager = new SnapManager(this);
 
         // *** Фактическое создание цепочек сохранений для нового файла *** //
-        // -> цикл по всем узлам c определением пары imageFile & backingFile
-        QVector<ChainNode> vmNodes = m_snapTreeModel->getVmAllChainNodes();
-        for (int i = 0; i < vmNodes.size(); ++i){
-            QString imageFile = vmNodes[i].imagesFullNames[insertDriveIndex];
-            QString backingFile = vmNodes[i].backFullNames[insertDriveIndex];
-            locSnapManager->createQcow2Image(imageFile, backingFile, imageSize);
-        }
-        // **************************************************************** //
+        locSnapManager->createQcow2Images(vmNodes, imageSize, insertDriveIndex);
 
         // *** Монтирование файла по id примонтированных дисков *** //
-        // -> определение id и полного пути подключемого файла
+        // Определение id и полного пути подключемого файла
         int snapImagesId = getSnapImagesId(m_mountStorages.first());
         QString newImageMountName;
 
@@ -1536,16 +1541,25 @@ bool QAppWindow::addNewVmImages(const QStringList& newImageInfo){
                             + "-id-" + QString::number(snapImagesId) + ".qcow2";
         }
 
-        // -> примонтировать & добавить информацию о примонтированных дисках
+        // Примонтировать и добавить информацию о примонтированных дисках
         locSnapManager->mountBlockDevice(m_currentVmName, newImageMountName,
-                                                     blockDevice, imageBusType);
+                                                    imageDevName, imageBusType);
 
+        // Синхронизация состояния локальных переменных с изменениями
         m_mountStorages.insert(insertDriveIndex, newImageMountName);
         m_driveBusTypes.insert(insertDriveIndex, imageBusType);
+        m_driveDevNames.insert(insertDriveIndex, imageDevName);
+        int roundSize = qRound(imageSize.toDouble());
+        m_rootVirtSizes.insert(insertDriveIndex,
+                                           QString::number(roundSize) + " GiB");
 
         locSnapManager->deleteLater();
-        // -> обновить информацию о примонтированных дисках в vmInfoWidget
+
+        // Обновление информации о примонтированных дисках в vmInfoWidget
         m_vmInfoWidget->setStorageList(m_mountStorages);
+        m_vmInfoWidget->setDriveBusTypeList(m_driveBusTypes);
+        m_vmInfoWidget->setDriveDevNameList(m_driveDevNames);
+        m_vmInfoWidget->setDriveVirtSizeList(m_rootVirtSizes);
 
         res = true;
     }
@@ -1554,7 +1568,7 @@ bool QAppWindow::addNewVmImages(const QStringList& newImageInfo){
         //     Предлагается фактически создать файл, его примонтировать,     //
         //     затем запустить сбор данных про VM (аналог клика по VM)       //
 
-        QString blockDevice = vmDataCollector
+        QString imageDevName = vmDataCollector
                              .getNextBlockDevice(m_currentVmName, imageBusType);
         QString newImageName = imageFullName;
 
@@ -1562,23 +1576,73 @@ bool QAppWindow::addNewVmImages(const QStringList& newImageInfo){
         SnapManager* disklessSnapManager = new SnapManager(this);
         disklessSnapManager->createQcow2Image(newImageName, "None", imageSize);
         disklessSnapManager->mountBlockDevice(m_currentVmName, newImageName,
-                                                     blockDevice, imageBusType);
+                                                    imageDevName, imageBusType);
         // *** Обновление информакции о снапшотах *** //
         this->updSnapTree();
 
+        // Синхронизация состояния локальных переменных с изменениями
         m_mountStorages.push_back(newImageName);
         m_driveBusTypes.push_back(imageBusType);
+        m_driveDevNames.insert(insertDriveIndex, imageDevName);
+        int roundSize = qRound(imageSize.toDouble());
+        m_rootVirtSizes.insert(insertDriveIndex,
+                                           QString::number(roundSize) + " GiB");
 
         disklessSnapManager->deleteLater();
+
         res = true;
     }
 
     return res;
 }
 
-bool QAppWindow::delVmImages(const QString& imageFullName){
+bool QAppWindow::delVmImages(const unsigned int& rmIdx){
     bool res = false;
-    qDebug() << "[II] [QAppWindow] delVmImages now" << imageFullName;
+
+    // *** Получение списка удаляемых файлов *** //
+    QStringList rmImagesList = m_snapTreeModel->getDelVmImagesByIdx(rmIdx);
+
+    SnapManager* localSnapManager = new SnapManager(this);
+    // *** Удаление устройства из ВМ & фактическое удаление файлов *** //
+    localSnapManager->detachBlockDevice(m_currentVmName,m_driveDevNames[rmIdx]);
+    localSnapManager->deleteImageFiles(rmImagesList);
+    localSnapManager->deleteLater();
+
+    // *** Удаление информации о диске из модели данных *** //
+    m_snapTreeModel->delVmImagesByIdx(rmIdx);
+
+    // *** Синхронизация состояния локальных переменных с изменениями *** //
+    m_mountStorages.remove(rmIdx);
+    m_driveBusTypes.remove(rmIdx);
+    m_driveDevNames.remove(rmIdx);
+    m_rootVirtSizes.remove(rmIdx);
+
+    if (m_mountStorages.size() > 0){
+        // *** Обновление списка дисков текущего узла *** //
+        QItemSelectionModel* selectionModel = m_snapTreeView->selectionModel();
+        QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
+
+        // *** Выделение одиночное, в списке максимум один элемент *** //
+        //       Выделения может не быть, если снапшот не выбран       //
+        if (selectedIndexes.size() > 0){
+            QModelIndex sIdx = selectedIndexes.first();
+
+            // *** Получение данных выделенного узла *** //
+            const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(sIdx);
+            m_snapInfoWidget->setStorageList(node.imagesFullNames);
+        }
+    }
+    else {
+        // *** Удалено последнее или единственное хранилище ВМ *** //
+        m_snapInfoWidget->clearData();
+        m_snapTreeModel->clearData();
+    }
+
+    // *** Обновление информации о примонтированных дисках в vmInfoWidget *** //
+    m_vmInfoWidget->setStorageList(m_mountStorages);
+    m_vmInfoWidget->setDriveBusTypeList(m_driveBusTypes);
+    m_vmInfoWidget->setDriveDevNameList(m_driveDevNames);
+    m_vmInfoWidget->setDriveVirtSizeList(m_rootVirtSizes);
 
     return res;
 }

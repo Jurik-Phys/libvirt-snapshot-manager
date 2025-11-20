@@ -35,6 +35,7 @@ class VmDataCollector : public QObject {
         QString getNextBlockDevice(const QString& vmName,
                                                         const QString& busType);
 
+
         void vmListStartTimer();
         void vmListStopTimer();
         void vmGeneralInfoStartTimer(const VMachine&);
@@ -79,6 +80,7 @@ class VmDataCollector : public QObject {
         QString getBackFullNameQEMU(const VmImageRawInfo&);
         QString getBackFullNameFast(const QString& fullFileName);
         QString getRootFullName(const QString& fileFullName);
+        QString getRootVirtSize(const QString& fileFullName);
         QVector<VmImageRawInfo> m_vmImagesRawInfo;
         int getFileNameId(const QString& imgFileName);
         bool checkExtBackChainFiles(const QVector<VmImageRawInfo>& imgsRawInfo,

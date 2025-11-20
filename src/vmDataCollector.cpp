@@ -160,20 +160,17 @@ VMachine VmDataCollector::getVmShortInfo(const QString& uuid, bool* isOk){
     }
     vm.cpu.chop(2);
     if (cpuAttribues.count() > 0) {
-        static const QRegularExpression allRe(R"((\d+) \()");
         static const QRegularExpression socketsRe(R"(sockets (\d+))");
         static const QRegularExpression coresRe(R"(cores (\d+))");
         static const QRegularExpression threadsRe(R"(threads (\d+))");
-        QRegularExpressionMatch allCpu = allRe.match(vm.cpu);
         QRegularExpressionMatch sockets = socketsRe.match(vm.cpu);
         QRegularExpressionMatch cores   = coresRe.match(vm.cpu);
         QRegularExpressionMatch threads = threadsRe.match(vm.cpu);
-        vm.cpu = allCpu.captured(1) + " (" + sockets.captured() + " · "
-                                                 + cores.captured() + " · "
-                                                    + threads.captured() + ")";
+        vm.cpu = sockets.captured() + " · " + cores.captured()
+                                                   + " · " + threads.captured();
     }
     else {
-        vm.cpu = vm.cpu + " (sockets " + vm.cpu + " · cores 1 · threads 1)";
+        vm.cpu = "sockets " + vm.cpu + " · cores 1 · threads 1";
     }
     QDomElement devices = vmXml.firstChildElement("devices");
     QDomNodeList diskNodes  = devices.elementsByTagName("disk");
@@ -219,6 +216,11 @@ VMachine VmDataCollector::getVmShortInfo(const QString& uuid, bool* isOk){
                 QString busType = diskNode.firstChildElement("target")
                                                               .attribute("bus");
                 vm.driveBusTypes.push_back(busType);
+
+                // *** Загрузка данных о "dev name" для mount Stroage *** //
+                QString devName = diskNode.firstChildElement("target")
+                                                              .attribute("dev");
+                vm.driveDevNames.push_back(devName);
 
                 // *** Установка каталога цепочки сохранения состояния *** //
                 QString snapshotsDir = QFileInfo(mountStorage).absolutePath();
@@ -377,6 +379,11 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
     // Определение корневых файлов для каждой цепочки сохранения
     for (int i = 0; i < vm.mountStorages.size(); ++i){
         vm.rootFullName.push_back(getRootFullName(vm.mountStorages[i]));
+    }
+
+    // Определение виртуального (внутреннего) размера хранилищ данных
+    for (int i = 0; i < vm.mountStorages.size(); ++i){
+        vm.rootVirtSizes.push_back(getRootVirtSize(vm.rootFullName[i]));
     }
 
     // Построение цепочек сохранённых состояний
@@ -590,8 +597,6 @@ QVector<VmImageRawInfo> VmDataCollector::loadVmImagesRawInfoOverQEMU(
     // /* только имена файлов */
     QStringList basePathFiles = QDir(snapshotsDir).entryList(QDir::Files
                                 | QDir::NoSymLinks | QDir::Hidden, QDir::Name);
-
-    // qDebug() << "\n[II] Каталог цепочки сохранения:" << snapshotsDir;
 
     // Проверка на доступность (файлы всегда должны быть по логике программы)
     if (basePathFiles.size() == 0){
@@ -810,6 +815,30 @@ QString VmDataCollector::getRootFullName(const QString& imageFullName){
     } ;
 
     return rootFullName;
+}
+
+QString VmDataCollector::getRootVirtSize(const QString& imageFullName){
+    QString res;
+
+    QProcess process;
+    QEventLoop loop;
+
+    QObject::connect(&process, &QProcess::finished,
+        [&](){
+            QString output = process.readAllStandardOutput();
+            QStringList outputLines = output.split('\n',Qt::SkipEmptyParts);
+
+            // third line is "virtual size: 20 GiB (21474836480 bytes)"
+            QStringList parts = outputLines[2].split(" ");
+            res = parts[2] + " " + parts[3];
+
+            loop.quit();
+        });
+
+    process.start("qemu-img", {"info", "--force-share", imageFullName});
+    loop.exec();
+
+    return res;
 }
 
  QString VmDataCollector::getNodeName(const QString& imageFullName){

@@ -31,6 +31,10 @@ class VmInfoWidget : public QFrame {
         void setData(const VMachine&);
         VMachine getData();
         void setStorageList(const QStringList&);
+        void setDriveBusTypeList(const QStringList&);
+        void setDriveDevNameList(const QStringList&);
+        void setDriveVirtSizeList(const QStringList&);
+        void setDriveChildren(const unsigned int&);
 
         void setName(const QString&);
         void setTitle(const QString&);
@@ -49,7 +53,7 @@ class VmInfoWidget : public QFrame {
         void writeVmDescriptionRequested(const QString& vm_uuid,
                                                   const QString& vmDescription);
         void addNewVmImagesRequested(const QStringList& newImageInfo);
-        void delVmImagesRequested(const QString& imageFullName);
+        void delVmImagesRequested(const unsigned int&);
 
     private:
         QVBoxLayout* m_vScrollLayout;
@@ -61,8 +65,15 @@ class VmInfoWidget : public QFrame {
         QString humanMemory(const QString&);
 
         QToolButton* m_editImagesBtn;
+        void manageDeleteItem();
 
         QString m_uuid;
+        QStringList m_mountStorages;
+        QStringList m_driveBusTypes;
+        QStringList m_driveDevNames;
+        QStringList m_driveVirtSizes;
+        unsigned int m_driveChildren;
+
         void writeVmTitle();
         void writeVmDescription();
         void restartSaveTitleTimer();

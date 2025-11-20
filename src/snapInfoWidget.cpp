@@ -27,7 +27,7 @@ SnapInfoWidget::SnapInfoWidget(QWidget* parent) : QFrame (parent){
     int headlineOriginalFontSize = headlineFont.pointSize();
     headlineFont.setPointSize(headlineOriginalFontSize);
     headline->setFont(headlineFont);
-    headline->setText("<b>Snapshot overview</b>");
+    headline->setText("<b>Snapshot</b>");
     vFrameLayout->addWidget(headline);
 
     QScrollArea* scrollForm = new QScrollArea(parent);

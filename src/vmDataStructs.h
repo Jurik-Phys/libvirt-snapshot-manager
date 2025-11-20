@@ -32,6 +32,8 @@ struct VMachine {
     QString     description;   // Описание виртуальной машины
     QStringList mountStorages; // Примонтированные хранилища данных
     QStringList driveBusTypes; // Контроллеры устройств [virtio, scsi, sata]
+    QStringList driveDevNames; // Имена устройств хранилищ данных
+    QStringList rootVirtSizes; // Размеры корневых хранилищ данных
     QStringList rootFullName;  // Полные имена корневых файлов цепочек состояний
     QStringList snapshotsDirs; // Каталоги хранения цепочек сохранения состояний
     QVector<ChainNode> vmStateChain; // Узлы цепочки сохранения состояний ВМ
@@ -41,6 +43,7 @@ struct VmImageRawInfo {
     QString imageBasePath;     // Каталог хранения образа жёсткого диска
     QString imageFullName;     // Полное имя образа жёсткого диска
     QString backFullName;      // Полное имя backing (родительского) файла
+    QString imageVirtSize;     // Виртуальный (внутренний) размер хранилища
 };
 
 const QStringList nodeNameList = {
