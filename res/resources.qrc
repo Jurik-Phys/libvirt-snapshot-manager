@@ -15,5 +15,7 @@
         <file>vm-status-play.svg</file>
         <file>vm-status-stop.svg</file>
         <file>app-logo.svg</file>
+        <file>vmInfo-del-drive.svg</file>
+        <file>vmInfo-new-drive.svg</file>
     </qresource>
 </RCC>

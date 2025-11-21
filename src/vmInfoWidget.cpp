@@ -187,9 +187,14 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
                 m_editImagesBtn->setFont(btnFont);
                 m_editImagesBtn->setVisible(false);
 
+                QIcon actNewImgIcon = QIcon(":/vmInfo-new-drive.svg");
+                QIcon actDelImgIcon = QIcon(":/vmInfo-del-drive.svg");
+
                 QMenu* editImgsMenu = new QMenu(m_editImagesBtn);
                 QAction* actNewImgs = editImgsMenu->addAction("New VM drive…");
+                actNewImgs->setIcon(actNewImgIcon);
                 QAction* actDelImgs = editImgsMenu->addAction("Delete drive…");
+                actDelImgs->setIcon(actDelImgIcon);
 
                 m_editImagesBtn->setMenu(editImgsMenu);
 
