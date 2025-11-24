@@ -63,6 +63,7 @@ class SnapManager : public QObject {
         long int getRebaseDataValue(const QString& backFullName,
                                                     const QString& rebaseImage);
         const QString m_libVirtConnectURI = "qemu:///system";
+        void sleep(const int&);
 };
 
 #endif

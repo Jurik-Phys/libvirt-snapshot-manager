@@ -81,16 +81,16 @@ QStringList SnapManager::doSnapshot(const QString& vmName,
         progress->setValue(n + 1);
     }
 
+    // Смена точки монтирования в VM
+    switchVmMountStorages(vmName, snapshotsFullNames);
+
     // *** Закрытие диалогового окна с прогрессом создания снапшота *** //
     //     Перед закрытием диалог повисит со 100%, чтобы не было        //
     //     лишнего "мельтешения" в случае короткой по времени операции  //
-    QTimer::singleShot(850,[progress](){
-        progress->close();
-        progress->deleteLater();
-    });
+    this->sleep(1250);
+    progress->close();
+    progress->deleteLater();
 
-    // Смена точки монтирования в VM
-    switchVmMountStorages(vmName, snapshotsFullNames);
     return snapshotsFullNames;
 }
 
@@ -143,10 +143,9 @@ void SnapManager::createQcow2Images(const QVector<ChainNode>& vmNodes,
     // *** Закрытие диалогового окна с прогрессом операции *** //
     //     Перед закрытием диалог повисит со 100%, чтобы       //
     //     не было "мельтешения" в случае быстрой операции     //
-    QTimer::singleShot(850,[progress](){
-        progress->close();
-        progress->deleteLater();
-    });
+    this->sleep(1250);
+    progress->close();
+    progress->deleteLater();
 }
 
 void SnapManager::createQcow2Image(const QString& imageFile,
@@ -216,6 +215,7 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const QString& snapName,
             QStringList idImages = node.imagesFullNames;
             QStringList childImages = node.childrenImagesFullNames.first();
             doNewRoot(idImages, childImages);
+
             return true;
         }
     }
@@ -394,6 +394,8 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
 
     QProgressDialog* progress = nullptr;
     progress = createNewQProgressDialog(100*totalFiles, parentWindow);
+    progress->setAutoClose(false);
+    progress->setAutoReset(false);
     progress->show();
 
     QString partInfo, info;
@@ -424,13 +426,15 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
                                                           childrenImages[i][j]);
             long int fSizeOld = QFileInfo(childrenImages[i][j]).size();
 
+            // *** Обновление по таймеру актуально для большого файла, *** //
+            //    когда ребазирование происходит длительное время. При     //
+            //    небольших файлах таймер убивается раньше, чем сработает  //
             QObject::connect(&rebaseFileProgressTimer, &QTimer::timeout,[&](){
                     long int fSize = QFileInfo(childrenImages[i][j]).size();
                     int value = qRound(100.0*(fSize-fSizeOld)/rebaseDataValue);
                     info = partInfo.arg(value, 3, 10, QChar('0'));
                     progress->setLabelText(info);
                     progress->setValue(100*doneFiles + value);
-
                 });
 
             QObject::connect(&process, &QProcess::finished, &loop,
@@ -443,7 +447,9 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
             rebaseFileProgressTimer.start();
             loop.exec();
             rebaseFileProgressTimer.stop();
+
             doneFiles++;
+            progress->setValue(100*doneFiles);
         }
     }
 
@@ -455,10 +461,14 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
         }
     }
 
-    progress->setValue(totalFiles);
+    // *** Задержать закрытие прогресса при выполнении работы *** //
+    //        Отображение 100% индикатора в течение 1,25 с
+    info = partInfo.arg(100, 3, 10, QChar('0'));
+    progress->setLabelText(info);
+    this->sleep(1250);
+
     progress->close();
     progress->deleteLater();
-
     return true;
 }
 
@@ -466,6 +476,8 @@ void SnapManager::doNewRoot(const QStringList& idImgs,
                                                 const QStringList& childImgs){
     QProgressDialog* progress = nullptr;
     progress = createNewQProgressDialog(100*childImgs.size(), parentWindow);
+    progress->setAutoClose(false);
+    progress->setAutoReset(false);
     progress->show();
     QString partInfo, info;
 
@@ -531,6 +543,9 @@ void SnapManager::doNewRoot(const QStringList& idImgs,
     }
 
     progress->setValue(childImgs.size()*100);
+
+    // *** Задержка с отобржаением 100% прогресса операции *** //
+    this->sleep(1250);
     progress->close();
     progress->deleteLater();
 }
@@ -626,5 +641,11 @@ long int SnapManager::getRebaseDataValue(const QString& backFullName,
     loop.exec();
 
     return resBlockData;
+}
+
+void SnapManager::sleep(const int& msTimer){
+    QEventLoop dlgLoop;
+    QTimer::singleShot(msTimer, &dlgLoop, &QEventLoop::quit);
+    dlgLoop.exec();
 }
 // End snapManager.cpp

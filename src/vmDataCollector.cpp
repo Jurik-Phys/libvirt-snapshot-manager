@@ -260,11 +260,16 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
     bool isOkLoadRawInfo = true;
     for ( int i = 0; i < vm.snapshotsDirs.size(); ++i ){
         QString dir = vm.snapshotsDirs[i];
-        vmImagesRawInfo += loadVmImagesRawInfoOverQEMU(dir, &isOkLoadRawInfo);
+        vmImagesRawInfo += loadVmImagesRawInfoOverQEMU(dir, vm.mountStorages,
+                                                              &isOkLoadRawInfo);
         // *** Прекращение работы при первой же ошибке получения данных *** //
         if (!isOkLoadRawInfo){
             return vm;
         }
+    }
+
+    for ( int i = 0; i < vmImagesRawInfo.size(); ++i ){
+        qDebug() << "[II] " << vmImagesRawInfo[i].imageFullName;
     }
 
     // *** Проверка на наличие вновь примонтированных хранилищ *** //
@@ -293,6 +298,7 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
 
     QStringList extMountedStorages;
     extMountedStorages = getExtMountStorages(vmImagesRawInfo, vm.mountStorages);
+    qDebug() << "[xx]";
     if (extMountedStorages.size() > 0){
         QString extMountStorageStr;
         for (int i = 0; i < extMountedStorages.size(); ++i){
@@ -336,6 +342,7 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
 
     m_vmImagesRawInfo = rmExtBackingInfo(vmImagesRawInfo, vm.mountStorages);
 
+    qDebug() << "[YY]";
     // *** Проверка наличия примонтированных файлов в списке файлов *** //
     // > Актуально для случая единственного примонтированного файла     //
     //   без цепочки сохранения и отсутсвии прав доступа на чтение      //
@@ -389,6 +396,7 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
     // Построение цепочек сохранённых состояний
     setSnapChainData(vm);
 
+    qDebug() << "[zz]";
     // Заполнение данных о потомках каждого узла
     // (необходимо для реализации удаления узла внутри цепочки)
     setChildrenData(vm);
@@ -590,7 +598,9 @@ bool VmDataCollector::isVMachineImage(const QString& imageFullName){
 }
 
 QVector<VmImageRawInfo> VmDataCollector::loadVmImagesRawInfoOverQEMU(
-                            const QString& snapshotsDir, bool* isOkLoadRawInfo){
+                                                    const QString& snapshotsDir,
+                                                    const QStringList& mntImgs,
+                                                         bool* isOkLoadRawInfo){
     QVector<VmImageRawInfo> vmImagesRawInfo;
 
     // Получение списка всех файлов из каталога цепочки сохранения состояний
@@ -617,12 +627,15 @@ QVector<VmImageRawInfo> VmDataCollector::loadVmImagesRawInfoOverQEMU(
     // Загружаем информацию о qcow2 файлах из каталога цепочки сохранения
     for (int i = 0, vmDiskCount = -1; i < basePathFiles.size(); ++i){
         QString fileFullName = snapshotsDir + "/" + basePathFiles[i];
-        if (isVMachineImage(fileFullName)){
+        if (isVMachineImage(fileFullName) || mntImgs.contains(fileFullName)){
             vmDiskCount++;
             VmImageRawInfo vmImageRawInfo;
             vmImageRawInfo.imageBasePath = snapshotsDir;
             vmImageRawInfo.imageFullName = fileFullName;
             vmImageRawInfo.backFullName = getBackFullNameQEMU(vmImageRawInfo);
+            qDebug() << "[II] imageFullName" << vmImageRawInfo.imageFullName;
+            qDebug() << "[II] backFullName" << vmImageRawInfo.backFullName;
+            qDebug() << "[* * *]";
             // backFullName может быть символической ссылкой на реальный файл.
             // необходимо это проверить и разрешить путь при необходиомсти.
             // Предполагается, что реальный файл находится в этом же каталоге
@@ -730,7 +743,7 @@ QVector<VmImageRawInfo> VmDataCollector::rmExtBackingInfo(
 }
 
 QString VmDataCollector::getBackFullNameQEMU(const VmImageRawInfo& vmImgRawInf){
-    QString backingFile;
+    QString backingFile = "-1";
 
     QString baseDir = QFileInfo(vmImgRawInf.imageFullName).absolutePath();
 
@@ -763,10 +776,6 @@ QString VmDataCollector::getBackFullNameQEMU(const VmImageRawInfo& vmImgRawInf){
                         break;
                     }
                 }
-            }
-            else {
-                // No backing file => file is root of disk chains
-                backingFile = "-1";
             }
         });
 
@@ -829,8 +838,13 @@ QString VmDataCollector::getRootVirtSize(const QString& imageFullName){
             QStringList outputLines = output.split('\n',Qt::SkipEmptyParts);
 
             // third line is "virtual size: 20 GiB (21474836480 bytes)"
-            QStringList parts = outputLines[2].split(" ");
-            res = parts[2] + " " + parts[3];
+            if (outputLines.size() > 4){
+                QStringList parts = outputLines[2].split(" ");
+                res = parts[2] + " " + parts[3];
+            }
+            else {
+                res = "??? GiB";
+            }
 
             loop.quit();
         });

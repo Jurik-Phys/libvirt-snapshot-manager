@@ -999,7 +999,7 @@ void QAppWindow::deleteSnapshot(){
     m_snapTreeView->clearFocus();
     m_snapTreeView->selectionModel()->clear();
 
-    // *** Выдленых элементов SnapTreeView нет, отключение кнопок *** //
+    // *** Выделенных элементов SnapTreeView нет, отключение кнопок *** //
     m_deleteBtn->setEnabled(false);
     m_gotoBtn->setEnabled(false);
 

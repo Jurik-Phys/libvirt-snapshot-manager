@@ -74,6 +74,7 @@ class VmDataCollector : public QObject {
         void setChildrenData(VMachine& vm);
         bool isVMachineImage(const QString& imageFullName);
         QVector<VmImageRawInfo> loadVmImagesRawInfoOverQEMU(const QString& dir,
+                                               const QStringList& mountStorages,
                                                          bool* isOkLoadRawInfo);
         QVector<VmImageRawInfo> rmExtBackingInfo(const QVector<VmImageRawInfo>&,
                                               const QStringList& mountStorages);

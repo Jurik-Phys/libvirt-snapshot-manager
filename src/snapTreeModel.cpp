@@ -403,7 +403,19 @@ void SnapTreeModel::addNewVmImages(const QStringList& newImageInfo,
     for (int n = 0; n < m_nodes.size(); ++n){
         if ((m_nodes[n].id == 1) && (m_nodes[n].parentId == -1 )){
             // *** Update m_nodes.imagesFullNames & m_nodes.backFullNames *** //
-            m_nodes[n].imagesFullNames.insert(insIndex, newImageInfo.first());
+            QString iFullName = newImageInfo.first();
+
+            // *** Корневой файл может содержать -id-XXXXXX, например,    *** // 
+            //     после удаления предыдущего корневого снапшота. Поэтому,    //
+            //     необходима проверка на наличие id и учёт его наличия.i     //
+            QString localIFullName = m_nodes[n].imagesFullNames.first();
+            QRegularExpressionMatch imgMatch = re.match(localIFullName);
+            if (imgMatch.hasMatch()){
+                QString imgUUID =imgMatch.captured(1);
+                iFullName = getSnapName(iFullName, imgUUID);
+            }
+
+            m_nodes[n].imagesFullNames.insert(insIndex, iFullName);
             m_nodes[n].backFullNames.insert(insIndex, "None");
 
             // *** Update m_nodes.childrenImagesFullNames *** //
