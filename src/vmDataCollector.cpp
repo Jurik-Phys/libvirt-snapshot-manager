@@ -268,10 +268,6 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
         }
     }
 
-    for ( int i = 0; i < vmImagesRawInfo.size(); ++i ){
-        qDebug() << "[II] " << vmImagesRawInfo[i].imageFullName;
-    }
-
     // *** Проверка на наличие вновь примонтированных хранилищ *** //
     // > Теория. Вновь примонтированными считаются хранилища,      //
     //   у которых в соседях есть хранилища с id, а у самих id     //
@@ -298,7 +294,6 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
 
     QStringList extMountedStorages;
     extMountedStorages = getExtMountStorages(vmImagesRawInfo, vm.mountStorages);
-    qDebug() << "[xx]";
     if (extMountedStorages.size() > 0){
         QString extMountStorageStr;
         for (int i = 0; i < extMountedStorages.size(); ++i){
@@ -342,7 +337,6 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
 
     m_vmImagesRawInfo = rmExtBackingInfo(vmImagesRawInfo, vm.mountStorages);
 
-    qDebug() << "[YY]";
     // *** Проверка наличия примонтированных файлов в списке файлов *** //
     // > Актуально для случая единственного примонтированного файла     //
     //   без цепочки сохранения и отсутсвии прав доступа на чтение      //
@@ -396,7 +390,6 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
     // Построение цепочек сохранённых состояний
     setSnapChainData(vm);
 
-    qDebug() << "[zz]";
     // Заполнение данных о потомках каждого узла
     // (необходимо для реализации удаления узла внутри цепочки)
     setChildrenData(vm);
@@ -627,15 +620,15 @@ QVector<VmImageRawInfo> VmDataCollector::loadVmImagesRawInfoOverQEMU(
     // Загружаем информацию о qcow2 файлах из каталога цепочки сохранения
     for (int i = 0, vmDiskCount = -1; i < basePathFiles.size(); ++i){
         QString fileFullName = snapshotsDir + "/" + basePathFiles[i];
+        // *** mntImgs.contains(fileFullName) отрабатывет случай, когда *** //
+        //     в виртуальной машине файлы недоступны для чтения текущему    //
+        //     пользователю, например, при первом запуске программы         //
         if (isVMachineImage(fileFullName) || mntImgs.contains(fileFullName)){
             vmDiskCount++;
             VmImageRawInfo vmImageRawInfo;
             vmImageRawInfo.imageBasePath = snapshotsDir;
             vmImageRawInfo.imageFullName = fileFullName;
             vmImageRawInfo.backFullName = getBackFullNameQEMU(vmImageRawInfo);
-            qDebug() << "[II] imageFullName" << vmImageRawInfo.imageFullName;
-            qDebug() << "[II] backFullName" << vmImageRawInfo.backFullName;
-            qDebug() << "[* * *]";
             // backFullName может быть символической ссылкой на реальный файл.
             // необходимо это проверить и разрешить путь при необходиомсти.
             // Предполагается, что реальный файл находится в этом же каталоге
@@ -843,7 +836,18 @@ QString VmDataCollector::getRootVirtSize(const QString& imageFullName){
                 res = parts[2] + " " + parts[3];
             }
             else {
-                res = "??? GiB";
+                output = process.readAllStandardError();
+                if (output.contains("Permission denied")){
+                    // *** Ситуация, когда к виртуальной машине подключен *** //
+                    //     диск с правами -rw-------, прав на чтение данных   //
+                    //     через qemu-img info <imageFullName> нет. Далее     //
+                    //     попытка получить данные через virsh vol-info ...   //
+                    QStringList poolList = this->getPoolList();
+                    res = getVirtSize(imageFullName, poolList);
+                }
+                else {
+                    res = "??? GiB";
+                }
             }
 
             loop.quit();
@@ -855,7 +859,67 @@ QString VmDataCollector::getRootVirtSize(const QString& imageFullName){
     return res;
 }
 
- QString VmDataCollector::getNodeName(const QString& imageFullName){
+QStringList VmDataCollector::getPoolList(){
+    QStringList res;
+
+    QProcess process;
+    QEventLoop loop;
+
+    QObject::connect(&process, &QProcess::finished,
+        [&](){
+            QString output = process.readAllStandardOutput();
+            QStringList outputLines = output.split('\n',Qt::SkipEmptyParts);
+            for (int i = 0; i < outputLines.size(); ++i){
+                res.push_back(outputLines[i]);
+            }
+            loop.quit();
+            });
+
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                               "pool-list", "--all", "--name"});
+    loop.exec();
+
+    return res;
+}
+
+QString VmDataCollector::getVirtSize(const QString& imageFullName,
+                                                   const QStringList& poolList){
+    QString res = "--- GiB";
+
+    for (int i = 0; i < poolList.size(); ++i){
+        QProcessEnvironment env;
+        env.insert("LANG", "C");
+
+        QProcess process;
+        process.setProcessEnvironment(env);
+        QEventLoop loop;
+
+        QObject::connect(&process, &QProcess::finished,
+            [&](){
+                QString output = process.readAllStandardOutput();
+                QStringList outputLines = output.split('\n',Qt::SkipEmptyParts);
+                for (int i = 0; i < outputLines.size(); ++i){
+                    if (outputLines[i].contains("Capacity")){
+                        // *** Округление размера до целого числа *** //
+                        QString noRoundRes = outputLines[i]
+                               .split(':', Qt::SkipEmptyParts).last().trimmed();
+                        QStringList resList = noRoundRes.split(' ');
+                        int valueRes = qRound(resList.first().toFloat());
+                        res = QString::number(valueRes) + " " + resList.last();
+                    }
+                }
+                loop.quit();
+                });
+
+        process.start("virsh", {"--connect=" + m_libVirtConnectURI, "vol-info",
+                                         "--pool", poolList[i], imageFullName});
+        loop.exec();
+    }
+
+    return res;
+}
+
+QString VmDataCollector::getNodeName(const QString& imageFullName){
 
     // Получаем SHA256 хеш от строки (минимизация коллизий в именах)
     QByteArray hash;

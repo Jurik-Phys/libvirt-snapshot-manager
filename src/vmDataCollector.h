@@ -106,6 +106,9 @@ class VmDataCollector : public QObject {
                                                           const QString& value);
         QStringList getExtMountStorages(const QVector<VmImageRawInfo>&,
                                               const QStringList& mountStorages);
+        QStringList getPoolList();
+        QString getVirtSize(const QString& imageFullName,
+                                                   const QStringList& poolList);
 };
 
 #endif
