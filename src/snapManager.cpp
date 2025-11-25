@@ -43,8 +43,29 @@ QStringList SnapManager::doSnapshot(const QString& vmName,
         snapshotsFullNames.push_back(getSnapName(workDisks[i], id));
     }
 
-    // // Создание и запуск внешней команды
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    // *** Проверка наличия разрешения на чтение qcow2 файлов, от которых *** //
+    //     будет строиться новый снапшот. Если прав на чтение нет, то         //
+    //     новый снапшот будет создан через virsh, который доступ к файлам    //
+    //     иметь точно будет. При наличии прав на чтение, снапшоты будут      //
+    //     созданы классическим образом через утилиту qemu-img                //
+    bool allWorkDiskImagesReadable = checkAllImagesReadable(workDisks);
+
+    if (allWorkDiskImagesReadable){
+        doSnapshotOverQemuImg(vmName, workDisks, snapshotsFullNames);
+    }
+    else {
+        doSnapshotOverVirsh(vmName, workDisks, snapshotsFullNames);
+    }
+
+
+    return snapshotsFullNames;
+}
+
+QStringList SnapManager::doSnapshotOverQemuImg(const QString& vmName,
+                                         const QStringList& workDisks,
+                                         const QStringList& snapshotsFullNames){
+    // *** Английский язык в выводе утилиты qemu-img *** //
+    QProcessEnvironment env;
     env.insert("LANG", "C");
 
     // *** Когда число примонтированных дисков значительно, *** //
@@ -64,7 +85,6 @@ QStringList SnapManager::doSnapshot(const QString& vmName,
         QObject::connect(&process, &QProcess::finished, &loop,
                                                              &QEventLoop::quit);
 
-        QString snapName = snapshotsFullNames[n];
         QStringList qemuImgArguments = {
                                             "create",
                                             "-f",
@@ -92,6 +112,184 @@ QStringList SnapManager::doSnapshot(const QString& vmName,
     progress->deleteLater();
 
     return snapshotsFullNames;
+}
+
+QStringList SnapManager::doSnapshotOverVirsh(const QString& vmName,
+                                         const QStringList& workDisks,
+                                         const QStringList& snapshotsFullNames){
+    // *** Для сохранения возможности отображать прогресс создания *** //
+    //     снапшотов, последние созаются отдельно для каждого диска.   //
+
+    // Общая для всех снапшотов часть аргементов утилиты virsh
+    QString virshArgsFirst = " snapshot-create-as " + vmName
+                            + " snapFakeName-id-1234 --disk-only --no-metadata";
+
+    // Заготовка для аргументов дисков (для всех дисков отключены снапшоты)
+    QString diskspecNoSnaps;
+    for (int i = 0; i < workDisks.size(); ++i){
+        diskspecNoSnaps+= " --diskspec " + workDisks[i] + ",snapshot=no";
+    }
+
+    // *** Когда число примонтированных дисков значительно, *** //
+    //     например, несколько десятков, то процесс создания    //
+    //     снимка занимает ощутимое время.                      //
+    //     Предлагается отображать ход создания снимка.         //
+    QProgressDialog* progress = nullptr;
+    progress = createNewQProgressDialog(snapshotsFullNames.size(),parentWindow);
+    progress->show();
+
+    // Включение создания снапшота для i-ого диска и формирование общей
+    // строки аргементов утилиты virsh для создания снапшота i-ого диска
+    //
+    // *** Важно! Снапшоты, созданные через virsh предоставляют обычным *** //
+    //     пользователям право на чтение снапшотов, что и позволяет их      //
+    //     использовать для дальнейшего построения цепочки сохранений.      //
+    //     Qcow2 файлы, подключенные к ВМ через VirtManager не дают доступа //
+    //     обычным пользователям совсем (нет даже доступа к чтению файлов)  //
+    for (int i = 0; i < workDisks.size(); ++i){
+        QString diskspecDoSnaps = diskspecNoSnaps;
+
+        // *** Включение снапшота для i-ого диска
+        diskspecDoSnaps.replace(workDisks[i] + ",snapshot=no",
+                               workDisks[i] + ",file=" + snapshotsFullNames[i]);
+        QString virshArgs = virshArgsFirst + diskspecDoSnaps;
+
+        QEventLoop loop;
+        QProcess process;
+
+        QObject::connect(&process, &QProcess::finished, &loop,
+                                                             &QEventLoop::quit);
+
+        process.start("virsh", {"--connect=" + m_libVirtConnectURI, virshArgs});
+
+        loop.exec();
+        progress->setValue(i + 1);
+
+        // *** После i-ого снапшота в виртуальной машине будет подключен *** //
+        //     не workDisks[i], а snapshotsFullNames[i]. Это надо учесть     //
+        diskspecNoSnaps.replace(workDisks[i], snapshotsFullNames[i]);
+    }
+
+    // *** После установки в /etc/libvirt/qemu.conf параметра             *** //
+    //     user = <username> при запуске ВМ подкюченный диск и вся его        //
+    //     цепочка backing файлов получает владельца <username>.              //
+    //     При выключении ВМ, примонтированные файлы возвращают своего        //
+    //     владельца root:root, а владелец всей активной при включении ВМ     //
+    //     цепочки сохранения так и остаётся за <username>:libvirt-qemu.      //
+    //     Таким образом кратковременное включение ВМ позволит "сбросить"     //
+    //     владельца до этого не читаемого файла на <username>:libvirt-qemu   //
+    //     и получить право чтения и записи в него                            //
+    this->turnOnOffVirtualMachine(vmName);
+
+    // *** Закрытие диалогового окна с прогрессом создания снапшота *** //
+    //     Перед закрытием диалог повисит со 100%, чтобы не было        //
+    //     лишнего "мельтешения" в случае короткой по времени операции  //
+    this->sleep(1250);
+    progress->close();
+    progress->deleteLater();
+
+    return snapshotsFullNames;
+}
+
+bool SnapManager::checkAllImagesReadable(const QStringList& workDisks){
+    bool res = true;
+
+    for (int i = 0; i < workDisks.size(); ++i){
+        QFile f(workDisks[i]);
+        if (f.open(QIODevice::ReadOnly)){
+            f.close();
+        }
+        else {
+            res = false;
+            break;
+        }
+    }
+
+    return res;
+}
+
+void SnapManager::turnOnOffVirtualMachine(const QString& vmName){
+    QEventLoop loop;
+    QProcess process;
+
+    QObject::connect(&process, &QProcess::finished, &loop, &QEventLoop::quit);
+
+    // *** При старте ВМ и активации её сетевых интерфейсов в некоторых *** //
+    //     системах, например, с NetworkManager'ом появляется уведомление   //
+    //     об активности сетевых интерфейсов, что совсем ни к чему.         //
+    //     Решение: удалить сетевые интерфейсы перед turnOnOff,             //
+    //     а затем вернуть их на место.                                     //
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                            "dumpxml", vmName});
+    loop.exec();
+
+    QString originalVmXml = process.readAllStandardOutput();
+    QString noNetworkVmXml = removeVmXmlNetwork(originalVmXml);
+
+    // *** Сохранение временного xml файла c обновлёнными настройками *** //
+    QString noNetFileName = "/tmp/" + vmName + "-without-net.xml";
+    QFile noNetFile(noNetFileName);
+    if (noNetFile.open(QIODevice::WriteOnly | QIODevice::Text
+                                                       | QIODevice::Truncate)){
+        QTextStream out(&noNetFile);
+        out << noNetworkVmXml;
+        noNetFile.close();
+    }
+
+    // *** Применение новых настроек через virsh и удаление xml файла *** //
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                      "define", noNetFileName});
+    loop.exec();
+    if (QFile::exists(noNetFileName)) {
+        if (!QFile::remove(noNetFileName)) {
+            qDebug() << "[EE] don't delete:" << noNetFileName;
+        }
+    }
+
+    // *** Старт VM без сети *** //
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                              "start", vmName});
+    loop.exec();
+
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                            "destroy", vmName});
+    loop.exec();
+
+    // // *** Восстановление оригинальной версии VM с сетью *** //
+    QString originalVmFileName = "/tmp/" + vmName + ".xml";
+    QFile originalVmFile(originalVmFileName);
+    if (originalVmFile.open(QIODevice::WriteOnly | QIODevice::Text
+                                                        | QIODevice::Truncate)){
+        QTextStream out(&originalVmFile);
+        out << originalVmXml;
+        originalVmFile.close();
+    }
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                 "define", originalVmFileName});
+    loop.exec();
+    if (QFile::exists(originalVmFileName)) {
+        if (!QFile::remove(originalVmFileName)) {
+            qDebug() << "[EE] don't delete:" << originalVmFileName;
+        }
+    }
+}
+
+QString SnapManager::removeVmXmlNetwork(const QString& vmXml){
+    QDomDocument doc;
+    doc.setContent(vmXml);
+
+    QDomElement root = doc.documentElement();
+    QDomNodeList interfaces = root.elementsByTagName("interface");
+
+    for (int i = interfaces.count() - 1; i >= 0; --i) {
+        QDomNode node = interfaces.at(i);
+        QDomElement elem = node.toElement();
+        if (!elem.isNull() && elem.attribute("type") == "network") {
+            node.parentNode().removeChild(node);
+        }
+    }
+
+    return doc.toString(4);
 }
 
 void SnapManager::detachBlockDevice(const QString& vmName,

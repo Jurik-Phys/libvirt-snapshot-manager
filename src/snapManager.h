@@ -58,12 +58,22 @@ class SnapManager : public QObject {
 
         bool checkWriteAccessToDirs(const QStringList& dirsForWriteCheck,
                                             QStringList* noWriteDirs = nullptr);
+        bool checkAllImagesReadable(const QStringList&);
         QProgressDialog* createNewQProgressDialog(const int& maxValue,
                                                      QWidget* parent = nullptr);
         long int getRebaseDataValue(const QString& backFullName,
                                                     const QString& rebaseImage);
         const QString m_libVirtConnectURI = "qemu:///system";
         void sleep(const int&);
+
+        QStringList doSnapshotOverQemuImg(const QString& vmName,
+                                        const QStringList& workDisks,
+                                        const QStringList& snapshotsFullNames);
+        QStringList doSnapshotOverVirsh(const QString& vmName,
+                                        const QStringList& workDisk,
+                                        const QStringList& snapshotsFullNames);
+        void turnOnOffVirtualMachine(const QString& vmName);
+        QString removeVmXmlNetwork(const QString& vmXml);
 };
 
 #endif
