@@ -606,7 +606,7 @@ void QAppWindow::updSnapTree(){
                                                           Qt::UniqueConnection);
                 QObject::connect(m_snapTreeView->selectionModel(),
                                     &QItemSelectionModel::currentChanged,
-                                              this, &QAppWindow::btnManageGoDel,
+                             this, &QAppWindow::btnManageGoDelOnTreeItemChanged,
                                                           Qt::UniqueConnection);
                 m_snapTreeView->clearSelection();
                 m_snapTreeModel->setSnapData(vmSnapshotsChain);
@@ -1118,17 +1118,23 @@ void QAppWindow::btnManageGoDel(){
 
     if (selectedIndexes.size() > 0){
         QModelIndex index = selectedIndexes[0];
-        const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(index);
-        // *** "active" нельзя удалить и нельзя в него перейти *** //
-        if (node.imagesType != "active"
-                           && m_vmList[m_selectedVmIndex].state == "shut off" ){
-            m_deleteBtn->setEnabled(true);
-            m_gotoBtn->setEnabled(true);
-        }
-        else {
-            m_deleteBtn->setEnabled(false);
-            m_gotoBtn->setEnabled(false);
-        }
+        btnManageGoDelOnTreeItemChanged(index);
+    }
+    else {
+        m_deleteBtn->setEnabled(false);
+        m_gotoBtn->setEnabled(false);
+    }
+}
+
+void QAppWindow::btnManageGoDelOnTreeItemChanged(const QModelIndex& currentIdx,
+                                                const QModelIndex& previousIdx){
+
+    const ChainNode& node = m_snapTreeModel->getChainNodeByIndex(currentIdx);
+    // *** "active" нельзя удалить и нельзя в него перейти *** //
+    if (node.imagesType != "active"
+                       && m_vmList[m_selectedVmIndex].state == "shut off" ){
+        m_deleteBtn->setEnabled(true);
+        m_gotoBtn->setEnabled(true);
     }
     else {
         m_deleteBtn->setEnabled(false);

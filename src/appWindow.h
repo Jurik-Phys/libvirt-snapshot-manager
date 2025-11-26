@@ -114,6 +114,8 @@ class QAppWindow : public QWidget {
         void delVmFromFrame(const QVector<VMachine>&);
         void modVmIntoFrame(const QVector<VMachine>&);
         void updSnapTree();
+        void btnManageGoDelOnTreeItemChanged(const QModelIndex& current,
+                                   const QModelIndex& previous = QModelIndex());
         void btnManageGoDel();
         void btnManageStart();
         void btnManagePause();
