@@ -9,7 +9,6 @@ SnapTreeView::SnapTreeView(QWidget* parent) : QTreeView(parent){
 
 bool SnapTreeView::isSelectItem(){
     bool res = false;
-
     QModelIndexList selected = this->selectionModel()->selectedIndexes();
 
     if (selected.size() > 0){

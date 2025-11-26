@@ -123,7 +123,8 @@ class QAppWindow : public QWidget {
         void vmInfoWidgetManage();
         void snapInfoWidgetManage();
 
-        void onTreeItemClicked(const QModelIndex& index);
+        void onTreeItemChanged(const QModelIndex& currentIndex,
+                               const QModelIndex& previousIndex);
         void resizeEvent(QResizeEvent *event) override;
 
         QVector<VMachine> getToAddVmList(const QVector<VMachine>& appList,

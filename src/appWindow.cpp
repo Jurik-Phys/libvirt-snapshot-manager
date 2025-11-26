@@ -371,16 +371,9 @@ void QAppWindow::setSnapFrame(){
 
     m_vRColumnLayout->addWidget(m_snapTreeView);
 
-    m_snapTreeView->setModel(m_snapTreeModel);
-
     // Установка кастомного делегата для item'ов
     m_snapTreeView->setItemDelegate(new TreeItemDelegate(m_snapTreeView));
 
-    QObject::connect(m_snapTreeView, &SnapTreeView::clicked,
-                                          this, &QAppWindow::onTreeItemClicked);
-
-    QObject::connect(m_snapTreeView, &SnapTreeView::clicked,
-                                              this, &QAppWindow::btnManageGoDel);
     QObject::connect(m_snapTreeView, &SnapTreeView::doSnapshot,
                                               this, &QAppWindow::doSnapshot);
     QObject::connect(m_snapTreeView, &SnapTreeView::deleteSnapshot,
@@ -605,6 +598,16 @@ void QAppWindow::updSnapTree(){
         [=](const VMachine& result) {
                 QVector<ChainNode> vmSnapshotsChain = result.vmStateChain;
                 m_snapTreeView->setModel(m_snapTreeModel);
+                // *** Подписка на событие изменения выделенной записи *** //
+                //     должна производиться после установки модели данных. //
+                QObject::connect(m_snapTreeView->selectionModel(),
+                                    &QItemSelectionModel::currentChanged,
+                                          this, &QAppWindow::onTreeItemChanged,
+                                                          Qt::UniqueConnection);
+                QObject::connect(m_snapTreeView->selectionModel(),
+                                    &QItemSelectionModel::currentChanged,
+                                              this, &QAppWindow::btnManageGoDel,
+                                                          Qt::UniqueConnection);
                 m_snapTreeView->clearSelection();
                 m_snapTreeModel->setSnapData(vmSnapshotsChain);
                 m_snapTreeView->expandAll();
@@ -1077,7 +1080,8 @@ void QAppWindow::openVM(){
                                      "--show-domain-console", m_currentVmName});
 }
 
-void QAppWindow::onTreeItemClicked(const QModelIndex& index){
+void QAppWindow::onTreeItemChanged(const QModelIndex& index,
+                                                   const QModelIndex& previous){
     QString text = index.data(Qt::DisplayRole).toString();
 
     ChainNode node = m_snapTreeModel->getChainNodeByIndex(index);
