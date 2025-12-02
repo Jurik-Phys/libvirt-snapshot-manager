@@ -65,6 +65,9 @@ class VmInfoWidget : public QFrame {
         QString humanMemory(const QString&);
 
         QToolButton* m_editImagesBtn;
+        QToolButton* m_editRamSizeBtn;
+        QToolButton* m_editCpuTopologyBtn;
+        QToolButton* m_editOsBtn;
         void manageDeleteItem();
 
         QString m_uuid;
@@ -89,6 +92,8 @@ class VmInfoWidget : public QFrame {
 
         void addNewVmImages();
         void delVmImages();
+
+        void setEditBtnStyle(QToolButton*);
 };
 
 #endif

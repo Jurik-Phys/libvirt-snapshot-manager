@@ -17,5 +17,8 @@
         <file>app-logo.svg</file>
         <file>vmInfo-del-drive.svg</file>
         <file>vmInfo-new-drive.svg</file>
+        <file>vmInfo-set-vm-ram.svg</file>
+        <file>vmInfo-set-vm-cpu.svg</file>
+        <file>vmInfo-set-vm-os.svg</file>
     </qresource>
 </RCC>

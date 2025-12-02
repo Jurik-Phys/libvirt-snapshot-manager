@@ -159,55 +159,98 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
         hLayoutArray[i]->addWidget(m_colAWidgets[i]);
         hLayoutArray[i]->addWidget(m_colBWidgets[i]);
         switch (i){
-            case 7: // Add edit mounted drives button
-                m_editImagesBtn = new QToolButton();
-                m_editImagesBtn->setAutoRaise(true);
-                m_editImagesBtn->setText("⋮");
-                m_editImagesBtn->setPopupMode(QToolButton::InstantPopup);
-                QFontMetrics fm(this->font());
-                int lineSize = fm.lineSpacing();
-                m_editImagesBtn->setFixedHeight(lineSize);
-                m_editImagesBtn->setFixedWidth(lineSize);
-                m_editImagesBtn->setStyleSheet(R"(
-                        QToolButton:hover {
-                            border: 1px solid #0078d7;
-                            border-radius: 1px;
-                            background-color: rgba(0, 120, 215, 30%);
-                        }
-                        QToolButton:pressed {
-                            border: 1px solid #0078d7;
-                            border-radius: 1px;
-                            background-color: rgba(0, 120, 215, 40%);
-                        }
-                        QToolButton::menu-indicator {
-                            image:none;
-                        })");
-                QFont btnFont = m_editImagesBtn->font();
-                btnFont.setWeight(QFont::Bold);
-                m_editImagesBtn->setFont(btnFont);
-                m_editImagesBtn->setVisible(false);
+            case 4: { // Add edit CPU's settings
+                    m_editCpuTopologyBtn = new QToolButton();
+                    m_editCpuTopologyBtn->setAutoRaise(true);
+                    m_editCpuTopologyBtn->setText("⋮");
+                    m_editCpuTopologyBtn
+                                      ->setPopupMode(QToolButton::InstantPopup);
+                    setEditBtnStyle(m_editCpuTopologyBtn);
+                    m_editCpuTopologyBtn->setVisible(false);
 
-                QIcon actNewImgIcon = QIcon(":/vmInfo-new-drive.svg");
-                QIcon actDelImgIcon = QIcon(":/vmInfo-del-drive.svg");
+                    QIcon actCpuTopologyIcon = QIcon(":/vmInfo-set-vm-cpu.svg");
 
-                QMenu* editImgsMenu = new QMenu(m_editImagesBtn);
-                QAction* actNewImgs = editImgsMenu->addAction("New VM drive…");
-                actNewImgs->setIcon(actNewImgIcon);
-                QAction* actDelImgs = editImgsMenu->addAction("Delete drive…");
-                actDelImgs->setIcon(actDelImgIcon);
+                    QMenu* editCpuTopologyMenu =new QMenu(m_editCpuTopologyBtn);
+                    QAction* actCpuTopology = editCpuTopologyMenu
+                                              ->addAction("Edit CPU topology…");
+                    actCpuTopology->setIcon(actCpuTopologyIcon);
+                    m_editCpuTopologyBtn->setMenu(editCpuTopologyMenu);
+                    hLayoutArray[i]->addWidget(m_editCpuTopologyBtn);
+                    break;
+                }
+            case 5: { // Add edit VM RAM size
+                    m_editRamSizeBtn = new QToolButton();
+                    m_editRamSizeBtn->setAutoRaise(true);
+                    m_editRamSizeBtn->setText("⋮");
+                    m_editRamSizeBtn->setPopupMode(QToolButton::InstantPopup);
+                    setEditBtnStyle(m_editRamSizeBtn);
+                    m_editRamSizeBtn->setVisible(false);
 
-                m_editImagesBtn->setMenu(editImgsMenu);
+                    QIcon actRamSizeIcon = QIcon(":/vmInfo-set-vm-ram.svg");
 
-                QObject::connect(editImgsMenu , &QMenu::aboutToShow,
-                                         this, &VmInfoWidget::manageDeleteItem);
-                QObject::connect(actNewImgs, &QAction::triggered,
-                                           this, &VmInfoWidget::addNewVmImages);
-                QObject::connect(actDelImgs, &QAction::triggered,
-                                              this, &VmInfoWidget::delVmImages);
+                    QMenu* editRamSizeMenu = new QMenu(m_editRamSizeBtn);
+                    QAction* actRamSize = editRamSizeMenu
+                                                   ->addAction("Set RAM size…");
+                    actRamSize->setIcon(actRamSizeIcon);
+                    m_editRamSizeBtn->setMenu(editRamSizeMenu);
+                    hLayoutArray[i]->addWidget(m_editRamSizeBtn);
+                    break;
+                }
+            case 6: { // Add edit OS
+                    m_editOsBtn = new QToolButton();
+                    m_editOsBtn->setAutoRaise(true);
+                    m_editOsBtn->setText("⋮");
+                    m_editOsBtn->setPopupMode(QToolButton::InstantPopup);
+                    setEditBtnStyle(m_editOsBtn);
+                    m_editOsBtn->setVisible(false);
 
-                hLayoutArray[i]->addWidget(m_editImagesBtn);
-                break;
-        }
+                    QIcon actOsBtnIcon = QIcon(":/vmInfo-set-vm-os.svg");
+
+                    QMenu* osBtnMenu = new QMenu(m_editOsBtn);
+                    QAction* actOsBtn = osBtnMenu
+                                                ->addAction("Select guest OS…");
+                    actOsBtn->setIcon(actOsBtnIcon);
+                    m_editOsBtn->setMenu(osBtnMenu);
+                    hLayoutArray[i]->addWidget(m_editOsBtn);
+                    break;
+                }
+             case 7: { // Add edit mounted drives button
+                    m_editImagesBtn = new QToolButton();
+                    m_editImagesBtn->setAutoRaise(true);
+                    m_editImagesBtn->setText("⋮");
+                    m_editImagesBtn->setPopupMode(QToolButton::InstantPopup);
+                    setEditBtnStyle(m_editImagesBtn);
+                    m_editImagesBtn->setVisible(false);
+
+                    QIcon actNewImgIcon = QIcon(":/vmInfo-new-drive.svg");
+                    QIcon actDelImgIcon = QIcon(":/vmInfo-del-drive.svg");
+
+                    QMenu* editImgsMenu = new QMenu(m_editImagesBtn);
+                    QAction* actNewImgs = editImgsMenu
+                                                   ->addAction("New VM drive…");
+                    actNewImgs->setIcon(actNewImgIcon);
+                    QAction* actDelImgs = editImgsMenu
+                                                   ->addAction("Delete drive…");
+                    actDelImgs->setIcon(actDelImgIcon);
+
+                    m_editImagesBtn->setMenu(editImgsMenu);
+
+                    QObject::connect(editImgsMenu , &QMenu::aboutToShow,
+                                    this, &VmInfoWidget::manageDeleteItem,
+                                                          Qt::UniqueConnection);
+
+                    QObject::connect(actNewImgs, &QAction::triggered,
+                                        this, &VmInfoWidget::addNewVmImages,
+                                                          Qt::UniqueConnection);
+
+                    QObject::connect(actDelImgs, &QAction::triggered,
+                                              this, &VmInfoWidget::delVmImages,
+                                                          Qt::UniqueConnection);
+
+                    hLayoutArray[i]->addWidget(m_editImagesBtn);
+                    break;
+                }
+            }
     }
 
     // *** Добавление hLayout'ов в основной вертикальный layout *** //
@@ -356,6 +399,9 @@ void VmInfoWidget::setData(const VMachine& vm){
     qobject_cast<QLabel*>(m_colBWidgets[7])->setText(mountStoragesCount);
     setStorageList(vm.mountStorages);
     m_editImagesBtn->setVisible(true);
+    m_editRamSizeBtn->setVisible(true);
+    m_editCpuTopologyBtn->setVisible(true);
+    m_editOsBtn->setVisible(true);
 
     // *** Одним отображением данных дело не обошлось, данные необходимо *** //
     //     хранить, для передачи, например, в диалог удаления хранилища      //
@@ -603,6 +649,9 @@ void VmInfoWidget::setReadOnly(bool roState){
     title->setReadOnly(roState);
     description->setReadOnly(roState);
     m_editImagesBtn->setEnabled(!roState);
+    m_editRamSizeBtn->setEnabled(!roState);
+    m_editCpuTopologyBtn->setEnabled(!roState);
+    m_editOsBtn->setEnabled(!roState);
 
     QString roToolTip = "Can edit only when VM is shut off";
     QString blankToolTip = "";
@@ -709,6 +758,31 @@ void VmInfoWidget::manageDeleteItem(){
             delImgAction->setEnabled(false);
         }
     }
+}
+
+void VmInfoWidget::setEditBtnStyle(QToolButton* editBtn){
+
+    QFontMetrics fm(this->font());
+    int lineSize = fm.lineSpacing();
+    editBtn->setFixedHeight(lineSize);
+    editBtn->setFixedWidth(lineSize);
+    editBtn->setStyleSheet(R"(
+            QToolButton:hover {
+                border: 1px solid #0078d7;
+                border-radius: 1px;
+                background-color: rgba(0, 120, 215, 30%);
+            }
+            QToolButton:pressed {
+                border: 1px solid #0078d7;
+                border-radius: 1px;
+                background-color: rgba(0, 120, 215, 40%);
+            }
+            QToolButton::menu-indicator {
+                image:none;
+            })");
+    QFont btnFont = editBtn->font();
+    btnFont.setWeight(QFont::Bold);
+    editBtn->setFont(btnFont);
 }
 
 // End vmInfoWidget.cpp
