@@ -20,5 +20,6 @@
         <file>vmInfo-set-vm-ram.svg</file>
         <file>vmInfo-set-vm-cpu.svg</file>
         <file>vmInfo-set-vm-os.svg</file>
+        <file>libOsInfo.json</file>
     </qresource>
 </RCC>

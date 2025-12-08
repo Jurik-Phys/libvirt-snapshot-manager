@@ -8,9 +8,17 @@ int main(int argc, char** argv){
     QCoreApplication app(argc, argv);
 
     OsInfoLoader osInfoLoader;
+    QJsonDocument libOsInfoJsonDoc;
 
-    osInfoLoader.run();
+//  QString oldUrl;
+//  oldUrl = "https://releases.pagure.org/libosinfo/osinfo-db-20170121.tar.xz";
+//  libOsInfoJsonDoc = osInfoLoader.getLibOsInfoJson(oldUrl);
 
+    // *** Получение информации из последнего релиза *** //
+    libOsInfoJsonDoc = osInfoLoader.getLibOsInfoJson();
+
+    QString fileName = "libOsInfo.json";
+    osInfoLoader.writeLibOsInfoJsonToFile(libOsInfoJsonDoc, fileName);
     return 0;
 }
 

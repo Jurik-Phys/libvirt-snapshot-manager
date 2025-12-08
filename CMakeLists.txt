@@ -13,17 +13,31 @@ option(BUILD_OSINFO_LOADER "Build osinfo loader utility" ON)
 find_package(Qt6 REQUIRED COMPONENTS Widgets Xml)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_SOURCE_DIR}/tools/shared)
+include_directories(${CMAKE_SOURCE_DIR}/tools/shared/osinfoloader)
+include_directories(
+    ${CMAKE_SOURCE_DIR}/tools/shared/thirdparty/xz_decompress/src/common
+    ${CMAKE_SOURCE_DIR}/tools/shared/thirdparty/xz_decompress/src/liblzma/api
+    ${CMAKE_SOURCE_DIR}/tools/shared/thirdparty/xz_decompress/src/liblzma/common
+    ${CMAKE_SOURCE_DIR}/tools/shared/thirdparty/xz_decompress/src/liblzma/lzma
+    ${CMAKE_SOURCE_DIR}/tools/shared/thirdparty/xz_decompress/src/liblzma/lz
+    ${CMAKE_SOURCE_DIR}/tools/shared/thirdparty/xz_decompress/src/liblzma/delta
+    ${CMAKE_SOURCE_DIR}/tools/shared/thirdparty/xz_decompress/src/liblzma/rangecoder
+    ${CMAKE_SOURCE_DIR}/tools/shared/thirdparty/xz_decompress/src/liblzma/simple
+    ${CMAKE_SOURCE_DIR}/tools/shared/thirdparty/xz_decompress/src/liblzma/container
+    ${CMAKE_SOURCE_DIR}/tools/shared/thirdparty/xz_decompress/src/liblzma/check
+    ${CMAKE_SOURCE_DIR}/tools/shared/thirdparty/xz_decompress/src/liblzma/tuklib
+)
 
 qt_add_resources(RESOURCES ${CMAKE_SOURCE_DIR}/res/resources.qrc)
 
 set(SOURCE_EXE main.cpp)
 
 add_subdirectory(src)
-add_subdirectory(tools/shared)
+add_subdirectory(tools/shared/osinfoloader)
 if (BUILD_OSINFO_LOADER)
     add_subdirectory(tools/osinfo-loader)
 endif()
+add_subdirectory(tools/shared/thirdparty/xz_decompress)
 
 add_executable(libvirt-snapshot-manager ${SOURCE_EXE} ${RESOURCES})
 
