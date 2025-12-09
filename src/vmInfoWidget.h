@@ -41,7 +41,7 @@ class VmInfoWidget : public QFrame {
         void setDescription(const QString&);
         void setCpu(const QString&);
         void setRam(const QString&);
-        void setOsId(const QString&);
+        void setOsName(const QString&);
         void setReadOnly(bool);
         void clearData();
 

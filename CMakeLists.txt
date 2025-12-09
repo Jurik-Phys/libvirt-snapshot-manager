@@ -10,7 +10,7 @@ set(CMAKE_BUILD_TYPE Debug)
 
 option(BUILD_OSINFO_LOADER "Build osinfo loader utility" ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Xml)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network Xml)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_SOURCE_DIR}/tools/shared/osinfoloader)
@@ -41,4 +41,7 @@ add_subdirectory(tools/shared/thirdparty/xz_decompress)
 
 add_executable(libvirt-snapshot-manager ${SOURCE_EXE} ${RESOURCES})
 
-target_link_libraries(libvirt-snapshot-manager PRIVATE src-lib Qt6::Widgets Qt6::Xml)
+target_link_libraries(libvirt-snapshot-manager PRIVATE src-lib
+                                                       Qt6::Widgets
+                                                       Qt6::Network
+                                                       Qt6::Xml)

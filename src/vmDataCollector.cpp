@@ -14,11 +14,15 @@ VmDataCollector::VmDataCollector(QWidget* parent) : parentWindow(parent){
     m_getActualVmGeneralInfoTimer->setInterval(1000);
     QObject::connect(m_getActualVmGeneralInfoTimer, &QTimer::timeout,
                             this, &VmDataCollector::selectedVmActualInfoSender);
+
+    // *** Провайдер информации об операционной системе *** //
+    m_osInfoProvider = new OsInfoProvider(this);
 }
 
 VmDataCollector::VmDataCollector(const VMachine& vm, QWidget* parent) {
     parentWindow = parent;
     m_vm = vm;
+    m_osInfoProvider = new OsInfoProvider(this);
 }
 
 VmDataCollector::~VmDataCollector(){
@@ -140,12 +144,31 @@ VMachine VmDataCollector::getVmShortInfo(const QString& uuid, bool* isOk){
     vm.description = vmXml.firstChildElement("description").text();
     vm.ram = vmXml.firstChildElement("memory").text()
                     + " " + vmXml.firstChildElement("memory").attribute("unit");
-    vm.osId = vmXml.firstChildElement("metadata")
+    QString incomeOsId = vmXml.firstChildElement("metadata")
                                     .firstChildElement("libosinfo:libosinfo")
                                         .firstChildElement("libosinfo:os")
                                             .attribute("id");
-    if (vm.osId == ""){
-        vm.osId = "Not set";
+
+    // *** Необходимо для обработки изначально пустого поля *** //
+    if (incomeOsId == ""){
+        incomeOsId = "N/A";
+    }
+
+    // *** Из xml описания VM приходит новый id операционной системы *** //
+    if (incomeOsId != m_vm.os.id){
+        vm.os = m_osInfoProvider->getOsInfo(incomeOsId);
+        if (vm.os.name.isEmpty()){
+            vm.os.name = "Not specified";
+        }
+        // *** Чтобы каждый раз при получении нового osId не производить *** //
+        //     поиск по всей базе libOsInfo в поисках имени VM, можно        //
+        //     сохранить его id и  обновлять имя только, когда будут         //
+        //     изменения в osId (первый запуск или изменения свойств VM.     //
+        m_vm.os = vm.os;
+    }
+    else {
+        // *** Обновление не требуется, возвращем прежние данные *** //
+        vm.os = m_vm.os;
     }
 
     vm.cpu = vmXml.firstChildElement("vcpu").text() + " (";
@@ -1560,4 +1583,7 @@ QStringList VmDataCollector::getExtMountStorages(
     return res;
 }
 
+void VmDataCollector::setData(const VMachine& vm){
+    m_vm = vm;
+}
 // End vmDataCollector.cpp

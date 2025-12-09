@@ -18,6 +18,7 @@
 #include <QRegularExpression>
 #include <QTextDocumentFragment>
 #include "vmDataStructs.h"
+#include "osInfoProvider.h"
 
 class VmDataCollector : public QObject {
 
@@ -54,6 +55,8 @@ class VmDataCollector : public QObject {
         void writeSnapDescription(const QStringList& uuid,
                                                    const QStringList& snapInfo);
         void rmSnapshotXmlElement(const QStringList& uuid);
+
+        void setData(const VMachine& vm);
 
     public slots:
         void process();
@@ -94,6 +97,7 @@ class VmDataCollector : public QObject {
         QWidget* parentWindow;
         QTimer*  m_getListTimer;
         QTimer*  m_getActualVmGeneralInfoTimer;
+        OsInfoProvider* m_osInfoProvider;
         void vmListSender();
         void selectedVmActualInfoSender();
 

@@ -48,7 +48,7 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
                             "Canonical name:",
                             "Virtual CPUs:",
                             "RAM:",
-                            "Libosinfo ID:",
+                            "Guest OS:",
                             "Mounted drives:"};
 
     int colAWidth = 100;
@@ -394,7 +394,7 @@ void VmInfoWidget::setData(const VMachine& vm){
     qobject_cast<QLabel*>(m_colBWidgets[3])->setText(vm.name);
     qobject_cast<QLabel*>(m_colBWidgets[4])->setText(vm.cpu);
     qobject_cast<QLabel*>(m_colBWidgets[5])->setText(humanMemory(vm.ram));
-    qobject_cast<QLabel*>(m_colBWidgets[6])->setText(vm.osId);
+    qobject_cast<QLabel*>(m_colBWidgets[6])->setText(vm.os.name);
     QString mountStoragesCount = QString::number(vm.mountStorages.size());
     qobject_cast<QLabel*>(m_colBWidgets[7])->setText(mountStoragesCount);
     setStorageList(vm.mountStorages);
@@ -605,7 +605,7 @@ VMachine VmInfoWidget::getData(){
     vm.name = qobject_cast<QLabel*>(m_colBWidgets[3])->text();
     vm.cpu = qobject_cast<QLabel*>(m_colBWidgets[4])->text();
     vm.ram = qobject_cast<QLabel*>(m_colBWidgets[5])->text();
-    vm.osId = qobject_cast<QLabel*>(m_colBWidgets[6])->text();
+    vm.os.name = qobject_cast<QLabel*>(m_colBWidgets[6])->text();
 
     return vm;
 }
@@ -638,8 +638,8 @@ void VmInfoWidget::setRam(const QString& newRam){
     qobject_cast<QLabel*>(m_colBWidgets[5])->setText(humanMemory(newRam));
 }
 
-void VmInfoWidget::setOsId(const QString& newOsId){
-    qobject_cast<QLabel*>(m_colBWidgets[6])->setText(newOsId);
+void VmInfoWidget::setOsName(const QString& newOsName){
+    qobject_cast<QLabel*>(m_colBWidgets[6])->setText(newOsName);
 }
 
 void VmInfoWidget::setReadOnly(bool roState){

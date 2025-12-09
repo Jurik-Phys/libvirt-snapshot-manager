@@ -10,8 +10,11 @@ set(SOURCE_LIB  appWindow.cpp
                 vmInfoWidget.cpp
                 snapInfoWidget.cpp
                 vmWidget.cpp
+                osInfoProvider.cpp
                 dialogs.cpp)
 
 add_library(src-lib STATIC ${SOURCE_LIB})
 
-target_link_libraries(src-lib PRIVATE Qt6::Widgets Qt6::Xml)
+target_link_libraries(src-lib PRIVATE Qt6::Widgets
+                                      Qt6::Network
+                                      Qt6::Xml)

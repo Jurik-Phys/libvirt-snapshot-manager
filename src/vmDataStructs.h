@@ -5,6 +5,7 @@
 
 #include <QString>
 #include <QStringList>
+#include "osinfoloader.h"
 
 // Узел цепочки состояний
 // "атомарный" элемент QTreeView
@@ -24,7 +25,7 @@ struct ChainNode {
 struct VMachine {
     QString     name;          // Название виртуальной машины
     QString     uuid;          // Уникальный идентификатор
-    QString     osId;          // Идентификатор операционной системы
+    OsInfo      os;            // Структура c данными операционной системы
     QString     state;         // Состояние виртуальной машины (вкл./выкл.)
     QString     cpu;           // Информация о процессоре
     QString     ram;           // Оперативная память

@@ -34,6 +34,7 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
 
     QThread* getVmListThread = new QThread();
     m_vmDataCollector->moveToThread(getVmListThread);
+
     QObject::connect(getVmListThread, &QThread::started,
                          m_vmDataCollector, &VmDataCollector::vmListStartTimer);
     QObject::connect(m_vmDataCollector, &VmDataCollector::vmListReady,
@@ -618,7 +619,13 @@ void QAppWindow::updSnapTree(){
                 m_rootVirtSizes = result.rootVirtSizes;
                 m_currentVmUUID = result.uuid;
 
+                // *** Установка полученных данных в vmWidget *** //
                 m_vmInfoWidget->setData(result);
+
+                // *** Установка данных в глобальный сборщик. *** //
+                //     Необходимо для того, чтобы не собирать     //
+                //     дважды информацию про гостевую ОС.         //
+                m_vmDataCollector->setData(result);
                 // qDebug() << "[II] Данные получены и выведены (finished)";
 
                 // *** On/Off buttons *** //
@@ -1467,8 +1474,8 @@ void QAppWindow::onNewVmInfoReady(const VMachine& vmNew){
         m_vmInfoWidget->setRam(vmNew.ram);
     }
 
-    if (vmNew.osId != vmOld.osId && vmNew.uuid == vmOld.uuid){
-        m_vmInfoWidget->setOsId(vmNew.osId);
+    if (vmNew.os.name != vmOld.os.name && vmNew.uuid == vmOld.uuid){
+        m_vmInfoWidget->setOsName(vmNew.os.name);
     }
 }
 
