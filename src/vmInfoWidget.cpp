@@ -145,7 +145,7 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
             case 5: // RAM
                 lbl->setText("—");
                 break;
-            case 6: // OsID
+            case 6: // OsName
                 lbl->setText("—");
                 break;
             case 7: // Mounted drives
@@ -394,7 +394,15 @@ void VmInfoWidget::setData(const VMachine& vm){
     qobject_cast<QLabel*>(m_colBWidgets[3])->setText(vm.name);
     qobject_cast<QLabel*>(m_colBWidgets[4])->setText(vm.cpu);
     qobject_cast<QLabel*>(m_colBWidgets[5])->setText(humanMemory(vm.ram));
-    qobject_cast<QLabel*>(m_colBWidgets[6])->setText(vm.os.name);
+    QLabel* osNameLbl = qobject_cast<QLabel*>(m_colBWidgets[6]);
+    // *** Tooltip при ручном переключении VM (ручное обновление данных *** //
+    if (vm.os.name.size() > vm.uuid.size()){
+        osNameLbl->setToolTip(vm.os.name);
+    }
+    else {
+        osNameLbl->setToolTip("");
+    }
+    osNameLbl->setText(cutLongOsName(vm.os.name, vm.uuid.size()));
     QString mountStoragesCount = QString::number(vm.mountStorages.size());
     qobject_cast<QLabel*>(m_colBWidgets[7])->setText(mountStoragesCount);
     setStorageList(vm.mountStorages);
@@ -605,8 +613,8 @@ VMachine VmInfoWidget::getData(){
     vm.name = qobject_cast<QLabel*>(m_colBWidgets[3])->text();
     vm.cpu = qobject_cast<QLabel*>(m_colBWidgets[4])->text();
     vm.ram = qobject_cast<QLabel*>(m_colBWidgets[5])->text();
-    vm.os.name = qobject_cast<QLabel*>(m_colBWidgets[6])->text();
-
+    vm.os.name = cutLongOsName(qobject_cast<QLabel*>(m_colBWidgets[6])->text(),
+                                                                vm.uuid.size());
     return vm;
 }
 
@@ -639,7 +647,19 @@ void VmInfoWidget::setRam(const QString& newRam){
 }
 
 void VmInfoWidget::setOsName(const QString& newOsName){
-    qobject_cast<QLabel*>(m_colBWidgets[6])->setText(newOsName);
+    // *** Проверка случая для названия, которое было сокращено *** ///
+    int maxTextLength = qobject_cast<QLabel*>(m_colBWidgets[2])->text().size();
+    QString oldOsName = qobject_cast<QLabel*>(m_colBWidgets[6])->text();
+    QString cutOsNewName = cutLongOsName(newOsName, maxTextLength);
+    if (cutOsNewName != oldOsName){
+        qobject_cast<QLabel*>(m_colBWidgets[6])->setText(cutOsNewName);
+        if (cutOsNewName != newOsName){
+            qobject_cast<QLabel*>(m_colBWidgets[6])->setToolTip(newOsName);
+        }
+        else {
+            qobject_cast<QLabel*>(m_colBWidgets[6])->setToolTip("");
+        }
+    }
 }
 
 void VmInfoWidget::setReadOnly(bool roState){
@@ -785,4 +805,24 @@ void VmInfoWidget::setEditBtnStyle(QToolButton* editBtn){
     editBtn->setFont(btnFont);
 }
 
+QString VmInfoWidget::cutLongOsName(const QString& longOsName,
+                                                    const int& maxTextLength){
+    QString osName;
+    if (longOsName.size() > maxTextLength){
+        osName = longOsName;
+        if (osName.contains("N/A")){
+            osName.chop(longOsName.size() - maxTextLength + 4);
+            osName = osName + "…]";
+        }
+        else {
+            osName.chop(longOsName.size() - maxTextLength + 3);
+            osName = osName + "…";
+        }
+    }
+    else {
+        osName = longOsName;
+    }
+
+    return osName;
+}
 // End vmInfoWidget.cpp
