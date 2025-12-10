@@ -36,6 +36,16 @@ OsInfo OsInfoProvider::getOsInfo(const QString& osId){
             res = m_osInfoData[i];
         }
     }
+
+    // *** Обработка случая, когда id в базе libosinfo-db не найден, *** //
+    //       возвращение искомого id c пустыми остальными полями.        //
+    if (res.id.isEmpty()){
+        res.id = osId;
+        res.name = "";
+        res.ram = "";
+        res.vendor = "";
+    }
+
     return res;
 }
 

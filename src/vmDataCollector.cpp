@@ -151,14 +151,28 @@ VMachine VmDataCollector::getVmShortInfo(const QString& uuid, bool* isOk){
 
     // *** Необходимо для обработки изначально пустого поля *** //
     if (incomeOsId == ""){
-        incomeOsId = "N/A";
+        incomeOsId = "Null";
     }
 
     // *** Из xml описания VM приходит новый id операционной системы *** //
     if (incomeOsId != m_vm.os.id){
-        vm.os = m_osInfoProvider->getOsInfo(incomeOsId);
-        if (vm.os.name.isEmpty()){
-            vm.os.name = "Not specified";
+        // *** Во входящих данных нет id *** //
+        if (incomeOsId == "Null"){
+            vm.os.name   = "Not specified";
+            vm.os.id     = "";
+            vm.os.ram    = "";
+            vm.os.vendor = "";
+        }
+        else {
+            vm.os = m_osInfoProvider->getOsInfo(incomeOsId);
+            // *** id во входящих данных есть, но этот id *** //
+            //     не изестен текущей libosinfo-db.           //
+            //     Вывод пользователю самого id.              //
+            if (vm.os.name.isEmpty()){
+                vm.os.name = "N/A [" + vm.os.id + "]";
+            }
+        }
+        if (vm.os.id.isEmpty()){
         }
         // *** Чтобы каждый раз при получении нового osId не производить *** //
         //     поиск по всей базе libOsInfo в поисках имени VM, можно        //
