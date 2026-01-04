@@ -85,6 +85,14 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
                              m_vmDataCollector, &VmDataCollector::writeVmTitle);
     QObject::connect(m_vmInfoWidget, &VmInfoWidget::writeVmDescriptionRequested,
                        m_vmDataCollector, &VmDataCollector::writeVmDescription);
+    // *** Write guest osInfo (libOsInfo data) to xml file of VM *** //
+    QObject::connect(m_vmInfoWidget, &VmInfoWidget::requestVmOsXmlInfoUpdate,
+               m_vmDataCollector, &VmDataCollector::onRequestVmOsXmlInfoUpdate);
+    QObject::connect(m_vmInfoWidget, &VmInfoWidget::requestVmOsXmlInfoClear,
+                m_vmDataCollector, &VmDataCollector::onRequestVmOsXmlInfoClear);
+    // *** Обновление /перечитывание скаченного файла/ libOsInfoDB *** //
+    QObject::connect(m_vmInfoWidget, &VmInfoWidget::requestVmOsInfoUpdate,
+                  m_vmDataCollector, &VmDataCollector::onRequestVmOsInfoUpdate);
     QObject::connect(m_snapInfoWidget, &SnapInfoWidget::writeSnapTitleRequested,
                            m_vmDataCollector, &VmDataCollector::writeSnapTitle);
     QObject::connect(m_snapInfoWidget,

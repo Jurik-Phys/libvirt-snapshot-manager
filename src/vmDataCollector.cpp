@@ -164,12 +164,12 @@ VMachine VmDataCollector::getVmShortInfo(const QString& uuid, bool* isOk){
             vm.os.vendor = "";
         }
         else {
-            vm.os = m_osInfoProvider->getOsInfo(incomeOsId);
+            vm.os = m_osInfoProvider->getOsInfoByOsId(incomeOsId);
             // *** id во входящих данных есть, но этот id *** //
             //     не изестен текущей libosinfo-db.           //
             //     Вывод пользователю самого id.              //
             if (vm.os.name.isEmpty()){
-                vm.os.name = "N/A [" + vm.os.id + "]";
+                vm.os.name = "N/A: " + vm.os.id;
             }
         }
         if (vm.os.id.isEmpty()){
@@ -1600,4 +1600,45 @@ QStringList VmDataCollector::getExtMountStorages(
 void VmDataCollector::setData(const VMachine& vm){
     m_vm = vm;
 }
+
+void VmDataCollector::onRequestVmOsInfoUpdate(){
+    m_osInfoProvider->reloadData();
+    m_vm.os = m_osInfoProvider->getOsInfoByOsId(m_vm.os.id);
+}
+
+void VmDataCollector::onRequestVmOsXmlInfoClear(){
+    QDomDocument vmXmlDoc = getVmXml(m_vm.uuid);
+    QDomElement  vmXml = vmXmlDoc.documentElement();
+    QDomElement metadataXml = vmXml.firstChildElement("metadata");
+    if (metadataXml.isNull()){
+        return;
+    }
+
+    QDomElement libOsInfoXml = metadataXml
+                                      .firstChildElement("libosinfo:libosinfo");
+    if (libOsInfoXml.isNull()){
+        return;
+    }
+    else {
+        metadataXml.removeChild(libOsInfoXml);
+    }
+    pushVmXml(vmXmlDoc);
+}
+
+void VmDataCollector::onRequestVmOsXmlInfoUpdate(const OsInfo& osInfo){
+    QString libOsInfoNamespace;
+    libOsInfoNamespace = "http://libosinfo.org/xmlns/libvirt/domain/1.0";
+
+    QDomDocument vmXmlDoc = getVmXml(m_vm.uuid);
+    QDomElement  vmXml = vmXmlDoc.documentElement();
+    QDomElement  metadataXml = findOrCreateElement(vmXmlDoc, vmXml, "metadata");
+    QDomElement  libOsInfoXml = findOrCreateElement(vmXmlDoc, metadataXml,
+                                                         "libosinfo:libosinfo");
+    libOsInfoXml.setAttribute("xmlns:libosinfo", libOsInfoNamespace);
+    QDomElement libOsIdXml = findOrCreateElement(vmXmlDoc, libOsInfoXml,
+                                                                "libosinfo:os");
+    libOsIdXml.setAttribute("id", osInfo.id);
+    pushVmXml(vmXmlDoc);
+}
+
 // End vmDataCollector.cpp

@@ -17,4 +17,6 @@ add_library(src-lib STATIC ${SOURCE_LIB})
 
 target_link_libraries(src-lib PRIVATE Qt6::Widgets
                                       Qt6::Network
-                                      Qt6::Xml)
+                                      Qt6::Xml
+                                      osinfoloader-lib
+                                      liblzma_decoder)

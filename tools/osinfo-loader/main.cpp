@@ -16,9 +16,12 @@ int main(int argc, char** argv){
 
     // *** Получение информации из последнего релиза *** //
     libOsInfoJsonDoc = osInfoLoader.getLibOsInfoJson();
+    if (libOsInfoJsonDoc.isEmpty()){
+        return EXIT_FAILURE;
+    }
 
-    QString fileName = "libOsInfo.json";
-    osInfoLoader.writeLibOsInfoJsonToFile(libOsInfoJsonDoc, fileName);
+    QString fullFileName = QDir::tempPath() + "/" + "libOsInfo.json";
+    osInfoLoader.writeLibOsInfoJsonToFile(libOsInfoJsonDoc, fullFileName);
     return 0;
 }
 

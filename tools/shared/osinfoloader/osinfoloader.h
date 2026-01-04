@@ -57,6 +57,7 @@ class OsInfoLoader : public QObject {
         QJsonDocument getLibOsInfoJson(const QString& url = "None");
         void writeLibOsInfoJsonToFile(const QJsonDocument&,
                                     const QString& fileName = "libOsInfo.json");
+        unsigned int getLatestLibOsInfoVersion();
 
     private:
         QByteArray xzLibInfoDownload(const QString&);

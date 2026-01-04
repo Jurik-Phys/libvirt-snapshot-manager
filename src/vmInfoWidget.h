@@ -55,6 +55,15 @@ class VmInfoWidget : public QFrame {
         void addNewVmImagesRequested(const QStringList& newImageInfo);
         void delVmImagesRequested(const unsigned int&);
 
+        void requestVmOsInfoUpdate();
+        void requestVmOsXmlInfoClear();
+        void requestVmOsXmlInfoUpdate(const OsInfo&);
+
+    public slots:
+        void onRequestVmOsInfoUpdate();
+        void onRequestVmOsXmlInfoClear();
+        void onRequestVmOsXmlInfoUpdate(const OsInfo&);
+
     private:
         QVBoxLayout* m_vScrollLayout;
         void fixScrollBar(QScrollArea*);
@@ -91,10 +100,16 @@ class VmInfoWidget : public QFrame {
         int m_descriptionChangedCounter = 0;
         int calcOptimalFontSize(const QStringList&);
 
+        // *** Guest OS menu *** //
+        void manageGuestOS();
+
+        // *** Mounted drives menu ***//
         void addNewVmImages();
         void delVmImages();
 
         void setEditBtnStyle(QToolButton*);
+
+        QString getCurrentGuestOS();
 };
 
 #endif

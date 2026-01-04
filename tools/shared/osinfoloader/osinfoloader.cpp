@@ -70,6 +70,12 @@ QString OsInfoLoader::getLatestReleaseUrl(){
 
     QNetworkAccessManager* netManager = new QNetworkAccessManager();
     QNetworkRequest       req(releaseUrl);
+    // *** Попытка решить проблему ошибки подключения к серверу *** //
+    //     qt.network.http2: stream 1 finished with error: "Server  //
+    //     stopped accepting new streams before this stream         //
+    //     was established"                                         //
+    //     через отключение HTTP/2 с переходом на HTTP/1.1          //
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
     QNetworkReply*        reply = netManager->get(req);
 
     QEventLoop loop;
@@ -78,7 +84,8 @@ QString OsInfoLoader::getLatestReleaseUrl(){
 
     // *** Проверка на возврат ошибки *** //
     if (reply->error() != QNetworkReply::NoError){
-        qDebug() << "[EE] Network error:" << reply->errorString();
+        qDebug() << "[EE] [getLatestReleaseUrl] Network error:"
+                                                        << reply->errorString();
         reply->deleteLater();
         return QString();
     }
@@ -110,6 +117,23 @@ QString OsInfoLoader::getLatestReleaseUrl(){
     return releaseUrlSring + res;
 }
 
+unsigned int OsInfoLoader::getLatestLibOsInfoVersion(){
+    unsigned int res;
+
+    QString latestLibOsInfoUrl = getLatestReleaseUrl();
+    QRegularExpression re(R"(osinfo-db-(\d{8})\.tar\.xz)");
+    QRegularExpressionMatch m = re.match(latestLibOsInfoUrl);
+
+    if (m.hasMatch()){
+        res = m.captured(1).toInt();
+    }
+    else {
+        res = 0;
+    }
+
+    return res;
+}
+
 QByteArray OsInfoLoader::xzLibInfoDownload(const QString& urlString){
     QByteArray osInfoData;
     int osInfoDataSize;
@@ -119,6 +143,10 @@ QByteArray OsInfoLoader::xzLibInfoDownload(const QString& urlString){
     // *** Установка полного url'а для скачивания архива с данными *** //
     if (urlString == "None"){
         url = QUrl(this->getLatestReleaseUrl());
+        if (url.isEmpty()){
+            // *** Ошибка получения ссылки на архив с данными *** //
+            return QByteArray();
+        }
     }
     else {
         url = QUrl(urlString);
@@ -141,6 +169,12 @@ QByteArray OsInfoLoader::xzLibInfoDownload(const QString& urlString){
 
     QNetworkAccessManager* netManager = new QNetworkAccessManager();
     QNetworkRequest        req(url);
+    // *** Попытка решить проблему ошибки подключения к серверу *** //
+    //     qt.network.http2: stream 1 finished with error: "Server  //
+    //     stopped accepting new streams before this stream         //
+    //     was established"                                         //
+    //     через отключение HTTP/2 с переходом на HTTP/1.1          //
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
     QNetworkReply* reply = netManager->get(req);
 
     QEventLoop loop;
@@ -165,6 +199,12 @@ long int OsInfoLoader::getRemoteFileSize(const QUrl& url){
 
     QNetworkAccessManager* netManager = new QNetworkAccessManager();
     QNetworkRequest        req(url);
+    // *** Попытка решить проблему ошибки подключения к серверу *** //
+    //     qt.network.http2: stream 1 finished with error: "Server  //
+    //     stopped accepting new streams before this stream         //
+    //     was established"                                         //
+    //     через отключение HTTP/2 с переходом на HTTP/1.1          //
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
     QNetworkReply* reply = netManager->head(req);
 
     QEventLoop loop;
@@ -285,6 +325,11 @@ QVector<TarFile> OsInfoLoader::getShortOsInfo(const QVector<TarFile>& tarData){
 QJsonDocument OsInfoLoader::getLibOsInfoJson(const QString& url){
     // *** Скачивание архива osinfo-db-YYYYMMDD.tar.xz *** //
     QByteArray xzData = this->xzLibInfoDownload(url);
+    if (xzData.isEmpty()){
+        // *** В случае ошибок получения архива из сети, *** //
+        //     возврат пустого результата.                   //
+        return QJsonDocument();
+    }
 
     // *** Разархивирование полученного ранее архива *** //
     QByteArray unPackData = this->decompressXZ(xzData);
@@ -375,16 +420,25 @@ OsInfo OsInfoLoader::getOsInfo(const QByteArray& osXmlInfo){
 
 void OsInfoLoader::writeLibOsInfoJsonToFile(
                                         const QJsonDocument& libOsInfoJsonDoc,
-                                                       const QString& fileName){
-    QString tmpDir = QDir::tempPath();
+                                                   const QString& fullFileName){
+    // *** QFile не создаст файл, если катлоги не существуют *** //
+    QFileInfo fileInfo(fullFileName);
+    QDir      dir(fileInfo.absolutePath());
 
-    QFile file(tmpDir + "/" + fileName);
+    // *** Если каталога нет, то создадим его со всей иерархией *** //
+    if (!dir.exists()){
+        if (!dir.mkpath(fileInfo.absolutePath())){
+            qDebug() << "[II] Failed to create dir:" << fileInfo.absolutePath();
+            return;
+        }
+    }
+
+    QFile file(fullFileName);
     if (!file.open(QIODevice::WriteOnly)) {
-        qDebug() << "[EE] Error write file " + fileName + " to " + tmpDir;
+        qDebug() << "[EE] Error write file " + fullFileName;
     } else {
         file.write(libOsInfoJsonDoc.toJson(QJsonDocument::Indented));
         file.close();
-        qDebug() << "[II] JSON save to " + tmpDir + "/" + fileName;
     }
 }
 

@@ -204,14 +204,18 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
                     setEditBtnStyle(m_editOsBtn);
                     m_editOsBtn->setVisible(false);
 
-                    QIcon actOsBtnIcon = QIcon(":/vmInfo-set-vm-os.svg");
+                    QIcon actOsIcon = QIcon(":/vmInfo-set-vm-os.svg");
 
-                    QMenu* osBtnMenu = new QMenu(m_editOsBtn);
-                    QAction* actOsBtn = osBtnMenu
-                                                ->addAction("Select guest OS…");
-                    actOsBtn->setIcon(actOsBtnIcon);
-                    m_editOsBtn->setMenu(osBtnMenu);
+                    QMenu* osMenu = new QMenu(m_editOsBtn);
+                    QAction* actOs = osMenu->addAction("Manage OS info…");
+                    actOs->setIcon(actOsIcon);
+                    m_editOsBtn->setMenu(osMenu);
                     hLayoutArray[i]->addWidget(m_editOsBtn);
+
+                    QObject::connect(actOs, &QAction::triggered,
+                                        this, &VmInfoWidget::manageGuestOS,
+                                                          Qt::UniqueConnection);
+
                     break;
                 }
              case 7: { // Add edit mounted drives button
@@ -613,8 +617,20 @@ VMachine VmInfoWidget::getData(){
     vm.name = qobject_cast<QLabel*>(m_colBWidgets[3])->text();
     vm.cpu = qobject_cast<QLabel*>(m_colBWidgets[4])->text();
     vm.ram = qobject_cast<QLabel*>(m_colBWidgets[5])->text();
-    vm.os.name = cutLongOsName(qobject_cast<QLabel*>(m_colBWidgets[6])->text(),
-                                                                vm.uuid.size());
+    // vm.os.name = cutLongOsName(qobject_cast<QLabel*>(m_colBWidgets[6])->text(),
+    //                                                            vm.uuid.size());
+
+    // *** Полное название гостевой операционной системы либо в ToolTip, *** //
+    //     либо в тексте видежта, если весь туда помещается                  //
+    QLabel* osNameLabel = qobject_cast<QLabel*>(m_colBWidgets[6]);
+
+    if (!osNameLabel->toolTip().isEmpty()){
+        vm.os.name = osNameLabel->toolTip();
+    }
+    else {
+        vm.os.name = osNameLabel->text();
+    }
+
     return vm;
 }
 
@@ -647,16 +663,24 @@ void VmInfoWidget::setRam(const QString& newRam){
 }
 
 void VmInfoWidget::setOsName(const QString& newOsName){
-    // *** Проверка случая для названия, которое было сокращено *** ///
     int maxTextLength = qobject_cast<QLabel*>(m_colBWidgets[2])->text().size();
-    QString oldOsName = qobject_cast<QLabel*>(m_colBWidgets[6])->text();
-    QString cutOsNewName = cutLongOsName(newOsName, maxTextLength);
-    if (cutOsNewName != oldOsName){
-        qobject_cast<QLabel*>(m_colBWidgets[6])->setText(cutOsNewName);
-        if (cutOsNewName != newOsName){
+
+    QString uncutOldOsName;
+    if (!qobject_cast<QLabel*>(m_colBWidgets[6])->toolTip().isEmpty()){
+        uncutOldOsName = qobject_cast<QLabel*>(m_colBWidgets[6])->toolTip();
+    }
+    else {
+        uncutOldOsName = qobject_cast<QLabel*>(m_colBWidgets[6])->text();
+    }
+
+    if (uncutOldOsName != newOsName){
+        if (newOsName.size() > maxTextLength){
+            QString cutOsNewName = cutLongOsName(newOsName, maxTextLength);
+            qobject_cast<QLabel*>(m_colBWidgets[6])->setText(cutOsNewName);
             qobject_cast<QLabel*>(m_colBWidgets[6])->setToolTip(newOsName);
         }
-        else {
+        else{
+            qobject_cast<QLabel*>(m_colBWidgets[6])->setText(newOsName);
             qobject_cast<QLabel*>(m_colBWidgets[6])->setToolTip("");
         }
     }
@@ -737,6 +761,24 @@ int VmInfoWidget::calcOptimalFontSize(const QStringList& text){
     return res;
 }
 
+void VmInfoWidget::manageGuestOS(){
+
+    QString currentGuestOS = getCurrentGuestOS();
+    DialogManageGuestOS manageGuestOSDialog(currentGuestOS, this);
+    // *** Переиспускание сигналов от диалога *** //
+    connect(&manageGuestOSDialog, &DialogManageGuestOS::requestVmOsInfoUpdate,
+                                  this, &VmInfoWidget::onRequestVmOsInfoUpdate);
+    connect(&manageGuestOSDialog,&DialogManageGuestOS::requestVmOsXmlInfoUpdate,
+                               this, &VmInfoWidget::onRequestVmOsXmlInfoUpdate);
+    connect(&manageGuestOSDialog,&DialogManageGuestOS::requestVmOsXmlInfoClear,
+                                this, &VmInfoWidget::onRequestVmOsXmlInfoClear);
+
+    // ***   Запуск диалога установки гостевой ОС   *** //
+    //     accept || reject не важно т.к., все действия //
+    //     реализованы через сигналы/слоты (см. выше).  //
+    manageGuestOSDialog.exec();
+}
+
 void VmInfoWidget::addNewVmImages(){
     DialogAddNewImage addNewImageDialog(this);
 
@@ -810,19 +852,46 @@ QString VmInfoWidget::cutLongOsName(const QString& longOsName,
     QString osName;
     if (longOsName.size() > maxTextLength){
         osName = longOsName;
-        if (osName.contains("N/A")){
-            osName.chop(longOsName.size() - maxTextLength + 4);
-            osName = osName + "…]";
-        }
-        else {
-            osName.chop(longOsName.size() - maxTextLength + 3);
-            osName = osName + "…";
-        }
+        osName.chop(longOsName.size() - maxTextLength + 3);
+        osName = osName + "…";
     }
     else {
         osName = longOsName;
     }
 
     return osName;
+}
+
+QString VmInfoWidget::getCurrentGuestOS(){
+    QString res;
+    QWidget* widget = m_colBWidgets[6];
+    QLabel* guestOsLabel = qobject_cast<QLabel*>(widget);
+
+    // *** При необходимости сокращеня названия в toolTip содержится *** //
+    //     его полная версия, без сокращения toolTip пустой.             //
+    if (guestOsLabel->toolTip().size() > 0){
+        res = guestOsLabel->toolTip();
+    }
+    else {
+        res = guestOsLabel->text();
+    }
+
+    return res;
+}
+
+void VmInfoWidget::onRequestVmOsInfoUpdate(){
+    // *** m_vmInfoWidget посылает сигнал о необходимости обновить БД *** //
+    //     m_vmDataCollector должен отреагировать на данный сигнал.       //
+    emit requestVmOsInfoUpdate();
+}
+
+void VmInfoWidget::onRequestVmOsXmlInfoClear(){
+    // *** переиспускание сигнала от диалога *** //
+    emit requestVmOsXmlInfoClear();
+}
+
+void VmInfoWidget::onRequestVmOsXmlInfoUpdate(const OsInfo& osInfo){
+    // *** переиспускание сигнала от диалога *** //
+    emit requestVmOsXmlInfoUpdate(osInfo);
 }
 // End vmInfoWidget.cpp
