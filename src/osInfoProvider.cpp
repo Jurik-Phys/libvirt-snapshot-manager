@@ -184,6 +184,10 @@ QStringList OsInfoProvider::getOsNameList(){
 }
 
 OsInfo OsInfoProvider::getOsInfoByOsName(const QString& osNameIn){
+    if (m_osInfoData.isEmpty()){
+        this->dataInit();
+    }
+
     OsInfo res;
     QString osName = osNameIn;
     osName = osName.simplified();

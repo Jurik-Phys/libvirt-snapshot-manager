@@ -1641,4 +1641,21 @@ void VmDataCollector::onRequestVmOsXmlInfoUpdate(const OsInfo& osInfo){
     pushVmXml(vmXmlDoc);
 }
 
+void VmDataCollector::onRequestVmRamXmlUpdate(const long int& memoryInKiB){
+
+    QDomDocument vmXmlDoc = getVmXml(m_vm.uuid);
+    QDomElement  vmXml = vmXmlDoc.documentElement();
+    QDomElement  memoryXml = findOrCreateElement(vmXmlDoc, vmXml, "memory");
+    QDomElement  currentMemoryXml = findOrCreateElement(vmXmlDoc, vmXml,
+                                                               "currentMemory");
+    memoryXml.setAttribute("units", "KiB");
+    currentMemoryXml.setAttribute("units", "KiB");
+
+    QString memoryValueString = QString::number(memoryInKiB);
+    writeQDomElementText(vmXmlDoc, memoryXml, memoryValueString);
+    writeQDomElementText(vmXmlDoc, currentMemoryXml, memoryValueString);
+
+    pushVmXml(vmXmlDoc);
+}
+
 // End vmDataCollector.cpp

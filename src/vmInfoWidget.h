@@ -58,11 +58,13 @@ class VmInfoWidget : public QFrame {
         void requestVmOsInfoUpdate();
         void requestVmOsXmlInfoClear();
         void requestVmOsXmlInfoUpdate(const OsInfo&);
+        void requestVmRamXmlUpdate(const long int& memoryInKiB);
 
     public slots:
         void onRequestVmOsInfoUpdate();
         void onRequestVmOsXmlInfoClear();
         void onRequestVmOsXmlInfoUpdate(const OsInfo&);
+        void onRequestVmRamXmlUpdate(const long int& memoryInKiB);
 
     private:
         QVBoxLayout* m_vScrollLayout;
@@ -99,6 +101,9 @@ class VmInfoWidget : public QFrame {
         int m_titleChangedCounter = 0;
         int m_descriptionChangedCounter = 0;
         int calcOptimalFontSize(const QStringList&);
+
+        // *** Ram size menu *** //
+        void manageRamSize();
 
         // *** Guest OS menu *** //
         void manageGuestOS();

@@ -1,6 +1,7 @@
 // Begin vmInfoWidget.cpp
 
 #include "vmInfoWidget.h"
+#include "nodeInfoProvider.h"
 
 VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
 
@@ -194,6 +195,10 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
                     actRamSize->setIcon(actRamSizeIcon);
                     m_editRamSizeBtn->setMenu(editRamSizeMenu);
                     hLayoutArray[i]->addWidget(m_editRamSizeBtn);
+
+                    QObject::connect(actRamSize, &QAction::triggered,
+                                        this, &VmInfoWidget::manageRamSize,
+                                                          Qt::UniqueConnection);
                     break;
                 }
             case 6: { // Add edit OS
@@ -215,7 +220,6 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
                     QObject::connect(actOs, &QAction::triggered,
                                         this, &VmInfoWidget::manageGuestOS,
                                                           Qt::UniqueConnection);
-
                     break;
                 }
              case 7: { // Add edit mounted drives button
@@ -397,7 +401,8 @@ void VmInfoWidget::setData(const VMachine& vm){
     qobject_cast<QLabel*>(m_colBWidgets[2])->setText(vm.uuid);
     qobject_cast<QLabel*>(m_colBWidgets[3])->setText(vm.name);
     qobject_cast<QLabel*>(m_colBWidgets[4])->setText(vm.cpu);
-    qobject_cast<QLabel*>(m_colBWidgets[5])->setText(humanMemory(vm.ram));
+    QString ruHumanMemory = humanMemory(vm.ram).replace(".", ",");
+    qobject_cast<QLabel*>(m_colBWidgets[5])->setText(ruHumanMemory);
     QLabel* osNameLbl = qobject_cast<QLabel*>(m_colBWidgets[6]);
     // *** Tooltip при ручном переключении VM (ручное обновление данных *** //
     if (vm.os.name.size() > vm.uuid.size()){
@@ -434,8 +439,14 @@ QString VmInfoWidget::humanMemory(const QString& rawRam){
     if (res.size() < 3){ res = "0 GB";}
     QStringList parts = res.split(" ", Qt::SkipEmptyParts);
 
-    long int     memValue = parts[0].toLong();
-    QString memUnits = parts[1];
+    long int memValue = parts.first().toLong();
+    QString  memUnits = parts.last();
+
+    // *** Передано число без единиц измерения (байты) *** //
+    //     В этом случае pars.first() == parts.last()      //
+    if (parts.size() == 1){
+        memUnits = "bytes";
+    }
 
     QStringList s1024BaseUnits = {   "k",   "M",   "G",   "T" };
     QStringList l1024BaseUnits = { "KiB", "MiB", "GiB", "TiB" };
@@ -490,7 +501,18 @@ QString VmInfoWidget::humanMemory(const QString& rawRam){
     if (abs(humanMemValue - (int)humanMemValue) < 0.01){
         res = QString::number(humanMemValue, 'f', 0) + " " + humanMemUnits;
     } else {
-        res = QString::number(humanMemValue, 'f', 2) + " " + humanMemUnits;
+        QString number = QString::number(humanMemValue, 'f', 2);
+
+        // *** Удалить последний ноль в размере *** //
+        while (number.contains('.') && number.endsWith('0')){
+            number.chop(1);
+        }
+
+        if (number.endsWith('.')){
+            number.chop(1);
+        }
+
+        res = number + " " + humanMemUnits;
     }
 
     return res;
@@ -617,9 +639,6 @@ VMachine VmInfoWidget::getData(){
     vm.name = qobject_cast<QLabel*>(m_colBWidgets[3])->text();
     vm.cpu = qobject_cast<QLabel*>(m_colBWidgets[4])->text();
     vm.ram = qobject_cast<QLabel*>(m_colBWidgets[5])->text();
-    // vm.os.name = cutLongOsName(qobject_cast<QLabel*>(m_colBWidgets[6])->text(),
-    //                                                            vm.uuid.size());
-
     // *** Полное название гостевой операционной системы либо в ToolTip, *** //
     //     либо в тексте видежта, если весь туда помещается                  //
     QLabel* osNameLabel = qobject_cast<QLabel*>(m_colBWidgets[6]);
@@ -659,7 +678,9 @@ void VmInfoWidget::setCpu(const QString& newCpu){
     qobject_cast<QLabel*>(m_colBWidgets[4])->setText(newCpu);
 }
 void VmInfoWidget::setRam(const QString& newRam){
-    qobject_cast<QLabel*>(m_colBWidgets[5])->setText(humanMemory(newRam));
+
+    QString ruHumanMemory = humanMemory(newRam).replace(".", ",");
+    qobject_cast<QLabel*>(m_colBWidgets[5])->setText(ruHumanMemory);
 }
 
 void VmInfoWidget::setOsName(const QString& newOsName){
@@ -759,6 +780,32 @@ int VmInfoWidget::calcOptimalFontSize(const QStringList& text){
     }
 
     return res;
+}
+
+void VmInfoWidget::manageRamSize(){
+
+    // *** Сбор данных, необходимых для диалога оперативной памяти *** //
+    QString osName = getCurrentGuestOS();
+    // *** VmInfoWidget не имеет информации о минимальном рекомендуемом *** //
+    //     значении памяти для текущей операционной системы. Получаем       //
+    //     через OsInfoProvider'а                                           //
+    OsInfoProvider osInfoProvider = new OsInfoProvider();
+    OsInfo osInfo  = osInfoProvider.getOsInfoByOsName(osName);
+    QString vmMinRam = humanMemory(osInfo.ram);
+    QString vmRam = getData().ram;
+
+    // *** VmInfoWidget, да, и всё отсальное не имеет информации о хосте *** //
+    //     Создание провайдера данных и получение их от него                 //
+    NodeInfoProvider* nodeInfoProvider = new NodeInfoProvider();
+    long int hostRamValue = nodeInfoProvider->memorySizeBytes();
+    QString hostRam = humanMemory(QString::number(hostRamValue));
+    DialogManageRam manageRamSizeDialog(osName, vmRam, vmMinRam, hostRam, this);
+    manageRamSizeDialog.setHostRamInBytes(hostRamValue);
+
+    connect(&manageRamSizeDialog, &DialogManageRam::requestVmRamXmlUpdate,
+                                  this, &VmInfoWidget::onRequestVmRamXmlUpdate);
+
+    manageRamSizeDialog.exec();
 }
 
 void VmInfoWidget::manageGuestOS(){
@@ -893,5 +940,10 @@ void VmInfoWidget::onRequestVmOsXmlInfoClear(){
 void VmInfoWidget::onRequestVmOsXmlInfoUpdate(const OsInfo& osInfo){
     // *** переиспускание сигнала от диалога *** //
     emit requestVmOsXmlInfoUpdate(osInfo);
+}
+
+void VmInfoWidget::onRequestVmRamXmlUpdate(const long int& memoryInKiB){
+    // *** переиспускание сигнала от диалога *** //
+    emit requestVmRamXmlUpdate(memoryInKiB);
 }
 // End vmInfoWidget.cpp

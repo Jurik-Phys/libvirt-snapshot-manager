@@ -61,9 +61,11 @@ class VmDataCollector : public QObject {
     public slots:
         void process();
         void onRequestVmOsInfoUpdate();
-        // *** Write VM libInfoOs Id to Xml*** //
+        // *** Write VM libInfoOs Id to Xml *** //
         void onRequestVmOsXmlInfoClear();
         void onRequestVmOsXmlInfoUpdate(const OsInfo&);
+        // *** Write VM ram size (in KiB) to Xml *** //
+        void onRequestVmRamXmlUpdate(const long int&);
 
     signals:
         void finished(const VMachine&);

@@ -90,6 +90,9 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
                m_vmDataCollector, &VmDataCollector::onRequestVmOsXmlInfoUpdate);
     QObject::connect(m_vmInfoWidget, &VmInfoWidget::requestVmOsXmlInfoClear,
                 m_vmDataCollector, &VmDataCollector::onRequestVmOsXmlInfoClear);
+    // *** Write new VM ram size to xml file of VM *** //
+    QObject::connect(m_vmInfoWidget, &VmInfoWidget::requestVmRamXmlUpdate,
+                  m_vmDataCollector, &VmDataCollector::onRequestVmRamXmlUpdate);
     // *** Обновление /перечитывание скаченного файла/ libOsInfoDB *** //
     QObject::connect(m_vmInfoWidget, &VmInfoWidget::requestVmOsInfoUpdate,
                   m_vmDataCollector, &VmDataCollector::onRequestVmOsInfoUpdate);

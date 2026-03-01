@@ -11,6 +11,7 @@ set(SOURCE_LIB  appWindow.cpp
                 snapInfoWidget.cpp
                 vmWidget.cpp
                 osInfoProvider.cpp
+                nodeInfoProvider.cpp
                 dialogs.cpp)
 
 add_library(src-lib STATIC ${SOURCE_LIB})
