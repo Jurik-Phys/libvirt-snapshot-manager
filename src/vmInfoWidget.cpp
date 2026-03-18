@@ -177,6 +177,9 @@ VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
                     actCpuTopology->setIcon(actCpuTopologyIcon);
                     m_editCpuTopologyBtn->setMenu(editCpuTopologyMenu);
                     hLayoutArray[i]->addWidget(m_editCpuTopologyBtn);
+                    QObject::connect(actCpuTopology, &QAction::triggered,
+                                            this, &VmInfoWidget::manageVmCpu,
+                                                          Qt::UniqueConnection);
                     break;
                 }
             case 5: { // Add edit VM RAM size
@@ -400,7 +403,12 @@ void VmInfoWidget::setData(const VMachine& vm){
     qobject_cast<QTextEdit*>(m_colBWidgets[1])->setReadOnly(false);
     qobject_cast<QLabel*>(m_colBWidgets[2])->setText(vm.uuid);
     qobject_cast<QLabel*>(m_colBWidgets[3])->setText(vm.name);
-    qobject_cast<QLabel*>(m_colBWidgets[4])->setText(vm.cpu);
+    QString vmCpuTopology = vm.cpu["topology"];
+    QString vmCpuModel = vm.cpu["model"];
+    QString vmMaxCPUs = vm.cpu["max"];
+    qobject_cast<QLabel*>(m_colBWidgets[4])->setText(vmCpuTopology);
+    qobject_cast<QLabel*>(m_colBWidgets[4])->setProperty("model", vmCpuModel);
+    qobject_cast<QLabel*>(m_colBWidgets[4])->setProperty("max", vmMaxCPUs);
     QString ruHumanMemory = humanMemory(vm.ram).replace(".", ",");
     qobject_cast<QLabel*>(m_colBWidgets[5])->setText(ruHumanMemory);
     QLabel* osNameLbl = qobject_cast<QLabel*>(m_colBWidgets[6]);
@@ -637,7 +645,11 @@ VMachine VmInfoWidget::getData(){
     vm.description = qobject_cast<QTextEdit*>(m_colBWidgets[1])->toPlainText();
     vm.uuid = qobject_cast<QLabel*>(m_colBWidgets[2])->text();
     vm.name = qobject_cast<QLabel*>(m_colBWidgets[3])->text();
-    vm.cpu = qobject_cast<QLabel*>(m_colBWidgets[4])->text();
+    vm.cpu["topology"] = qobject_cast<QLabel*>(m_colBWidgets[4])->text();
+    vm.cpu["model"] = qobject_cast<QLabel*>(m_colBWidgets[4])
+                                                 ->property("model").toString();
+    vm.cpu["max"] = qobject_cast<QLabel*>(m_colBWidgets[4])
+                                                   ->property("max").toString();
     vm.ram = qobject_cast<QLabel*>(m_colBWidgets[5])->text();
     // *** Полное название гостевой операционной системы либо в ToolTip, *** //
     //     либо в тексте видежта, если весь туда помещается                  //
@@ -674,11 +686,19 @@ void VmInfoWidget::setName(const QString& newName){
     qobject_cast<QLabel*>(m_colBWidgets[3])->setText(newName);
 }
 
-void VmInfoWidget::setCpu(const QString& newCpu){
-    qobject_cast<QLabel*>(m_colBWidgets[4])->setText(newCpu);
+void VmInfoWidget::setCpuTopology(const QString& newCpuTopology){
+    qobject_cast<QLabel*>(m_colBWidgets[4])->setText(newCpuTopology);
 }
-void VmInfoWidget::setRam(const QString& newRam){
 
+void VmInfoWidget::setCpuModel(const QString& newCpuModel){
+    qobject_cast<QLabel*>(m_colBWidgets[4])->setProperty("model", newCpuModel);
+}
+
+void VmInfoWidget::setMaxCPUs(const QString& newMaxCPUs){
+    qobject_cast<QLabel*>(m_colBWidgets[4])->setProperty("max", newMaxCPUs);
+}
+
+void VmInfoWidget::setRam(const QString& newRam){
     QString ruHumanMemory = humanMemory(newRam).replace(".", ",");
     qobject_cast<QLabel*>(m_colBWidgets[5])->setText(ruHumanMemory);
 }
@@ -782,10 +802,27 @@ int VmInfoWidget::calcOptimalFontSize(const QStringList& text){
     return res;
 }
 
+void VmInfoWidget::manageVmCpu(){
+    // *** Получение информации о числе логических процессооров на хосте *** //
+    NodeInfoProvider* nodeInfoProvider = new NodeInfoProvider();
+    uint hostLogicalCpuCount = nodeInfoProvider->logicalCpuCount();
+    QString vmCpuTopology = this->getVmCpuTopology();
+    QString vmCpuModel = this->getVmCpuModel();
+    QString vmMaxCPUs = this->getVmMaxCPUs();
+
+    DialogManageCpu manageCpuTopologyDialog(hostLogicalCpuCount, vmCpuModel,
+                                                vmMaxCPUs, vmCpuTopology, this);
+    QObject::connect(&manageCpuTopologyDialog,
+                        &DialogManageCpu::requestVmCpuInfoXmlUpdate,
+                              this, &VmInfoWidget::onRequestVmCpuInfoXmlUpdate);
+
+    manageCpuTopologyDialog.exec();
+}
+
 void VmInfoWidget::manageRamSize(){
 
     // *** Сбор данных, необходимых для диалога оперативной памяти *** //
-    QString osName = getCurrentGuestOS();
+    QString osName = getVmOS();
     // *** VmInfoWidget не имеет информации о минимальном рекомендуемом *** //
     //     значении памяти для текущей операционной системы. Получаем       //
     //     через OsInfoProvider'а                                           //
@@ -810,7 +847,7 @@ void VmInfoWidget::manageRamSize(){
 
 void VmInfoWidget::manageGuestOS(){
 
-    QString currentGuestOS = getCurrentGuestOS();
+    QString currentGuestOS = getVmOS();
     DialogManageGuestOS manageGuestOSDialog(currentGuestOS, this);
     // *** Переиспускание сигналов от диалога *** //
     connect(&manageGuestOSDialog, &DialogManageGuestOS::requestVmOsInfoUpdate,
@@ -909,7 +946,7 @@ QString VmInfoWidget::cutLongOsName(const QString& longOsName,
     return osName;
 }
 
-QString VmInfoWidget::getCurrentGuestOS(){
+QString VmInfoWidget::getVmOS(){
     QString res;
     QWidget* widget = m_colBWidgets[6];
     QLabel* guestOsLabel = qobject_cast<QLabel*>(widget);
@@ -924,6 +961,27 @@ QString VmInfoWidget::getCurrentGuestOS(){
     }
 
     return res;
+}
+
+QString VmInfoWidget::getVmCpuTopology(){
+    QString cpuTopology;
+    // *** Стока cpuTopology вида: "sockets 2 · cores 1 · threads 1" *** //
+    cpuTopology = qobject_cast<QLabel*>(m_colBWidgets[4])->text();
+    return cpuTopology;
+}
+
+QString VmInfoWidget::getVmCpuModel(){
+    QString cpuModel;
+    cpuModel = qobject_cast<QLabel*>(m_colBWidgets[4])
+                                                 ->property("model").toString();
+    return cpuModel;
+}
+
+QString VmInfoWidget::getVmMaxCPUs(){
+    QString vmMaxCPUs;
+    vmMaxCPUs = qobject_cast<QLabel*>(m_colBWidgets[4])
+                                                   ->property("max").toString();
+    return vmMaxCPUs;
 }
 
 void VmInfoWidget::onRequestVmOsInfoUpdate(){
@@ -945,5 +1003,13 @@ void VmInfoWidget::onRequestVmOsXmlInfoUpdate(const OsInfo& osInfo){
 void VmInfoWidget::onRequestVmRamXmlUpdate(const long int& memoryInKiB){
     // *** переиспускание сигнала от диалога *** //
     emit requestVmRamXmlUpdate(memoryInKiB);
+}
+
+void VmInfoWidget::onRequestVmCpuInfoXmlUpdate(const uint& sockets,
+                                         const uint& cores,
+                                         const uint& threads,
+                                         const QString vmCpuModel){
+    // *** переиспускание сигнала от диалога "dialogManageCpu.cpp" *** //
+    emit requestVmCpuInfoXmlUpdate(sockets, cores, threads, vmCpuModel);
 }
 // End vmInfoWidget.cpp

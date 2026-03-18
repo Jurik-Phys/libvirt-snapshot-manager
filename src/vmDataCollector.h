@@ -66,6 +66,11 @@ class VmDataCollector : public QObject {
         void onRequestVmOsXmlInfoUpdate(const OsInfo&);
         // *** Write VM ram size (in KiB) to Xml *** //
         void onRequestVmRamXmlUpdate(const long int&);
+        // *** Write new VM cpu topology & model to Xml *** //
+        void onRequestVmCpuInfoXmlUpdate(const uint& sockets,
+                                         const uint& cores,
+                                         const uint& threads,
+                                         const QString vmCpuModel);
 
     signals:
         void finished(const VMachine&);
@@ -119,6 +124,11 @@ class VmDataCollector : public QObject {
         QStringList getPoolList();
         QString getVirtSize(const QString& imageFullName,
                                                    const QStringList& poolList);
+        QString getVmCpuTopology(const QDomElement& vmXml);
+        QString getVmCpuModel(const QDomElement& vmXml);
+        QString getVmMachineType(const QDomElement& vmXml);
+        QDomDocument getDomCapabilitiesXml(const QString& machine);
+        QString getVmMaxCpu(const QString& machine);
 };
 
 #endif

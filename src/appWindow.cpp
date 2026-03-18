@@ -93,6 +93,9 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
     // *** Write new VM ram size to xml file of VM *** //
     QObject::connect(m_vmInfoWidget, &VmInfoWidget::requestVmRamXmlUpdate,
                   m_vmDataCollector, &VmDataCollector::onRequestVmRamXmlUpdate);
+    // *** Write new VM cpu topology & model to xml file of VM *** //
+    QObject::connect(m_vmInfoWidget, &VmInfoWidget::requestVmCpuInfoXmlUpdate,
+              m_vmDataCollector, &VmDataCollector::onRequestVmCpuInfoXmlUpdate);
     // *** Обновление /перечитывание скаченного файла/ libOsInfoDB *** //
     QObject::connect(m_vmInfoWidget, &VmInfoWidget::requestVmOsInfoUpdate,
                   m_vmDataCollector, &VmDataCollector::onRequestVmOsInfoUpdate);
@@ -1477,8 +1480,18 @@ void QAppWindow::onNewVmInfoReady(const VMachine& vmNew){
         m_vmInfoWidget->setDescription(vmNew.description);
     }
 
-    if (vmNew.cpu != vmOld.cpu && vmNew.uuid == vmOld.uuid){
-        m_vmInfoWidget->setCpu(vmNew.cpu);
+    if (vmNew.cpu["topology"] != vmOld.cpu["topology"]
+                                                   && vmNew.uuid == vmOld.uuid){
+        m_vmInfoWidget->setCpuTopology(vmNew.cpu["topology"]);
+    }
+
+    if (vmNew.cpu["model"] != vmOld.cpu["model"] && vmNew.uuid == vmOld.uuid){
+        m_vmInfoWidget->setCpuModel(vmNew.cpu["model"]);
+    }
+    // qDebug() << "[appWindow.cpp] vmOld.cpu[\"model\"]" << vmOld.cpu["model"];
+
+    if (vmNew.cpu["max"] != vmOld.cpu["max"] && vmNew.uuid == vmOld.uuid){
+        m_vmInfoWidget->setMaxCPUs(vmNew.cpu["max"]);
     }
 
     if (vmNew.ram != vmOld.ram && vmNew.uuid == vmOld.uuid){

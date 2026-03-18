@@ -185,30 +185,12 @@ VMachine VmDataCollector::getVmShortInfo(const QString& uuid, bool* isOk){
         vm.os = m_vm.os;
     }
 
-    vm.cpu = vmXml.firstChildElement("vcpu").text() + " (";
+    vm.cpu["topology"] = getVmCpuTopology(vmXml);
+    vm.cpu["model"] = getVmCpuModel(vmXml);
 
-    QDomNamedNodeMap cpuAttribues = vmXml.firstChildElement("cpu")
-                                    .firstChildElement("topology").attributes();
-    for (int i = 0; i < cpuAttribues.count(); ++i ){
-        QDomNode attr = cpuAttribues.item(i);
-        QString name = attr.nodeName();
-        QString value = attr.nodeValue();
-        vm.cpu = vm.cpu + name + " " + value + "; ";
-    }
-    vm.cpu.chop(2);
-    if (cpuAttribues.count() > 0) {
-        static const QRegularExpression socketsRe(R"(sockets (\d+))");
-        static const QRegularExpression coresRe(R"(cores (\d+))");
-        static const QRegularExpression threadsRe(R"(threads (\d+))");
-        QRegularExpressionMatch sockets = socketsRe.match(vm.cpu);
-        QRegularExpressionMatch cores   = coresRe.match(vm.cpu);
-        QRegularExpressionMatch threads = threadsRe.match(vm.cpu);
-        vm.cpu = sockets.captured() + " · " + cores.captured()
-                                                   + " · " + threads.captured();
-    }
-    else {
-        vm.cpu = "sockets " + vm.cpu + " · cores 1 · threads 1";
-    }
+    vm.machine = getVmMachineType(vmXml);
+    vm.cpu["max"] = getVmMaxCpu(vm.machine);
+
     QDomElement devices = vmXml.firstChildElement("devices");
     QDomNodeList diskNodes  = devices.elementsByTagName("disk");
     for (int i = 0; i < diskNodes.count(); ++i){
@@ -1597,6 +1579,102 @@ QStringList VmDataCollector::getExtMountStorages(
     return res;
 }
 
+QString VmDataCollector::getVmMachineType(const QDomElement& vmXml){
+    return vmXml.firstChildElement("os")
+                                .firstChildElement("type").attribute("machine");
+}
+
+QDomDocument VmDataCollector::getDomCapabilitiesXml(const QString& machine){
+    QDomDocument vmXmlDoc;
+
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("LANG", "C");
+
+    QProcess process;
+    process.setProcessEnvironment(env);
+    QEventLoop loop;
+
+    QObject::connect(&process, &QProcess::finished, [&](){
+
+            QString output = process.readAllStandardOutput();
+            if (!vmXmlDoc.setContent(output)) {
+                // *** Ошибка парсинга, возврат пустого документа *** //
+                vmXmlDoc.clear();
+            }
+            loop.quit();
+        });
+
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                      "domcapabilities", "--machine", machine});
+    loop.exec();
+
+    return vmXmlDoc;
+}
+
+QString VmDataCollector::getVmMaxCpu(const QString& machine){
+    QDomDocument vmXmlDoc = getDomCapabilitiesXml(machine);
+    QDomElement  vmXml = vmXmlDoc.documentElement();
+    return vmXml.firstChildElement("vcpu").attribute("max");
+}
+
+QString VmDataCollector::getVmCpuTopology(const QDomElement& vmXml){
+    QString vmCpuTopo = "vcpu " + vmXml.firstChildElement("vcpu").text() + ": ";
+
+    QDomNamedNodeMap cpuAttribues = vmXml.firstChildElement("cpu")
+                                    .firstChildElement("topology").attributes();
+    for (int i = 0; i < cpuAttribues.count(); ++i ){
+        QDomNode attr = cpuAttribues.item(i);
+        QString name = attr.nodeName();
+        QString value = attr.nodeValue();
+        vmCpuTopo = vmCpuTopo + name + " " + value + "; ";
+    }
+    vmCpuTopo.chop(2);
+    if (cpuAttribues.count() > 0) {
+        static const QRegularExpression socketsRe(R"(sockets (\d+))");
+        static const QRegularExpression coresRe(R"(cores (\d+))");
+        static const QRegularExpression threadsRe(R"(threads (\d+))");
+        QRegularExpressionMatch sockets = socketsRe.match(vmCpuTopo);
+        QRegularExpressionMatch cores   = coresRe.match(vmCpuTopo);
+        QRegularExpressionMatch threads = threadsRe.match(vmCpuTopo);
+        vmCpuTopo = sockets.captured() + " · " + cores.captured()
+                                                   + " · " + threads.captured();
+    }
+    else {
+        static const QRegularExpression vcpuRe(R"(vcpu (\d+))");
+        QRegularExpressionMatch vcpu = vcpuRe.match(vmCpuTopo);
+        vmCpuTopo = "sockets " + vcpu.captured(1) + " · cores 1 · threads 1";
+    }
+
+    return vmCpuTopo;
+}
+
+QString VmDataCollector::getVmCpuModel(const QDomElement& vmXml){
+    // *** https://libvirt.org/formatdomain.html#cpu-allocation *** //
+    QString mode, model;
+    mode = vmXml.firstChildElement("cpu").attribute("mode");
+
+    if ( mode == "host-passthrough" ){
+        model = mode;
+    }
+
+    if ( mode == "host-model" ){
+        model = mode;
+    }
+
+    if ( mode == "maximum" ){
+        model = mode;
+    }
+
+    // *** Если режим процессора, "custom", то необходимо *** //
+    //     определить выбранную модель процессора             //
+    if ( mode == "custom" ){
+        model = vmXml.firstChildElement("cpu")
+                                             .firstChildElement("model").text();
+    }
+
+    return model;
+}
+
 void VmDataCollector::setData(const VMachine& vm){
     m_vm = vm;
 }
@@ -1655,6 +1733,114 @@ void VmDataCollector::onRequestVmRamXmlUpdate(const long int& memoryInKiB){
     writeQDomElementText(vmXmlDoc, memoryXml, memoryValueString);
     writeQDomElementText(vmXmlDoc, currentMemoryXml, memoryValueString);
 
+    pushVmXml(vmXmlDoc);
+}
+
+void VmDataCollector::onRequestVmCpuInfoXmlUpdate(const uint& sockets,
+                                         const uint& cores,
+                                         const uint& threads,
+                                         const QString vmCpuModel){
+    // ***    Запись параметров процессора происходит в двух узлах Xml    *** //
+    //  1. Узел "<vcpu>" <vcpu placement="static">N</vcpu>                    //
+    //  2.A. Узел "<cpu>" без топологии процессора:                           //
+    //       <cpu mode="host-passthrough" check="none" migratable="on"/>      //
+    //       Данный вариант для записи в xml файл будет выбран тогда, когда   //
+    //       в диалоге установлена топология вида N сокетов, 1 поток, 1 ядро. //
+    //  2.B. Узел "<cpu>" c топологией процессора:                            //
+    //  <cpu mode="host-passthrough" check="none" migratable="on">            //
+    //     <topology sockets="9" dies="1" clusters="1" cores="4" threads="2"/>//
+    //  </cpu>                                                                //
+
+    QDomDocument vmXmlDoc = getVmXml(m_vm.uuid);
+    QDomElement  vmXml = vmXmlDoc.documentElement();
+
+    // *** Write vcpu node *** //
+    QDomElement  vCpuXml = findOrCreateElement(vmXmlDoc, vmXml, "vcpu");
+    QString vCpu = QString::number(sockets * cores * threads);
+    writeQDomElementText(vmXmlDoc, vCpuXml, vCpu);
+
+    // *** Write cpu node *** //
+    QDomElement  cpuXml = findOrCreateElement(vmXmlDoc, vmXml, "cpu");
+
+    if ( vmCpuModel != "maximum" || vmCpuModel != "host-passthrough" ){
+        // *** host-passthrough, maximum mode поддерживают migratable *** //
+        //     но host-model и тем более custom не применяются, если      //
+        //     есть данный атрибут, migratable необходимо удалить         //
+        cpuXml.removeAttribute("migratable");
+    }
+
+    // *** Все модели разделены на две группы "host" и "custom" *** //
+    //     Во втором случае необходимо создавать или обновлять      //
+    //     узел "model", у "host" такого узла нет                   //
+    QString cpuMode("host");
+    if (vmCpuModel == "maximum" || vmCpuModel == "host-passthrough"
+                                             || vmCpuModel == "host-model"){
+        cpuMode = "host";
+    }
+    else {
+        cpuMode = "custom";
+    }
+
+    if ( cpuMode != "custom" ){
+        // *** Удаление атрибута match и узла model, *** //
+        //     характерных для mode="custom"             //
+        cpuXml.removeAttribute("match");
+        QDomElement modelXml = cpuXml.firstChildElement("model");
+        if (!modelXml.isNull()) {
+            cpuXml.removeChild(modelXml);
+        }
+
+        if ( vmCpuModel == "host-model" ){
+            // *** Для host-model по умолчанию check="partial" *** //
+            cpuXml.setAttribute("check", "partial");
+
+            // *** Установка атрибута "mode" *** //
+            cpuXml.setAttribute("mode", vmCpuModel);
+        }
+        else {
+            // *** Для host-passthrough, maximum check="none" *** //
+            cpuXml.setAttribute("check", "none");
+
+            // *** Установка атрибута "mode" *** //
+            cpuXml.setAttribute("mode", vmCpuModel);
+        }
+    }
+    else { // Для "custom" необходимо создавать или обновлять узел "model"
+        cpuXml.setAttribute("check", "partial");
+        cpuXml.setAttribute("match", "exact");
+        cpuXml.setAttribute("mode", cpuMode);
+
+        QDomElement modelXml = cpuXml.firstChildElement("model");
+        if (modelXml.isNull()) {
+            modelXml = vmXmlDoc.createElement("model");
+            modelXml.appendChild(vmXmlDoc.createTextNode(vmCpuModel));
+            cpuXml.appendChild(modelXml);
+            modelXml.setAttribute("fallback", "allow");
+        }
+        else {
+            writeQDomElementText(vmXmlDoc, modelXml, vmCpuModel);
+        }
+    }
+
+    // *** Управление узлом "topology" *** //
+    if ( cores == 1 && threads == 1 ){ // Узел "topology" не требуется (default)
+        QDomElement  topoXml = cpuXml.firstChildElement("topology");
+        if (!topoXml.isNull()){
+            cpuXml.removeChild(topoXml);
+        }
+    }
+    else { // Создание или обновление узла "topology"
+        QDomElement cpuTopoXml = cpuXml.firstChildElement("topology");
+        if (cpuTopoXml.isNull()) {
+            cpuTopoXml = vmXmlDoc.createElement("topology");
+            cpuXml.appendChild(cpuTopoXml);
+        }
+        cpuTopoXml.setAttribute("sockets", sockets);
+        cpuTopoXml.setAttribute("cores", cores);
+        cpuTopoXml.setAttribute("threads", threads);
+    }
+
+    writeQDomElementText(vmXmlDoc, cpuXml, QString());
     pushVmXml(vmXmlDoc);
 }
 

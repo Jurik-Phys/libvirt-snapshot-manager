@@ -12,7 +12,8 @@ set(SOURCE_LIB  appWindow.cpp
                 vmWidget.cpp
                 osInfoProvider.cpp
                 nodeInfoProvider.cpp
-                dialogs.cpp)
+                dialogs.cpp
+                dialogManageCpu.cpp)
 
 add_library(src-lib STATIC ${SOURCE_LIB})
 

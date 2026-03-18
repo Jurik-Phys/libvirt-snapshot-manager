@@ -4,6 +4,7 @@
 #define VMDATASTRUCT_H
 
 #include <QString>
+#include <QMap>
 #include <QStringList>
 #include "osinfoloader.h"
 
@@ -27,10 +28,11 @@ struct VMachine {
     QString     uuid;          // Уникальный идентификатор
     OsInfo      os;            // Структура c данными операционной системы
     QString     state;         // Состояние виртуальной машины (вкл./выкл.)
-    QString     cpu;           // Информация о процессоре
     QString     ram;           // Оперативная память
+    QString     machine;       // Виртуальная аппаратная платформа "pc-q35-10.0"
     QString     title;         // Человекочитаемый заголовок
     QString     description;   // Описание виртуальной машины
+    QMap<QString, QString> cpu;// Информация о процессоре ("topology", "model")
     QStringList mountStorages; // Примонтированные хранилища данных
     QStringList driveBusTypes; // Контроллеры устройств [virtio, scsi, sata]
     QStringList driveDevNames; // Имена устройств хранилищ данных

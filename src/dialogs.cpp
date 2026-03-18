@@ -731,7 +731,7 @@ DialogManageRam::DialogManageRam(const QString& osNameIn, const QString& vmRam,
 
     long int vmRamBytes = this->vmRamToBytes(vmRam);
 
-    // *** parent - VmInfoWidget *** //
+    // *** parent is VmInfoWidget *** //
     this->setFixedWidth(frameWidth + 22);
     this->setWindowTitle("VM RAM setup");
 

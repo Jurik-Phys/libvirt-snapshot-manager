@@ -19,6 +19,7 @@
 #include <QTimer>
 #include "vmDataStructs.h"
 #include "dialogs.h"
+#include "dialogManageCpu.h"
 
 class VmInfoWidget : public QFrame {
 
@@ -39,7 +40,10 @@ class VmInfoWidget : public QFrame {
         void setName(const QString&);
         void setTitle(const QString&);
         void setDescription(const QString&);
-        void setCpu(const QString&);
+        void setCpuTopology(const QString&);
+        void setCpuModel(const QString&);
+        void setMaxCPUs(const QString&);
+
         void setRam(const QString&);
         void setOsName(const QString&);
         void setReadOnly(bool);
@@ -59,12 +63,20 @@ class VmInfoWidget : public QFrame {
         void requestVmOsXmlInfoClear();
         void requestVmOsXmlInfoUpdate(const OsInfo&);
         void requestVmRamXmlUpdate(const long int& memoryInKiB);
+        void requestVmCpuInfoXmlUpdate(const uint& sockets,
+                                       const uint& cores,
+                                       const uint& threads,
+                                       const QString vmCpuModel);
 
     public slots:
         void onRequestVmOsInfoUpdate();
         void onRequestVmOsXmlInfoClear();
         void onRequestVmOsXmlInfoUpdate(const OsInfo&);
         void onRequestVmRamXmlUpdate(const long int& memoryInKiB);
+        void onRequestVmCpuInfoXmlUpdate(const uint& sockets,
+                                         const uint& cores,
+                                         const uint& threads,
+                                         const QString vmCpuModel);
 
     private:
         QVBoxLayout* m_vScrollLayout;
@@ -102,6 +114,9 @@ class VmInfoWidget : public QFrame {
         int m_descriptionChangedCounter = 0;
         int calcOptimalFontSize(const QStringList&);
 
+        // *** Cpu count menu *** //
+        void manageVmCpu();
+
         // *** Ram size menu *** //
         void manageRamSize();
 
@@ -114,7 +129,10 @@ class VmInfoWidget : public QFrame {
 
         void setEditBtnStyle(QToolButton*);
 
-        QString getCurrentGuestOS();
+        QString getVmOS();
+        QString getVmCpuTopology();
+        QString getVmCpuModel();
+        QString getVmMaxCPUs();
 };
 
 #endif
