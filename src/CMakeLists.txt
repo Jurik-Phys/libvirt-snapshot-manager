@@ -12,8 +12,11 @@ set(SOURCE_LIB  appWindow.cpp
                 vmWidget.cpp
                 osInfoProvider.cpp
                 nodeInfoProvider.cpp
-                dialogs.cpp
-                dialogManageCpu.cpp)
+                dialogAddNewImage.cpp
+                dialogDeleteImage.cpp
+                dialogManageCpu.cpp
+                dialogManageGuestOS.cpp
+                dialogManageRam.cpp)
 
 add_library(src-lib STATIC ${SOURCE_LIB})
 

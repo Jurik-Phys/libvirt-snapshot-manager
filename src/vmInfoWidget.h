@@ -18,8 +18,11 @@
 #include <QLabel>
 #include <QTimer>
 #include "vmDataStructs.h"
-#include "dialogs.h"
+#include "dialogAddNewImage.h"
+#include "dialogDeleteImage.h"
 #include "dialogManageCpu.h"
+#include "dialogManageGuestOS.h"
+#include "dialogManageRam.h"
 
 class VmInfoWidget : public QFrame {
 

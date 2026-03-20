@@ -3,6 +3,7 @@
 #include "dialogManageCpu.h"
 #include "vmInfoWidget.h"
 #include <QVBoxLayout>
+#include <QPushButton>
 #include <QSpinBox>
 #include <QFrame>
 
