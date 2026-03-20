@@ -154,7 +154,6 @@ void DialogAddNewImage::checkSelectedPath(){
     QFile imageFile(imageBasePath + "/" + fName);
     if (imageFile.exists()){
         m_errorOut->setText("The file already exists!");
-        m_fileNameEdit->setText(fName);
         return;
     }
 
