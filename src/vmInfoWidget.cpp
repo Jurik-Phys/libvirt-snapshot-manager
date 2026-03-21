@@ -2,6 +2,7 @@
 
 #include "vmInfoWidget.h"
 #include "nodeInfoProvider.h"
+#include <QFontMetrics>
 
 VmInfoWidget::VmInfoWidget(QWidget* parent) : QFrame(parent){
 
@@ -411,15 +412,7 @@ void VmInfoWidget::setData(const VMachine& vm){
     qobject_cast<QLabel*>(m_colBWidgets[4])->setProperty("max", vmMaxCPUs);
     QString ruHumanMemory = humanMemory(vm.ram).replace(".", ",");
     qobject_cast<QLabel*>(m_colBWidgets[5])->setText(ruHumanMemory);
-    QLabel* osNameLbl = qobject_cast<QLabel*>(m_colBWidgets[6]);
-    // *** Tooltip при ручном переключении VM (ручное обновление данных *** //
-    if (vm.os.name.size() > vm.uuid.size()){
-        osNameLbl->setToolTip(vm.os.name);
-    }
-    else {
-        osNameLbl->setToolTip("");
-    }
-    osNameLbl->setText(cutLongOsName(vm.os.name, vm.uuid.size()));
+    setOsName(vm.os.name);
     QString mountStoragesCount = QString::number(vm.mountStorages.size());
     qobject_cast<QLabel*>(m_colBWidgets[7])->setText(mountStoragesCount);
     setStorageList(vm.mountStorages);
@@ -704,27 +697,38 @@ void VmInfoWidget::setRam(const QString& newRam){
 }
 
 void VmInfoWidget::setOsName(const QString& newOsName){
-    int maxTextLength = qobject_cast<QLabel*>(m_colBWidgets[2])->text().size();
+    // *** Расчёт максимальной ширины текста в пикселях следующий: *** //
+    //     maxTextWidth = uuidWidth - 2*fontSize т.е.,                 //
+    //     максимальная ширина текста равна ширине uuid ВМ,            //
+    //     (максимально длинная строка) минус ширина двух символов     //
+    QLabel* uuidLabel = qobject_cast<QLabel*>(m_colBWidgets[2]);
+    QLabel* osNameLabel = qobject_cast<QLabel*>(m_colBWidgets[6]);
+    QFont infoFont = osNameLabel->font();
 
-    QString uncutOldOsName;
-    if (!qobject_cast<QLabel*>(m_colBWidgets[6])->toolTip().isEmpty()){
-        uncutOldOsName = qobject_cast<QLabel*>(m_colBWidgets[6])->toolTip();
+    uint uuidWidth = uuidLabel->width();
+    uint fontSize = infoFont.pointSize();
+    uint maxTextWidth = uuidWidth - 2*fontSize;
+
+    QFontMetrics fm(osNameLabel->font());
+    int newOsNameWidth = fm.boundingRect(newOsName).width();
+
+    QString osName = newOsName;
+    if (newOsNameWidth > maxTextWidth){
+        // *** В QLabel название сокращённое, а в tooltip'е - полное *** //
+        osNameLabel->setToolTip(newOsName);
+
+        // *** elidedText() возвращает строку, которая гарантированно *** //
+        //     влезет в заданную ширину, а сли не влезает — добавляет ... //
+        osName = fm.elidedText( newOsName, Qt::ElideRight, maxTextWidth);
     }
     else {
-        uncutOldOsName = qobject_cast<QLabel*>(m_colBWidgets[6])->text();
+        // *** Если нет необходимости сокращать название, tooltip выкл. *** //
+        if (!osNameLabel->toolTip().isEmpty()){
+            osNameLabel->setToolTip(QString());
+        }
     }
 
-    if (uncutOldOsName != newOsName){
-        if (newOsName.size() > maxTextLength){
-            QString cutOsNewName = cutLongOsName(newOsName, maxTextLength);
-            qobject_cast<QLabel*>(m_colBWidgets[6])->setText(cutOsNewName);
-            qobject_cast<QLabel*>(m_colBWidgets[6])->setToolTip(newOsName);
-        }
-        else{
-            qobject_cast<QLabel*>(m_colBWidgets[6])->setText(newOsName);
-            qobject_cast<QLabel*>(m_colBWidgets[6])->setToolTip("");
-        }
-    }
+    osNameLabel->setText(osName);
 }
 
 void VmInfoWidget::setReadOnly(bool roState){
@@ -929,21 +933,6 @@ void VmInfoWidget::setEditBtnStyle(QToolButton* editBtn){
     QFont btnFont = editBtn->font();
     btnFont.setWeight(QFont::Bold);
     editBtn->setFont(btnFont);
-}
-
-QString VmInfoWidget::cutLongOsName(const QString& longOsName,
-                                                    const int& maxTextLength){
-    QString osName;
-    if (longOsName.size() > maxTextLength){
-        osName = longOsName;
-        osName.chop(longOsName.size() - maxTextLength + 3);
-        osName = osName + "…";
-    }
-    else {
-        osName = longOsName;
-    }
-
-    return osName;
 }
 
 QString VmInfoWidget::getVmOS(){

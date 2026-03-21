@@ -162,6 +162,7 @@ DialogManageGuestOS::~DialogManageGuestOS(){
 void DialogManageGuestOS::setInfo(){
     QString osName = m_osEditor->lineEdit()->text();
     OsInfo osInfo = m_osInfoProvider->getOsInfoByOsName(osName);
+    qDebug() << "[dialogManageGuestOS.cpp]" << osInfo.name;
     if (osInfo.id.isEmpty()){
         if (m_inGuestOS != osName && !osName.isEmpty()){
             QPalette pal = m_osEditor->lineEdit()->palette();

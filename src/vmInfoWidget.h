@@ -89,7 +89,6 @@ class VmInfoWidget : public QFrame {
         QVector<QWidget*> m_colAWidgets;
         QVector<QWidget*> m_colBWidgets;
         QString humanMemory(const QString&);
-        QString cutLongOsName(const QString&, const int&);
 
         QToolButton* m_editImagesBtn;
         QToolButton* m_editRamSizeBtn;
