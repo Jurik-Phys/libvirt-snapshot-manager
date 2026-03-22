@@ -403,7 +403,7 @@ void VmInfoWidget::setData(const VMachine& vm){
     qobject_cast<QTextEdit*>(m_colBWidgets[1])->setText(vm.description);
     qobject_cast<QTextEdit*>(m_colBWidgets[1])->setReadOnly(false);
     qobject_cast<QLabel*>(m_colBWidgets[2])->setText(vm.uuid);
-    qobject_cast<QLabel*>(m_colBWidgets[3])->setText(vm.name);
+    setVmName(vm.name);
     QString vmCpuTopology = vm.cpu["topology"];
     QString vmCpuModel = vm.cpu["model"];
     QString vmMaxCPUs = vm.cpu["max"];
@@ -637,23 +637,14 @@ VMachine VmInfoWidget::getData(){
     vm.title = qobject_cast<QTextEdit*>(m_colBWidgets[0])->toPlainText();
     vm.description = qobject_cast<QTextEdit*>(m_colBWidgets[1])->toPlainText();
     vm.uuid = qobject_cast<QLabel*>(m_colBWidgets[2])->text();
-    vm.name = qobject_cast<QLabel*>(m_colBWidgets[3])->text();
+    vm.name = getVmName();
     vm.cpu["topology"] = qobject_cast<QLabel*>(m_colBWidgets[4])->text();
     vm.cpu["model"] = qobject_cast<QLabel*>(m_colBWidgets[4])
                                                  ->property("model").toString();
     vm.cpu["max"] = qobject_cast<QLabel*>(m_colBWidgets[4])
                                                    ->property("max").toString();
     vm.ram = qobject_cast<QLabel*>(m_colBWidgets[5])->text();
-    // *** Полное название гостевой операционной системы либо в ToolTip, *** //
-    //     либо в тексте видежта, если весь туда помещается                  //
-    QLabel* osNameLabel = qobject_cast<QLabel*>(m_colBWidgets[6]);
-
-    if (!osNameLabel->toolTip().isEmpty()){
-        vm.os.name = osNameLabel->toolTip();
-    }
-    else {
-        vm.os.name = osNameLabel->text();
-    }
+    vm.os.name = getVmOS();
 
     return vm;
 }
@@ -675,10 +666,6 @@ void VmInfoWidget::setDescription(const QString& newDescription){
     }
 }
 
-void VmInfoWidget::setName(const QString& newName){
-    qobject_cast<QLabel*>(m_colBWidgets[3])->setText(newName);
-}
-
 void VmInfoWidget::setCpuTopology(const QString& newCpuTopology){
     qobject_cast<QLabel*>(m_colBWidgets[4])->setText(newCpuTopology);
 }
@@ -697,38 +684,49 @@ void VmInfoWidget::setRam(const QString& newRam){
 }
 
 void VmInfoWidget::setOsName(const QString& newOsName){
+    QLabel* osNameLabel = qobject_cast<QLabel*>(m_colBWidgets[6]);
+    this->setTextToLabel(osNameLabel, newOsName);
+}
+
+void VmInfoWidget::setVmName(const QString& vmName){
+    QLabel* osVmLabel = qobject_cast<QLabel*>(m_colBWidgets[3]);
+    this->setTextToLabel(osVmLabel, vmName);
+}
+
+void VmInfoWidget::setTextToLabel(QLabel* oLabel, const QString& inText){
     // *** Расчёт максимальной ширины текста в пикселях следующий: *** //
     //     maxTextWidth = uuidWidth - 2*fontSize т.е.,                 //
     //     максимальная ширина текста равна ширине uuid ВМ,            //
     //     (максимально длинная строка) минус ширина двух символов     //
+
     QLabel* uuidLabel = qobject_cast<QLabel*>(m_colBWidgets[2]);
-    QLabel* osNameLabel = qobject_cast<QLabel*>(m_colBWidgets[6]);
-    QFont infoFont = osNameLabel->font();
+
+    QFont infoFont = oLabel->font();
 
     uint uuidWidth = uuidLabel->width();
     uint fontSize = infoFont.pointSize();
     uint maxTextWidth = uuidWidth - 2*fontSize;
 
-    QFontMetrics fm(osNameLabel->font());
-    int newOsNameWidth = fm.boundingRect(newOsName).width();
+    QFontMetrics fm(oLabel->font());
+    int inTextWidth = fm.boundingRect(inText).width();
 
-    QString osName = newOsName;
-    if (newOsNameWidth > maxTextWidth){
+    QString oText = inText;
+    if (inTextWidth > maxTextWidth){
         // *** В QLabel название сокращённое, а в tooltip'е - полное *** //
-        osNameLabel->setToolTip(newOsName);
+        oLabel->setToolTip(inText);
 
         // *** elidedText() возвращает строку, которая гарантированно *** //
         //     влезет в заданную ширину, а сли не влезает — добавляет ... //
-        osName = fm.elidedText( newOsName, Qt::ElideRight, maxTextWidth);
+        oText = fm.elidedText( inText, Qt::ElideRight, maxTextWidth);
     }
     else {
         // *** Если нет необходимости сокращать название, tooltip выкл. *** //
-        if (!osNameLabel->toolTip().isEmpty()){
-            osNameLabel->setToolTip(QString());
+        if (!oLabel->toolTip().isEmpty()){
+            oLabel->setToolTip(QString());
         }
     }
 
-    osNameLabel->setText(osName);
+    oLabel->setText(oText);
 }
 
 void VmInfoWidget::setReadOnly(bool roState){
@@ -935,22 +933,35 @@ void VmInfoWidget::setEditBtnStyle(QToolButton* editBtn){
     editBtn->setFont(btnFont);
 }
 
-QString VmInfoWidget::getVmOS(){
+QString VmInfoWidget::getFullTextFromLabel(QLabel* label){
     QString res;
-    QWidget* widget = m_colBWidgets[6];
-    QLabel* guestOsLabel = qobject_cast<QLabel*>(widget);
 
     // *** При необходимости сокращеня названия в toolTip содержится *** //
     //     его полная версия, без сокращения toolTip пустой.             //
-    if (guestOsLabel->toolTip().size() > 0){
-        res = guestOsLabel->toolTip();
+    if (label->toolTip().size() > 0){
+        res = label->toolTip();
     }
     else {
-        res = guestOsLabel->text();
+        res = label->text();
     }
 
     return res;
 }
+
+QString VmInfoWidget::getVmOS(){
+    QWidget* widget = m_colBWidgets[6];
+    QLabel* guestOsLabel = qobject_cast<QLabel*>(widget);
+
+    return getFullTextFromLabel(guestOsLabel);
+}
+
+QString VmInfoWidget::getVmName(){
+    QWidget* widget = m_colBWidgets[3];
+    QLabel* vmNameLabel = qobject_cast<QLabel*>(widget);
+
+    return getFullTextFromLabel(vmNameLabel);
+}
+
 
 QString VmInfoWidget::getVmCpuTopology(){
     QString cpuTopology;

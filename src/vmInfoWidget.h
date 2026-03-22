@@ -49,6 +49,7 @@ class VmInfoWidget : public QFrame {
 
         void setRam(const QString&);
         void setOsName(const QString&);
+        void setVmName(const QString&);
         void setReadOnly(bool);
         void clearData();
 
@@ -131,10 +132,15 @@ class VmInfoWidget : public QFrame {
 
         void setEditBtnStyle(QToolButton*);
 
+        QString getVmName();
         QString getVmOS();
         QString getVmCpuTopology();
         QString getVmCpuModel();
         QString getVmMaxCPUs();
+
+        void setTextToLabel(QLabel*, const QString&);
+        QString getFullTextFromLabel(QLabel*);
+
 };
 
 #endif

@@ -1469,7 +1469,7 @@ void QAppWindow::onNewVmInfoReady(const VMachine& vmNew){
     // при переключении между виртуальными машинами.
     // Наличие uuid не позволит испортить записи соседних машин
     if (vmNew.name != vmOld.name && vmNew.uuid == vmOld.uuid){
-        m_vmInfoWidget->setName(vmNew.name);
+        m_vmInfoWidget->setVmName(vmNew.name);
     }
 
     if (vmNew.title != vmOld.title && vmNew.uuid == vmOld.uuid){
@@ -1488,7 +1488,6 @@ void QAppWindow::onNewVmInfoReady(const VMachine& vmNew){
     if (vmNew.cpu["model"] != vmOld.cpu["model"] && vmNew.uuid == vmOld.uuid){
         m_vmInfoWidget->setCpuModel(vmNew.cpu["model"]);
     }
-    // qDebug() << "[appWindow.cpp] vmOld.cpu[\"model\"]" << vmOld.cpu["model"];
 
     if (vmNew.cpu["max"] != vmOld.cpu["max"] && vmNew.uuid == vmOld.uuid){
         m_vmInfoWidget->setMaxCPUs(vmNew.cpu["max"]);
