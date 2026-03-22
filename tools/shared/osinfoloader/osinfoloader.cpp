@@ -1,6 +1,7 @@
 // Begin osinfoloader.cpp
 
 #include "osinfoloader.h"
+#include <QTimer>
 
 OsInfoLoader::OsInfoLoader(QObject* parent){
 }
@@ -80,14 +81,40 @@ QString OsInfoLoader::getLatestReleaseUrl(){
 
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+
+    // ***  Таймер роверки "request timeout". Без проверки не отследить,  *** //
+    //      например, проблем с маршрутом к сайту, соединение уйдёт в никуда  //
+    QTimer httpTimer;
+    httpTimer.setSingleShot(true);
+    bool httpIsTimeout = false;
+
+    QObject::connect(&httpTimer, &QTimer::timeout, this,
+            [&]() {
+                    httpIsTimeout = true;
+                    reply->abort();
+                    loop.quit();
+            });
+
+    httpTimer.start(3000);
     loop.exec();
 
-    // *** Проверка на возврат ошибки *** //
+    // *** Проверка таймаута *** //
+    if (httpIsTimeout ) {
+        qDebug() << "[EE] [getLatestReleaseUrl] Network error: "
+                                                          "\"Request timeout\"";
+        return QString();
+    }
+
+    // *** Проверка на возврат сетевых ошибок *** //
     if (reply->error() != QNetworkReply::NoError){
         qDebug() << "[EE] [getLatestReleaseUrl] Network error:"
                                                         << reply->errorString();
         reply->deleteLater();
         return QString();
+    }
+    else {
+        // *** Если ошибок нет, необходимо отключить таймер Http timeout *** //
+        httpTimer.stop();
     }
 
     // *** Ошибок нет, получен корректный ответ, можно парсить *** //
