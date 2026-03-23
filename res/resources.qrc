@@ -8,6 +8,7 @@
         <file>btn-app-exit.png</file>
         <file>btn-vm-start.svg</file>
         <file>btn-vm-pause.svg</file>
+        <file>btn-vm-resume.svg</file>
         <file>btn-vm-stop.svg</file>
         <file>btn-vm-open.png</file>
         <file>vm-status-loading.svg</file>

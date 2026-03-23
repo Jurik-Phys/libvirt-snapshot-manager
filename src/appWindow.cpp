@@ -1178,13 +1178,30 @@ void QAppWindow::btnManagePause(){
         m_pauseBtn->setEnabled(true);
         if (m_vmList[m_selectedVmIndex].state == "paused"){
             m_pauseBtn->setText("Resume");
+            QIcon resumeBtnIcon(":/btn-vm-resume.svg");
+            m_pauseBtn->setIcon(resumeBtnIcon);
+            m_pauseBtn->setIconSize(QSize(48,48));
         }
         else {
             m_pauseBtn->setText("Pause");
+            QIcon pauseBtnIcon(":/btn-vm-pause.svg");
+            m_pauseBtn->setIcon(pauseBtnIcon);
+            m_pauseBtn->setIconSize(QSize(48,48));
         }
     }
     else {
         m_pauseBtn->setEnabled(false);
+        // *** Состояние кнопки по умолчанию: "Pause"/"btn-vm-pause.svg" *** //
+        //     Срабатывает при переходе с VM в состоянии "Resume" на,        //
+        //     например, выключенную VM. Если не отработать этот момент,     //
+        //     то у выключенной VM, да, состояние изменится на выкючено,     //
+        //     но текст и иконка останутся "Resume style"                    //
+        if (m_pauseBtn->text() != "Pause"){
+            m_pauseBtn->setText("Pause");
+            QIcon pauseBtnIcon(":/btn-vm-pause.svg");
+            m_pauseBtn->setIcon(pauseBtnIcon);
+            m_pauseBtn->setIconSize(QSize(48,48));
+        }
     }
 }
 
