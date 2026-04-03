@@ -84,7 +84,7 @@ DialogAboutApp::DialogAboutApp(QWidget* parent) : QDialog(parent){
         </div>
     </p>
     <p style="margin-top: 1.2em;" >
-       <b>License:</b> <a href="https://www.gnu.org/licenses/gpl-3.0.html"
+       <b>License</b> <a href="https://www.gnu.org/licenses/gpl-3.0.html"
             style="text-decoration: none;"
                              > GNU General Public License v3.0 (GPL-3.0)</a></p>
     )");
