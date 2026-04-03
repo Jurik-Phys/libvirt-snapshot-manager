@@ -71,22 +71,29 @@ DialogAboutApp::DialogAboutApp(QWidget* parent) : QDialog(parent){
     <p>
         Built with Qt and powered by virsh and qemu-img.
     </p>
-    <p style="margin-top: 1.2em;" >
-        <b>Version </b>%2
+    <p style="margin-top: 1.2em;">
+        <div><b>Version</b></div>
+        <div style="margin-left: 1em;">
+            <div>%2</div>
+        </div>
     </p>
     <p style="margin-top: 1.2em;">
         <div><b>Author</b></div>
-            <div style="margin-left: 1em;">
+        <div style="margin-left: 1em;">
             <div>Name: %3</div>
-            <div>Mail: <a href="mailto:%4"
+            <div>Email: <a href="mailto:%4"
                                      style="text-decoration: none;">%4</a></div>
-            <div>Site: <a href="%5" style="text-decoration: none;">%5</a></div>
+            <div>Website: <a href="%5" style="text-decoration: none;">%5</a></div>
         </div>
     </p>
     <p style="margin-top: 1.2em;" >
-       <b>License</b> <a href="https://www.gnu.org/licenses/gpl-3.0.html"
-            style="text-decoration: none;"
-                             > GNU General Public License v3.0 (GPL-3.0)</a></p>
+        <div><b>License</b></div>
+        <div style="margin-left: 1em;">
+            <div><a href="https://www.gnu.org/licenses/gpl-3.0.html"
+                style="text-decoration: none;"
+                           > GNU General Public License v3.0 (GPL-3.0)</a></div>
+        </div>
+    </p>
     )");
     descriptionText = descriptionText.arg(AppInfo::appBaseName());
     descriptionText = descriptionText.arg(AppInfo::appFullVersion());
