@@ -16,6 +16,8 @@
         <file>vm-status-play.svg</file>
         <file>vm-status-stop.svg</file>
         <file>app-logo.svg</file>
+        <file>third-party-logo.png</file>
+        <file>third-party-logo-75x75.png</file>
         <file>vmInfo-del-drive.svg</file>
         <file>vmInfo-new-drive.svg</file>
         <file>vmInfo-set-vm-ram.svg</file>

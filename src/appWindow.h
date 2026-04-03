@@ -5,7 +5,7 @@
 
 #include <QApplication>
 #include <QStyleFactory>
-#include <QWidget>
+#include <QMainWindow>
 #include <QFrame>
 #include <QLabel>
 #include <QMessageBox>
@@ -23,8 +23,9 @@
 #include "vmInfoWidget.h"
 #include <QHeaderView>
 #include "treeLinesStyle.h"
+#include "appInfo.h"
 
-class QAppWindow : public QWidget {
+class QAppWindow : public QMainWindow {
 
     Q_OBJECT
 
@@ -62,7 +63,7 @@ class QAppWindow : public QWidget {
 
     private:
         const int m_appWindowWidth  = 945;
-        const int m_appWindowHeight = 912;
+        const int m_appWindowHeight = 924;
         const int m_headFrameHeight = 90;
         const int m_infoFrameHeight = 328;
 
@@ -102,6 +103,7 @@ class QAppWindow : public QWidget {
         QMenu*  m_onlyForceStopBtnMenu;
         QList<QAction*> m_defaulActionList;
 
+        void setMenuBar();
         void setVmBtnFrame();
         void setVmFrame();
         void setVmInfoFrame();

@@ -1,8 +1,15 @@
 // Begin appWindow.cpp
 
+#include <QCoreApplication>
+#include <QMenuBar>
 #include "appWindow.h"
+#include "dialogAboutApp.h"
+#include "dialogAboutThirdParty.h"
 
-QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
+QAppWindow::QAppWindow(QWidget *parent) : QMainWindow(parent){
+
+    QCoreApplication::setApplicationName(AppInfo::appBaseName());
+    QCoreApplication::setApplicationVersion(AppInfo::appBaseVersion());
 
     if (!this->checkExternalVmUtilities()){
         throw std::runtime_error("External utilities failure");
@@ -12,9 +19,22 @@ QAppWindow::QAppWindow(QWidget *parent) : QWidget(parent){
         throw std::runtime_error("Local hypervisor connection failed");
     }
     this->resize(m_appWindowWidth, m_appWindowHeight);
-    this->setWindowTitle("Graphical Manager for External Snapshots (libvirt)");
+    this->setWindowTitle(AppInfo::appFullName()
+                                          + " - v" + AppInfo::appBaseVersion());
+    this->setMenuBar();
 
-    QHBoxLayout* hAppLayout = new QHBoxLayout(this);
+    // *** Использование QMainWindow предполагает определённую структуру  *** //
+    //     /MenuBar/ /ToolBar/ /Central Widget/ /StatusBar/. Layout должен    //
+    //     быть внутри Central Widget, установить layout в QMainWindow нельзя //
+
+    QWidget* central = new QWidget(this);
+    setCentralWidget(central);
+
+    QHBoxLayout* hAppLayout = new QHBoxLayout(central);
+
+    QMargins hAppLayoutMargins = hAppLayout->contentsMargins();
+    hAppLayoutMargins.setTop(hAppLayout->spacing());
+    hAppLayout->setContentsMargins(hAppLayoutMargins);
 
     m_vLColumnLayout = new QVBoxLayout();
     m_vRColumnLayout = new QVBoxLayout();
@@ -350,10 +370,17 @@ void QAppWindow::setSnapBtnFrame(){
     exitBtn->setIconSize(QSize(48,48));
     QObject::connect(exitBtn, &QToolButton::clicked, this,&QAppWindow::appExit);
 
+    QLabel* appBaseName = new QLabel();
+    appBaseName->setText(AppInfo::appBaseName());
+    appBaseName->setWordWrap(true);
+    appBaseName->setAlignment(Qt::AlignCenter);
+
     snapBtnFrameHLayout->addWidget(m_gotoBtn);
     snapBtnFrameHLayout->addWidget(m_deleteBtn);
     snapBtnFrameHLayout->addWidget(vLine);
     snapBtnFrameHLayout->addWidget(m_takeSnapBtn);
+    snapBtnFrameHLayout->addStretch();
+    snapBtnFrameHLayout->addWidget(appBaseName);
     snapBtnFrameHLayout->addStretch();
     snapBtnFrameHLayout->addWidget(exitBtn);
 
@@ -1718,6 +1745,44 @@ int QAppWindow::getSnapImagesId(const QString& imageFullName){
     }
 
     return res;
+}
+
+void QAppWindow::setMenuBar(){
+    // *** File *** //
+    QMenu* fileMenu = menuBar()->addMenu("File");
+    QAction* exitAction = fileMenu->addAction("Exit");
+    exitAction->setShortcut(QKeySequence::Quit);
+    QIcon exitActionIcon(":/btn-app-exit.png");
+    exitAction->setIcon(exitActionIcon);
+    connect(exitAction, &QAction::triggered, this, &QWidget::close);
+
+    // *** Help *** //
+    QMenu* helpMenu = menuBar()->addMenu("Help");
+    QAction* aboutApp = helpMenu->addAction("About Libvirt Snapshot Manager");
+    QIcon aboutAppIcon(":/app-logo.svg");
+    aboutApp->setIcon(aboutAppIcon);
+    QObject::connect(aboutApp, &QAction::triggered, this,
+            [&](){
+                DialogAboutApp aboutAppDialog(this);
+                aboutAppDialog.exec();
+            });
+
+    QAction* aboutOther = helpMenu->addAction("About Third-Party Components");
+    QIcon aboutOtherIcon(":/third-party-logo.png");
+    aboutOther->setIcon(aboutOtherIcon);
+    QObject::connect(aboutOther, &QAction::triggered, this,
+            [&](){
+                DialogAboutThirdParty aboutThirdParty(this);
+                aboutThirdParty.exec();
+            });
+
+    QAction* aboutQt = helpMenu->addAction("About Qt");
+    QIcon aboutQtIcon(style()->standardIcon(QStyle::SP_TitleBarMenuButton));
+    aboutQt->setIcon(aboutQtIcon);
+    QObject::connect(aboutQt, &QAction::triggered, this,
+            [&](){
+                QMessageBox::aboutQt(this);
+            });
 }
 
 // End appWindow.cpp
