@@ -629,6 +629,10 @@ QVector<VmImageRawInfo> VmDataCollector::loadVmImagesRawInfoOverQEMU(
         return vmImagesRawInfo;
     }
 
+    QStringList mntImgsNamePattern = getMountImageNamePatterns(mntImgs);
+    QStringList basePathVmFiles = filterFilesByImageNamePatterns(basePathFiles,
+                                                            mntImgsNamePattern);
+
     // В 'snapshotsDir' символические ссылки отбрасыаются:
     // - симмволическая ссылка может вести в другой каталог, что вызовет "кашу"
     //   снапшотов;
@@ -637,8 +641,8 @@ QVector<VmImageRawInfo> VmDataCollector::loadVmImagesRawInfoOverQEMU(
     // Символические ссылки необходимо учитывать при определении 'mountStorage'
 
     // Загружаем информацию о qcow2 файлах из каталога цепочки сохранения
-    for (int i = 0, vmDiskCount = -1; i < basePathFiles.size(); ++i){
-        QString fileFullName = snapshotsDir + "/" + basePathFiles[i];
+    for (int i = 0, vmDiskCount = -1; i < basePathVmFiles.size(); ++i){
+        QString fileFullName = snapshotsDir + "/" + basePathVmFiles[i];
         // *** mntImgs.contains(fileFullName) отрабатывет случай, когда *** //
         //     в виртуальной машине файлы недоступны для чтения текущему    //
         //     пользователю, например, при первом запуске программы         //
@@ -660,6 +664,40 @@ QVector<VmImageRawInfo> VmDataCollector::loadVmImagesRawInfoOverQEMU(
         }
     }
     return vmImagesRawInfo;
+}
+
+QStringList VmDataCollector::getMountImageNamePatterns(const QStringList& imgs){
+    QStringList result;
+    for (int i = 0; i < imgs.size(); ++i){
+        result.push_back(getFileNamePattern(imgs[i]));
+    }
+
+    return result;
+}
+
+QString VmDataCollector::getFileNamePattern(const QString& fileFullName){
+    QFileInfo f(fileFullName);
+    QString baseFileName = f.completeBaseName();
+    baseFileName.remove(QRegularExpression("-id-\\d+"));
+
+    return baseFileName;
+}
+
+QStringList VmDataCollector::filterFilesByImageNamePatterns(
+                                         const QStringList& basePathFiles,
+                                         const QStringList& mntImgsNamePattern){
+    QStringList basePathVmFiles;
+
+    for (int i = 0; i < basePathFiles.size(); ++i ){
+        for (int j = 0; j < mntImgsNamePattern.size(); ++j){
+            if (basePathFiles[i].contains(mntImgsNamePattern[j])){
+                basePathVmFiles.push_back(basePathFiles[i]);
+                break;
+            }
+        }
+    }
+
+    return basePathVmFiles;
 }
 
 QVector<VmImageRawInfo> VmDataCollector::rmExtBackingInfo(

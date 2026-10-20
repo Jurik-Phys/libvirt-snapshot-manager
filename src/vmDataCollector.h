@@ -98,6 +98,11 @@ class VmDataCollector : public QObject {
         QString getRootVirtSize(const QString& fileFullName);
         QVector<VmImageRawInfo> m_vmImagesRawInfo;
         int getFileNameId(const QString& imgFileName);
+        QString getFileNamePattern(const QString& fileFullName);
+        QStringList getMountImageNamePatterns(const QStringList& mountStorages);
+        QStringList filterFilesByImageNamePatterns(
+                                         const QStringList& basePathFiles,
+                                         const QStringList& mntImgsNamePattern);
         bool checkExtBackChainFiles(const QVector<VmImageRawInfo>& imgsRawInfo,
                                                     const QString& backingFile);
         bool checkBackingFile(const QVector<VmImageRawInfo>& imgsRawInfo,
