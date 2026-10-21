@@ -279,7 +279,7 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
     bool isOkLoadRawInfo = true;
     for ( int i = 0; i < vm.snapshotsDirs.size(); ++i ){
         QString dir = vm.snapshotsDirs[i];
-        vmImagesRawInfo += loadVmImagesRawInfoOverQEMU(dir, vm.mountStorages,
+        loadVmImagesRawInfoOverQEMU(vmImagesRawInfo, dir, vm.mountStorages,
                                                               &isOkLoadRawInfo);
         // *** Прекращение работы при первой же ошибке получения данных *** //
         if (!isOkLoadRawInfo){
@@ -309,6 +309,8 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
     // > Далее. Реализовать добавление/удаление дисков виртуальной //
     //   машины из программы с синхронизацией числа дисков по всем //
     //   точкам сохранения (добавление/удаление backing фалов)     //
+    //                                                             //
+    // > Добавление/удаление дисков виртуальной машины реализовано //
     // *********************************************************** //
 
     QStringList extMountedStorages;
@@ -510,6 +512,30 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
                     QString& imageFullName = m_vmImagesRawInfo[i].imageFullName;
 
                     if (parentImage == backFullName ){
+                        // *** Для случая произвольной сортировки файлов *** //
+                        // условие того, что "backing file" рассматриваемого //
+                        // файла совпадает с файлом родителя недостаточно,   //
+                        // В данный момент может рассматриваться файл из     //
+                        // другого узла сохранения, но с тем же родителем.   //
+                        // Ошибочное включение его в текущий узел будет для  //
+                        // программы фатальным шагом. В связи с этим будет   //
+                        // ещё одна проверка на совпадение id узла, которое  //
+                        // зафиксировано в названиях файла у текущего и уже  //
+                        // существующего первого файла в imagesFullNames.    //
+                        // ************************************************* //
+
+                        if (node.imagesFullNames.size() > 1){
+                            QString nodeFileName = node.imagesFullNames.first();
+                            int currentFileId = getFileNameId(imageFullName);
+                            int nodeFileId = getFileNameId(nodeFileName);
+
+                            // Если файл из другого т.е., с дргуим id        //
+                            // в названии файла, то пропуск текущей итерации //
+                            if (currentFileId != nodeFileId){
+                                continue;
+                            }
+                        }
+
                         // Фиксируем некоторые параметры узла цепочки снапшотов
                         node.id = id;
                         node.parentId = parentId;
@@ -609,11 +635,11 @@ bool VmDataCollector::isVMachineImage(const QString& imageFullName){
     return vmImage;
 }
 
-QVector<VmImageRawInfo> VmDataCollector::loadVmImagesRawInfoOverQEMU(
+void VmDataCollector::loadVmImagesRawInfoOverQEMU(
+                                       QVector<VmImageRawInfo>& vmImagesRawInfo,
                                                     const QString& snapshotsDir,
                                                     const QStringList& mntImgs,
                                                          bool* isOkLoadRawInfo){
-    QVector<VmImageRawInfo> vmImagesRawInfo;
 
     // Получение списка всех файлов из каталога цепочки сохранения состояний
     // /* только имена файлов */
@@ -626,12 +652,13 @@ QVector<VmImageRawInfo> VmDataCollector::loadVmImagesRawInfoOverQEMU(
         emit errorMsg("Directory access error",
                  "Please check your access to the directory:\n" + snapshotsDir);
         *isOkLoadRawInfo = false;
-        return vmImagesRawInfo;
+        return;
     }
 
-    QStringList mntImgsNamePattern = getMountImageNamePatterns(mntImgs);
+    QStringList mntImgsNamePatterns = getMountImageNamePatterns(mntImgs);
     QStringList basePathVmFiles = filterFilesByImageNamePatterns(basePathFiles,
-                                                            mntImgsNamePattern);
+                                                           mntImgsNamePatterns);
+    basePathVmFiles = sortVmFilesByCreateTime(snapshotsDir, basePathVmFiles);
 
     // В 'snapshotsDir' символические ссылки отбрасыаются:
     // - симмволическая ссылка может вести в другой каталог, что вызовет "кашу"
@@ -642,7 +669,7 @@ QVector<VmImageRawInfo> VmDataCollector::loadVmImagesRawInfoOverQEMU(
 
     // Загружаем информацию о qcow2 файлах из каталога цепочки сохранения
     for (int i = 0, vmDiskCount = -1; i < basePathVmFiles.size(); ++i){
-        QString fileFullName = snapshotsDir + "/" + basePathVmFiles[i];
+        QString fileFullName = getFileFullName(snapshotsDir,basePathVmFiles[i]);
         // *** mntImgs.contains(fileFullName) отрабатывет случай, когда *** //
         //     в виртуальной машине файлы недоступны для чтения текущему    //
         //     пользователю, например, при первом запуске программы         //
@@ -663,7 +690,6 @@ QVector<VmImageRawInfo> VmDataCollector::loadVmImagesRawInfoOverQEMU(
             vmImagesRawInfo.push_back(vmImageRawInfo);
         }
     }
-    return vmImagesRawInfo;
 }
 
 QStringList VmDataCollector::getMountImageNamePatterns(const QStringList& imgs){
@@ -698,6 +724,70 @@ QStringList VmDataCollector::filterFilesByImageNamePatterns(
     }
 
     return basePathVmFiles;
+}
+
+QStringList VmDataCollector::sortVmFilesByCreateTime(
+                                                    const QString& snapshotsDir,
+                                                    const QStringList& vmFiles){
+    struct FileInfo {
+        QDateTime creationTime;
+        QString   fullName;
+    };
+
+    QStringList sortVmFilesByCreateTime;
+    QStringList filesFName;
+
+    for (int i = 0; i < vmFiles.size(); ++i){
+        filesFName.push_back(getFileFullName(snapshotsDir, vmFiles[i]));
+    }
+
+    QVector<QDateTime> vmFilesCreationTime = getVmFilesCreationTime(filesFName);
+
+    QVector<FileInfo> files;
+    for (int i = 0; i < vmFiles.size(); ++i){
+        FileInfo file;
+        file.creationTime = vmFilesCreationTime[i];
+        file.fullName = vmFiles[i];
+        files.push_back(file);
+    }
+
+    std::sort(files.begin(), files.end(),
+                                    [](const FileInfo& a, const FileInfo& b){
+                                        return a.creationTime < b.creationTime;
+                                    });
+
+    for (auto it = files.rbegin(); it != files.rend(); ++it){
+        sortVmFilesByCreateTime.push_back((*it).fullName);
+    }
+
+    return sortVmFilesByCreateTime;
+}
+
+QVector<QDateTime> VmDataCollector::getVmFilesCreationTime(const QStringList&
+                                                                        vFiles){
+    QVector<QDateTime> vmFilesCreationTime;
+
+    for (int i = 0; i < vFiles.size(); ++i){
+        QFileInfo fInfo(vFiles[i]);
+
+        // *** Оказывается, далеко не во всех файловых системах доступна *** //
+        // дата создания файла, при ошибке её получения isValid() ложно.     //
+        // В качестве запасного варианта исползьуется дата модификации, мол, //
+        // работа ведётся преимущественно с файлами на концах backing chain, //
+        // а значит запросы от этих файлов будут максимально информативными, //
+        // что позволит исключить повторные обращения к файлам.              //
+        // ***************************************************************** //
+
+        QDateTime creationTime = fInfo.birthTime();
+
+        if (!creationTime.isValid()){
+            creationTime = fInfo.lastModified();
+        }
+
+        vmFilesCreationTime.push_back(creationTime);
+    }
+
+    return vmFilesCreationTime;
 }
 
 QVector<VmImageRawInfo> VmDataCollector::rmExtBackingInfo(
@@ -1099,6 +1189,11 @@ int VmDataCollector::getFileNameId(const QString& imgFileName){
     }
 
     return id;
+}
+
+QString VmDataCollector::getFileFullName(const QString& basePath,
+                                         const QString& fileName){
+    return basePath + "/" + fileName;
 }
 
 bool VmDataCollector::checkExtBackChainFiles(const QVector<VmImageRawInfo>&

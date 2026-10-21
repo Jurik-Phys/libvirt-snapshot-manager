@@ -87,9 +87,10 @@ class VmDataCollector : public QObject {
         void setSnapChainData(VMachine& vm);
         void setChildrenData(VMachine& vm);
         bool isVMachineImage(const QString& imageFullName);
-        QVector<VmImageRawInfo> loadVmImagesRawInfoOverQEMU(const QString& dir,
-                                               const QStringList& mountStorages,
-                                                         bool* isOkLoadRawInfo);
+        void loadVmImagesRawInfoOverQEMU(QVector<VmImageRawInfo>&,
+                                            const QString& dir,
+                                            const QStringList& mountStorages,
+                                            bool* isOkLoadRawInfo);
         QVector<VmImageRawInfo> rmExtBackingInfo(const QVector<VmImageRawInfo>&,
                                               const QStringList& mountStorages);
         QString getBackFullNameQEMU(const VmImageRawInfo&);
@@ -98,11 +99,15 @@ class VmDataCollector : public QObject {
         QString getRootVirtSize(const QString& fileFullName);
         QVector<VmImageRawInfo> m_vmImagesRawInfo;
         int getFileNameId(const QString& imgFileName);
+        QString getFileFullName(const QString& basePath, const QString& fName);
         QString getFileNamePattern(const QString& fileFullName);
         QStringList getMountImageNamePatterns(const QStringList& mountStorages);
         QStringList filterFilesByImageNamePatterns(
                                          const QStringList& basePathFiles,
                                          const QStringList& mntImgsNamePattern);
+        QStringList sortVmFilesByCreateTime(const QString& snapshotsDir,
+                                            const QStringList& basePathVmFiles);
+        QVector<QDateTime> getVmFilesCreationTime(const QStringList& vmFiles);
         bool checkExtBackChainFiles(const QVector<VmImageRawInfo>& imgsRawInfo,
                                                     const QString& backingFile);
         bool checkBackingFile(const QVector<VmImageRawInfo>& imgsRawInfo,
