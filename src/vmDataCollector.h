@@ -93,7 +93,14 @@ class VmDataCollector : public QObject {
                                             bool* isOkLoadRawInfo);
         QVector<VmImageRawInfo> rmExtBackingInfo(const QVector<VmImageRawInfo>&,
                                               const QStringList& mountStorages);
-        QString getBackFullNameQEMU(const VmImageRawInfo&);
+        QString getBackFullNameQEMU(const VmImageRawInfo&,
+                                   QHash<QString, QString>& backFullNamesCache);
+        void updateBackFullNamesCache(const QByteArray& qemuImgOut,
+                                   QHash<QString, QString>& backFullNamesCache);
+        QByteArray getQemuImgBackingChain(const QString& fullFileName);
+        QString getBackFullNameFromQemuImgChain(const QByteArray& qemuImgOut);
+        QString getBackFullNameFromCache(const VmImageRawInfo&,
+                                                      QHash<QString, QString>&);
         QString getBackFullNameFast(const QString& fullFileName);
         QString getRootFullName(const QString& fileFullName);
         QString getRootVirtSize(const QString& fileFullName);
@@ -115,6 +122,7 @@ class VmDataCollector : public QObject {
         bool checkNodeFilesCount(const QVector<VmImageRawInfo>& imgsRawInfo,
                                 const QSet<int>& idSet,
                                 const QStringList& mountStorages);
+        bool checkImageExistsAndReadble(const QString& fileFullName);
         QWidget* parentWindow;
         QTimer*  m_getListTimer;
         QTimer*  m_getActualVmGeneralInfoTimer;

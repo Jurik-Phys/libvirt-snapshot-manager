@@ -667,9 +667,40 @@ void VmDataCollector::loadVmImagesRawInfoOverQEMU(
     //   то возникнет очевидный дубль.
     // Символические ссылки необходимо учитывать при определении 'mountStorage'
 
+    // *** Чтение данных из *.qcow2 через qemu-img - дорогая операция *** //
+    // поэтому используется связка из "--backing-chain" и кеша запросов   //
+    // ****************************************************************** //
+    QHash<QString, QString> backFullNamesCache;
+    backFullNamesCache.reserve(basePathVmFiles.size());
+
     // Загружаем информацию о qcow2 файлах из каталога цепочки сохранения
+    int progressCounter, oldProgressCounter = 0;
     for (int i = 0, vmDiskCount = -1; i < basePathVmFiles.size(); ++i){
+        // *** В случае большого числа примонтированных файлов (n), *** //
+        // а тажкже большого числа узлов в дереве снапшотов (m), число  //
+        // используемых файлов возрастает до n*m, что может занять      //
+        // ощутимое время при чтении данных с диска. Для удобства       //
+        // вводится индикатор построения дерева снапшотов (по факту     //
+        // индикатор чтения информации из qcow2 файлов (в процентах).   //
+        // ************************************************************ //
+        progressCounter = 100 * (i + 1) / basePathVmFiles.size();
+        if (oldProgressCounter != progressCounter){
+            qDebug() << progressCounter;
+            oldProgressCounter = progressCounter;
+        }
+
         QString fileFullName = getFileFullName(snapshotsDir,basePathVmFiles[i]);
+
+        // *** Проверка на возможность чтения файла c диска *** //
+        if (!checkImageExistsAndReadble(fileFullName)){
+            emit errorMsg("File access error",
+                     "Please check your access to the file:\n"
+                        + QString(" - File name: ") + basePathVmFiles[i] + "\n"
+                        + QString(" - Base path: ") + snapshotsDir);
+            *isOkLoadRawInfo = false;
+            return;
+        }
+
         // *** mntImgs.contains(fileFullName) отрабатывет случай, когда *** //
         //     в виртуальной машине файлы недоступны для чтения текущему    //
         //     пользователю, например, при первом запуске программы         //
@@ -678,7 +709,8 @@ void VmDataCollector::loadVmImagesRawInfoOverQEMU(
             VmImageRawInfo vmImageRawInfo;
             vmImageRawInfo.imageBasePath = snapshotsDir;
             vmImageRawInfo.imageFullName = fileFullName;
-            vmImageRawInfo.backFullName = getBackFullNameQEMU(vmImageRawInfo);
+            vmImageRawInfo.backFullName = getBackFullNameQEMU(vmImageRawInfo,
+                                                            backFullNamesCache);
             // backFullName может быть символической ссылкой на реальный файл.
             // необходимо это проверить и разрешить путь при необходиомсти.
             // Предполагается, что реальный файл находится в этом же каталоге
@@ -882,45 +914,122 @@ QVector<VmImageRawInfo> VmDataCollector::rmExtBackingInfo(
     return res;
 }
 
-QString VmDataCollector::getBackFullNameQEMU(const VmImageRawInfo& vmImgRawInf){
+QString VmDataCollector::getBackFullNameQEMU(const VmImageRawInfo& vmImgRawInf,
+                                   QHash<QString, QString>& backFullNamesCache){
     QString backingFile = "-1";
 
-    QString baseDir = QFileInfo(vmImgRawInf.imageFullName).absolutePath();
+    QString cacheBackingFile;
+    cacheBackingFile = getBackFullNameFromCache(vmImgRawInf, backFullNamesCache);
 
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("LANG", "C");
+    QString fname = QFileInfo(vmImgRawInf.imageFullName).fileName();
+    if (!cacheBackingFile.isEmpty()){
+        backingFile = cacheBackingFile;
+    }
+    else {
+        // *** qemu-img info -U --backing-chain --output=json <f.qcow2> *** //
+        QByteArray qemuImgOut;
+        qemuImgOut = getQemuImgBackingChain(vmImgRawInf.imageFullName);
+        backingFile = getBackFullNameFromQemuImgChain(qemuImgOut);
+
+        // При ошибке парсинга backingFile будет пустым, повторный парсинг
+        // в updateBackFullNamesCache() аналогичным образом не сработает
+        if (!backingFile.isEmpty()){
+            updateBackFullNamesCache(qemuImgOut, backFullNamesCache);
+        }
+    }
+
+    return backingFile;
+}
+
+QByteArray VmDataCollector::getQemuImgBackingChain(const QString& fullFileName){
+    QByteArray qemuImgOut;
 
     QProcess process;
-    process.setProcessEnvironment(env);
     QEventLoop loop;
+
     QObject::connect(&process, &QProcess::finished, &loop, &QEventLoop::quit);
-
     QObject::connect(&process, &QProcess::readyReadStandardOutput,
-        [&](){
-            QString output = process.readAllStandardOutput();
+                            [&](){
+                                qemuImgOut += process.readAllStandardOutput();
+                            });
+    process.start("qemu-img", {"info", "-U", "--backing-chain", "--output=json",
+                                                                 fullFileName});
+    loop.exec(); // qemu-img отработал, весь stdout получен *** //
 
-            if (output.contains("backing file")){
-                QStringList outLines = output.split('\n', Qt::SkipEmptyParts);
-                for (int i = 0; i < outLines.size(); ++i){
-                    QString ln = outLines[i];
-                    if (ln.split(":", Qt::SkipEmptyParts)[0] == "backing file"){
-                        backingFile = ln.split(":", Qt::SkipEmptyParts)[1];
-                        // Надпись "(actual path ... )" у коротких названий есть,
-                        // а у длинных отсутствует и путь выдаётся полный,
-                        // поэтому испольуется "хак", чтобы оба способа работали
-                        backingFile = backingFile
-                                             .split("(", Qt::SkipEmptyParts)[0];
-                        backingFile = backingFile.trimmed();
-                        backingFile = QFileInfo(backingFile).fileName();
-                        backingFile = baseDir + "/" + backingFile;
-                        break;
-                    }
-                }
+    return qemuImgOut;
+}
+
+void VmDataCollector::updateBackFullNamesCache(const QByteArray& qemuImgOut,
+                                   QHash<QString, QString>& backFullNamesCache){
+
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(qemuImgOut, &error);
+
+    if (error.error != QJsonParseError::NoError){
+        qDebug() << "[EE] JSON parse error:" << error.errorString();
+        return;
+    }
+
+    if (!doc.isArray()){
+        qDebug() << "[EE] QEMU output error. Expected JSON array";
+        return;
+    }
+
+    QJsonArray backingChainAray = doc.array();
+
+    for (int i = 0; i < backingChainAray.size(); ++i){
+        QJsonObject fileObj = backingChainAray[i].toObject();
+        // *** Важный момент по поводу формата возвращаемого имени файла *** //
+        //     - qemu-img info -U --backing-chain --output=json \            //
+        //                               /var/lib/libvirt/images/fname.qcow2 //
+        //     - вернёт: "filename": "/var/lib/libvirt/images/fname.qcow2";  //
+        //     - qemu-img info -U --backing-chain --output=json fname.qcow2  //
+        //     - вернёт: "filename": "fname.qcow2";                          //
+        //     Поэтому в кеше будем приводить к fname.qcow2                  //
+        // ***************************************************************** //
+        QString rawKey = fileObj["filename"].toString();
+        QString key = QFileInfo(rawKey).fileName();
+        QString val = fileObj["full-backing-filename"].toString();
+
+        if (!backFullNamesCache.contains(key)){
+            if (val.isEmpty()){
+                val = "-1";
             }
-        });
+            backFullNamesCache.insert(key, val);
+        }
+    }
+}
 
-    process.start("qemu-img", {"info", "-U", vmImgRawInf.imageFullName});
-    loop.exec();
+QString VmDataCollector::getBackFullNameFromCache(const VmImageRawInfo& vmImg,
+                                   QHash<QString, QString>& backFullNamesCache){
+    QString fileName = QFileInfo(vmImg.imageFullName).fileName();
+    return backFullNamesCache.value(fileName);
+}
+
+QString VmDataCollector::getBackFullNameFromQemuImgChain(const QByteArray&
+                                                                    qemuImgOut){
+    QString backingFile = "-1";
+
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(qemuImgOut, &error);
+
+    if (error.error != QJsonParseError::NoError){
+        qDebug() << "[EE] JSON parse error:" << error.errorString();
+        return QString();
+    }
+
+    if (!doc.isArray()){
+        qDebug() << "[EE] QEMU output error. Expected JSON array";
+        return QString();
+    }
+
+    QJsonArray backingChainAray = doc.array();
+    QJsonObject imgInfo = backingChainAray.first().toObject();
+    backingFile = imgInfo["full-backing-filename"].toString();
+
+    if (backingFile.isEmpty()){
+        backingFile = "-1";
+    }
 
     return backingFile;
 }
@@ -1355,6 +1464,16 @@ bool VmDataCollector::checkNodeFilesCount(
         }
     }
     return res;
+}
+
+bool VmDataCollector::checkImageExistsAndReadble(const QString& fileFullName){
+    bool isOk = false;
+
+    QFileInfo fileInfo(fileFullName);
+    if (fileInfo.exists() && fileInfo.isFile() && fileInfo.isReadable()){
+        isOk = true;
+    }
+    return isOk;
 }
 
 void VmDataCollector::process(){
