@@ -522,9 +522,12 @@ void VmDataCollector::setSnapChainData(VMachine& vm){
                         // ещё одна проверка на совпадение id узла, которое  //
                         // зафиксировано в названиях файла у текущего и уже  //
                         // существующего первого файла в imagesFullNames.    //
+                        // Проверка актуальна для случая, когда первый файл  //
+                        // уже был включён в создаваемый узел т.е., истинно  //
+                        // условие "node.imagesFullNames.size() > 0"         //
                         // ************************************************* //
 
-                        if (node.imagesFullNames.size() > 1){
+                        if (node.imagesFullNames.size() > 0){
                             QString nodeFileName = node.imagesFullNames.first();
                             int currentFileId = getFileNameId(imageFullName);
                             int nodeFileId = getFileNameId(nodeFileName);
