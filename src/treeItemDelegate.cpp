@@ -26,19 +26,14 @@ void TreeItemDelegate::paint(QPainter* painter,
     // *** Модификация названий для учёта их типа *** //
     if (node.id != -1){
         if (node.imagesType == "work"){
-            text = ">> " + text + " …";
+            text = QString("▹▹ %1 …").arg(text);
         }
         else {
             if (node.imagesType == "snap"){
-                text = "❄ " + text + " ❄";
+                text = QString("❄ %1 ❄").arg(text);
             } else {
-                if (node.imagesType == "active" && node.parentId == -1){
-                    text = "★★★ You Are Here! ★★★ (" + text + ")";
-                }
-                else {
-                    if (!text.contains("Loading snapshot chain information")){
-                        text = "★★★ You Are Here! ★★★ (" + text + ")";
-                    }
+                if (!text.contains("Loading snapshot chain data")){
+                    text = QString("◈◈ %1 ◈ Active ◈◈").arg(text);
                 }
             }
         }

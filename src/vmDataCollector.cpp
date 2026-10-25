@@ -688,7 +688,7 @@ void VmDataCollector::loadVmImagesRawInfoOverQEMU(
         // ************************************************************ //
         progressCounter = 100 * (i + 1) / basePathVmFiles.size();
         if (oldProgressCounter != progressCounter){
-            qDebug() << progressCounter;
+            emit snapChainDataLoading(progressCounter);
             oldProgressCounter = progressCounter;
         }
 

@@ -12,6 +12,7 @@
 #include <QScrollArea>
 #include <QBoxLayout>
 #include <QToolButton>
+#include <QElapsedTimer>
 #include <QStandardPaths>
 #include "vmWidget.h"
 #include "snapManager.h"
@@ -60,6 +61,7 @@ class QAppWindow : public QMainWindow {
         void showErrorMessage(const QString& title, const QString& message);
         void onVmListReady(const QVector<VMachine> vmList);
         void onNewVmInfoReady(const VMachine&);
+        void onSnapChainDataLoading(int percent);
 
     private:
         const int m_appWindowWidth  = 945;
@@ -80,7 +82,6 @@ class QAppWindow : public QMainWindow {
         QVBoxLayout*  m_vVmLayout;
         QVBoxLayout*  m_vSnapLayout;
         SnapTreeModel* m_snapTreeModel;
-        SnapTreeModel* m_snapTreeLoadingModel;
         SnapTreeView*  m_snapTreeView;
         QVector<VMachine> m_vmList;
         VmInfoWidget* m_vmInfoWidget;

@@ -45,6 +45,7 @@ class SnapTreeModel : public QAbstractItemModel {
         QVariant data(const QModelIndex& index,
                                      int role = Qt::DisplayRole) const override;
         void setSnapData(const QVector<ChainNode>&);
+        void setSnapDataLoading(int percent);
 
         ChainNode getChainNodeByIndex(const QModelIndex& index) const;
         QModelIndex getActiveStateIndex();

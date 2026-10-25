@@ -79,20 +79,16 @@ QAppWindow::QAppWindow(QWidget *parent) : QMainWindow(parent){
 
     getVmListThread->start();
 
-    m_snapTreeModel = new SnapTreeModel();
-    m_snapTreeLoadingModel = new SnapTreeModel();
-    ChainNode loadingNode;
-    loadingNode.id = 1;
-    loadingNode.parentId = -1;
-    loadingNode.name = "Loading snapshot chain information. Please wait…";
-    m_snapTreeLoadingModel->setSnapData({loadingNode});
-
     setVmBtnFrame();
     setVmFrame();
     setVmInfoFrame();
     setSnapBtnFrame();
     setSnapFrame();
     setSnapInfoFrame();
+
+    // *** SnapTreeModel initialize *** //
+    m_snapTreeModel = new SnapTreeModel();
+    m_snapTreeView->setModel(m_snapTreeModel);
 
     QObject::connect(m_vmInfoWidget, &VmInfoWidget::textChangedBegin,
                    m_vmDataCollector, &VmDataCollector::vmGeneralInfoStopTimer);
@@ -624,12 +620,16 @@ void QAppWindow::updSnapTree(){
 
     VMachine activeVm = getActiveVm();
 
-    m_snapTreeView->setModel(m_snapTreeLoadingModel);
+    QElapsedTimer snapDataLoadingTimer;
+    snapDataLoadingTimer.start();
+    m_snapTreeModel->setSnapDataLoading(0);
 
     QThread* thread = new QThread;
     VmDataCollector* vmDataCollector = new VmDataCollector(activeVm, this);
     QObject::connect(vmDataCollector, &VmDataCollector::errorMsg, this,
                                                 &QAppWindow::showErrorMessage);
+    QObject::connect(vmDataCollector, &VmDataCollector::snapChainDataLoading,
+                                     this, &QAppWindow::onSnapChainDataLoading);
     vmDataCollector->moveToThread(thread);
 
     thread->start();
@@ -651,6 +651,21 @@ void QAppWindow::updSnapTree(){
                              this, &QAppWindow::btnManageGoDelOnTreeItemChanged,
                                                           Qt::UniqueConnection);
                 m_snapTreeView->clearSelection();
+
+                // *** Если время перед началом сбора данных и получением *** //
+                // мало, то для улучшения UI добавляется небольшая  задержка, //
+                // на моменте "Loading snapshot chain data … 100%". Данным    //
+                // способом снижается мельтешение дерева снапшотов            //
+                // при загрузке небольших наборах узлов состояний ВМ.         //
+                // Также при ошибке построения дерева снапшотов вылетает окно //
+                // с информацией о случившемся, оно не должно замораживаться  //
+                // ********************************************************** //
+                int delay = 700;
+                if ( snapDataLoadingTimer.elapsed() < delay
+                                                && vmSnapshotsChain.size() > 0){
+                    QThread::msleep(delay - snapDataLoadingTimer.elapsed());
+                }
+
                 m_snapTreeModel->setSnapData(vmSnapshotsChain);
                 m_snapTreeView->expandAll();
                 m_currentVmName = result.name;
@@ -1544,6 +1559,10 @@ void QAppWindow::onNewVmInfoReady(const VMachine& vmNew){
     if (vmNew.os.name != vmOld.os.name && vmNew.uuid == vmOld.uuid){
         m_vmInfoWidget->setOsName(vmNew.os.name);
     }
+}
+
+void QAppWindow::onSnapChainDataLoading(int percent){
+    m_snapTreeModel->setSnapDataLoading(percent);
 }
 
 bool QAppWindow::addNewVmImages(const QStringList& newImageInfo){

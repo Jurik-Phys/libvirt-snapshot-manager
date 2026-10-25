@@ -77,6 +77,7 @@ class VmDataCollector : public QObject {
         void errorMsg(const QString& title, const QString& message);
         void vmListReady(const QVector<VMachine> newVmList);
         void newVmInfoReady(const VMachine&);
+        void snapChainDataLoading(int percent);
 
     private:
         VMachine m_vm;

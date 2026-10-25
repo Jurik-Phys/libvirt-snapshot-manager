@@ -167,6 +167,44 @@ void SnapTreeModel::setSnapData(const QVector<ChainNode>& nodes) {
     m_nodes = nodes;
 }
 
+void SnapTreeModel::setSnapDataLoading(int percent){
+    // *** Если в существующей модели были данные, то они удаляются *** //
+    // и замещаются одной ячейкой с текстом о прогрессе загрузки        //
+    // данных, необходимых для построения дерева снапшотов.             //
+    // **************************************************************** //
+    QString loadingText = "Loading snapshot chain data… ";
+
+    if (m_nodes.isEmpty()){
+        ChainNode loadingNode;
+        loadingNode.id = 1;
+        loadingNode.parentId = -1;
+        loadingNode.name = loadingText + QString("%1%").arg(percent);
+
+        beginResetModel();
+            m_nodes.clear();
+            m_nodes.push_back(loadingNode);
+        endResetModel();
+    }
+    else {
+        if (m_nodes.size() == 1){
+            m_nodes[0].name = loadingText + QString("%1%").arg(percent);
+        } else {
+            ChainNode loadingNode;
+            loadingNode.id = 1;
+            loadingNode.parentId = -1;
+            loadingNode.name = loadingText + QString("%1%").arg(percent);
+
+            beginResetModel();
+                m_nodes.clear();
+                m_nodes.push_back(loadingNode);
+            endResetModel();
+        }
+    }
+
+    QModelIndex index = this->index(0,0);
+    emit dataChanged(index, index, {Qt::DisplayRole});
+}
+
 ChainNode SnapTreeModel::getChainNodeByIndex(const QModelIndex& index) const {
     ChainNode res;
     int nodeId = index.internalId();
@@ -405,7 +443,7 @@ void SnapTreeModel::addNewVmImages(const QStringList& newImageInfo,
             // *** Update m_nodes.imagesFullNames & m_nodes.backFullNames *** //
             QString iFullName = newImageInfo.first();
 
-            // *** Корневой файл может содержать -id-XXXXXX, например,    *** // 
+            // *** Корневой файл может содержать -id-XXXXXX, например,    *** //
             //     после удаления предыдущего корневого снапшота. Поэтому,    //
             //     необходима проверка на наличие id и учёт его наличия.i     //
             QString localIFullName = m_nodes[n].imagesFullNames.first();
