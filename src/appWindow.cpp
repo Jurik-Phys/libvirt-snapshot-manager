@@ -620,6 +620,13 @@ void QAppWindow::updSnapTree(){
 
     VMachine activeVm = getActiveVm();
 
+    // *** Перед длительным построением дерева снапшотов надо обновить *** //
+    // информацию в виджете отображения информации о VM т.к., построение   //
+    // идёт уже для новой (активной в текущий момент) виртуальной машины.  //
+    // Пока строится дерево снапшотов, пользователь уже может оценить      //
+    // параметры VM.                                                       //
+    m_vmInfoWidget->setData(m_vmDataCollector->getVmShortInfo(activeVm.uuid));
+
     QElapsedTimer snapDataLoadingTimer;
     snapDataLoadingTimer.start();
     m_snapTreeModel->setSnapDataLoading(0);
@@ -656,7 +663,7 @@ void QAppWindow::updSnapTree(){
                 // мало, то для улучшения UI добавляется небольшая  задержка, //
                 // на моменте "Loading snapshot chain data … 100%". Данным    //
                 // способом снижается мельтешение дерева снапшотов            //
-                // при загрузке небольших наборах узлов состояний ВМ.         //
+                // при загрузке небольших наборов узлов состояний ВМ.         //
                 // Также при ошибке построения дерева снапшотов вылетает окно //
                 // с информацией о случившемся, оно не должно замораживаться  //
                 // ********************************************************** //
@@ -674,9 +681,6 @@ void QAppWindow::updSnapTree(){
                 m_driveDevNames = result.driveDevNames;
                 m_rootVirtSizes = result.rootVirtSizes;
                 m_currentVmUUID = result.uuid;
-
-                // *** Установка полученных данных в vmWidget *** //
-                m_vmInfoWidget->setData(result);
 
                 // *** Установка данных в глобальный сборщик. *** //
                 //     Необходимо для того, чтобы не собирать     //
