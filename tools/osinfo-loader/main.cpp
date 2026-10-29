@@ -10,10 +10,6 @@ int main(int argc, char** argv){
     OsInfoLoader osInfoLoader;
     QJsonDocument libOsInfoJsonDoc;
 
-//  QString oldUrl;
-//  oldUrl = "https://releases.pagure.org/libosinfo/osinfo-db-20170121.tar.xz";
-//  libOsInfoJsonDoc = osInfoLoader.getLibOsInfoJson(oldUrl);
-
     // *** Получение информации из последнего релиза *** //
     libOsInfoJsonDoc = osInfoLoader.getLibOsInfoJson();
     if (libOsInfoJsonDoc.isEmpty()){
@@ -22,6 +18,7 @@ int main(int argc, char** argv){
 
     QString fullFileName = QDir::tempPath() + "/" + "libOsInfo.json";
     osInfoLoader.writeLibOsInfoJsonToFile(libOsInfoJsonDoc, fullFileName);
+    qDebug() << "[II] libOsInfo write to" << fullFileName;
     return 0;
 }
 

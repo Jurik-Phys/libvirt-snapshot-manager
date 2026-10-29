@@ -63,14 +63,10 @@ QByteArray OsInfoLoader::decompressXZ(const QByteArray& xzData){
 }
 
 QString OsInfoLoader::getLatestReleaseUrl(){
-    QString res;
-
-    QString releaseUrlSring = "https://releases.pagure.org/libosinfo/";
-
-    QUrl releaseUrl(releaseUrlSring);
+    QUrl infoJsonURL("https://db.libosinfo.org/latest.json");
 
     QNetworkAccessManager* netManager = new QNetworkAccessManager();
-    QNetworkRequest       req(releaseUrl);
+    QNetworkRequest       req(infoJsonURL);
     // *** Попытка решить проблему ошибки подключения к серверу *** //
     //     qt.network.http2: stream 1 finished with error: "Server  //
     //     stopped accepting new streams before this stream         //
@@ -117,31 +113,22 @@ QString OsInfoLoader::getLatestReleaseUrl(){
         httpTimer.stop();
     }
 
-    // *** Ошибок нет, получен корректный ответ, можно парсить *** //
-    QString html = reply->readAll();
-    // qDebug() << html;
+    // *** Ошибок нет, получен корректный ответ, можно разбирать JSON *** //
+    QJsonParseError error;
+    const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &error);
+
+    if (error.error != QJsonParseError::NoError){
+        qDebug() << "[EE] libOsInfo JSON parse error:" << error.errorString();
+        reply->deleteLater();
+        return QString();
+    }
+
     reply->deleteLater();
     netManager->deleteLater();
 
-    // <a href=\"osinfo-db-20240523.tar.xz\">
-    QRegularExpression re(R"(<a\s+href=\"(osinfo-db-(\d{8})\.tar\.xz)\")");
+    QJsonObject osInfoObj = doc.object();
 
-    QRegularExpressionMatchIterator it = re.globalMatch(html);
-
-    int prevDateNumber = -1;
-    while (it.hasNext()){
-        QRegularExpressionMatch m = it.next();
-
-        QString href = m.captured(1);
-        int currentDateNumber = m.captured(2).toInt();
-
-        if (currentDateNumber > prevDateNumber){
-            res = href;
-            prevDateNumber = currentDateNumber;
-        }
-    }
-
-    return releaseUrlSring + res;
+    return osInfoObj["release"].toObject()["archive"].toString();
 }
 
 unsigned int OsInfoLoader::getLatestLibOsInfoVersion(){
