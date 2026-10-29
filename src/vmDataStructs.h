@@ -40,6 +40,14 @@ struct VMachine {
     QStringList rootFullName;  // Полные имена корневых файлов цепочек состояний
     QStringList snapshotsDirs; // Каталоги хранения цепочек сохранения состояний
     QVector<ChainNode> vmStateChain; // Узлы цепочки сохранения состояний ВМ
+    QString getDisplayName() const {
+        if (title.trimmed().isEmpty()){
+            return name;
+        }
+        else {
+            return title;
+        }
+    }
 };
 
 struct VmImageRawInfo {

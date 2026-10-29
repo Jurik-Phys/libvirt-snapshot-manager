@@ -112,6 +112,7 @@ class QAppWindow : public QMainWindow {
         void setSnapFrame();
         void setSnapInfoFrame();
 
+        void sortVmList(QVector<VMachine>&);
         void addVmToFrame();
         void addVmToFrame(const QVector<VMachine>&);
         void delVmFromFrame(const QVector<VMachine>&);

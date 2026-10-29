@@ -31,7 +31,7 @@ class VmWidget : public QFrame {
 
     private:
         QLabel* m_vmIcon;
-        QLabel* m_vmName;
+        QLabel* m_vmDisplayName;
         QLabel* m_vmState;
         QHBoxLayout* m_vmHFrameLayout;
         QVBoxLayout* m_vmVTextLayout;
@@ -45,7 +45,7 @@ class VmWidget : public QFrame {
 
         static bool m_isLoading;
 
-        void setName(const QString&  vmName);
+        void setDisplayName(const QString& vmName);
         void setState(const QString& vmState);
         void setStateIcon(const QString& vmState);
 };

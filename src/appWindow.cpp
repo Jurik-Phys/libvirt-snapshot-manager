@@ -2,6 +2,7 @@
 
 #include <QCoreApplication>
 #include <QMenuBar>
+#include <algorithm>
 #include "appWindow.h"
 #include "dialogAboutApp.h"
 #include "dialogAboutThirdParty.h"
@@ -441,33 +442,8 @@ void QAppWindow::setSnapInfoFrame(){
 }
 
 void QAppWindow::addVmToFrame(){
-    QStringList vmNameList;
-    QVector<int> vmIdx;
-
-    // *** Получение списка имён виртуальных машин *** //
-    for (int k = 0; k < m_vmList.size(); ++k){
-        vmNameList.push_back(m_vmList[k].name);
-    }
-    // *** Сортировка списка виртуальных машин *** //
-    vmNameList.sort(Qt::CaseInsensitive);
-
-    // *** Получение вектора индексов виртуальных машин *** //
-    for (int i = 0; i < vmNameList.size(); ++i){
-        for (int j = 0; j < m_vmList.size(); ++j){
-            if (m_vmList[j].name == vmNameList[i]){
-                vmIdx.push_back(j);
-            }
-        }
-    }
-
-    // *** Временный вектор отсортированных виртуальных машин *** //
-    QVector<VMachine> tmpVmList;
-    for (int i = 0; i < m_vmList.size(); ++i){
-        tmpVmList.push_back(m_vmList[vmIdx[i]]);
-    }
-
-    // *** Список виртуальных машин отсортирован по алфавиту *** //
-    m_vmList = tmpVmList;
+    // // *** Список виртуальных машин отсортирован по алфавиту *** //
+    sortVmList(m_vmList);
 
     // *** Непосредственная вставка *** //
     for (int i = 0; i < m_vmList.size(); ++i){
@@ -570,19 +546,33 @@ void QAppWindow::modVmIntoFrame(const QVector<VMachine>& toModVmList){
                 widget->setProperties(toModVmList[i]);
 
                 // *** Изменение свойств в списке виртуальных машин *** //
-                if (m_vmList[modIdx].name  != toModVmList[i].name){
-                    // *** Изменяем имя виртуальной машины в списке машин *** //
-                    m_vmList[modIdx].name  = toModVmList[i].name;
-                    // *** Перезапись статуса ВМ на случай его изменения *** //
-                    m_vmList[modIdx].state = toModVmList[i].state;
-
-                    // *** Определение нового индекса (имя же изменилось) *** //
-                    QStringList vmNameList;
-                    for (int i = 0; i < m_vmList.size(); ++i){
-                        vmNameList.push_back(m_vmList[i].name);
+                if (m_vmList[modIdx].getDisplayName()
+                                            != toModVmList[i].getDisplayName()){
+                    // *** Изменяем имя или заголовок виртуальной машины *** //
+                    // Отображаемое имя могло измениться из-за изменения     //
+                    // одного из этих параметров: name или title             //
+                    // ***************************************************** //
+                    if (m_vmList[modIdx].name != toModVmList[i].name) {
+                        m_vmList[modIdx].name = toModVmList[i].name;
                     }
-                    vmNameList.sort(Qt::CaseInsensitive);
-                    int newModIdx = vmNameList.indexOf(toModVmList[i].name);
+                    if (m_vmList[modIdx].title != toModVmList[i].title) {
+                        m_vmList[modIdx].title = toModVmList[i].title;
+                    }
+
+                    // *** Перезапись статуса ВМ на случай его изменения *** //
+                    if (m_vmList[modIdx].state != toModVmList[i].state){
+                        m_vmList[modIdx].state = toModVmList[i].state;
+                    }
+
+                    // *** Определение нового индекса. Возможны изменения *** //
+                    // Сортировка временного вектора виртуальных машин для    //
+                    // определения нового индекса ВМ в списке виджетов        //
+                    // ****************************************************** //
+                    QVector<VMachine> sortedVmList = m_vmList;
+                    sortVmList(sortedVmList);
+
+                    int newModIdx = getModifyWidgetIndex(sortedVmList,
+                                                              m_vmList[modIdx]);
 
                     // *** Перемещение в списке виртуальных машин *** //
                     m_vmList.move(modIdx, newModIdx);
@@ -1352,7 +1342,8 @@ QVector<VMachine> QAppWindow::getToModVmList(const QVector<VMachine>& appList,
                 // *** Существующая VM найдена в полученном векторе VM *** //
                 // ***   (проверка на изменение статуса или имени VM)  *** //
                 if (appList[i].state != inList[j].state
-                                          || appList[i].name != inList[j].name){
+                                        || appList[i].name != inList[j].name
+                                        || appList[i].title != inList[j].title){
                     res.push_back(inList[j]);
                 }
             }
@@ -1806,6 +1797,24 @@ void QAppWindow::setMenuBar(){
             [&](){
                 QMessageBox::aboutQt(this);
             });
+}
+
+void QAppWindow::sortVmList(QVector<VMachine>& vmList){
+    std::sort(vmList.begin(), vmList.end(),
+        // *** Функция 'компаратор' должна возвращать истину, если a < b *** //
+        [](const VMachine& vmA, const VMachine& vmB){
+            int titleResult = QString::localeAwareCompare(vmA.getDisplayName(),
+                                                          vmB.getDisplayName());
+            // ** 'titleResult == 0' при равенстве title;
+            if (titleResult == 0){
+                int nameResult = QString::localeAwareCompare(vmA.name,vmB.name);
+                return nameResult < 0;
+            }
+            else {
+                return titleResult < 0;
+            }
+        }
+    );
 }
 
 // End appWindow.cpp

@@ -34,7 +34,7 @@ QVector<VMachine> VmDataCollector::getVmList(bool* isOk){
     QVector<VMachine> uuidVmList;
 
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("LANG", "C");
+    env.insert("LANG", "C.UTF-8");
 
     QProcess process;
     process.setProcessEnvironment(env);
@@ -62,7 +62,21 @@ QVector<VMachine> VmDataCollector::getVmList(bool* isOk){
                         QStringList parts = line.split(" ");
                         if (parts.size() >=3){
                             vm.name  = parts[1];
-                            vm.state = parts.mid(2).join(" ");
+                            // ***  Состояние VM бывает следующих видов:  *** //
+                            // running, idle, paused, in shutdown, shut off,  //
+                            // crashed, pmsuspended. Видно, что разеделение   //
+                            // строки на пробелы столкнётся с развилкой для   //
+                            // случаев "shut off" и "in shutdown".            //
+                            //  http://libvirt.org/manpages/virsh.html#list   //
+                            // ********************************************** //
+                            if (parts[2] == "shut" || parts[2] == "in"){
+                                vm.state = parts[2] + " " + parts[3];
+                                vm.title = parts.mid(4).join(" ");
+                            }
+                            else {
+                                vm.state = parts[2];
+                                vm.title = parts.mid(3).join(" ");
+                            }
                         }
                         vmList.append(vm);
                     }
@@ -114,7 +128,8 @@ QVector<VMachine> VmDataCollector::getVmList(bool* isOk){
             }
         });
 
-    process.start("virsh", {"--connect=" + m_libVirtConnectURI, "list", "--all"});
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+            "list", "--all", "--title"});
     loop.exec();
     return vmList;
 }
@@ -1147,7 +1162,7 @@ QString VmDataCollector::getVirtSize(const QString& imageFullName,
 
     for (int i = 0; i < poolList.size(); ++i){
         QProcessEnvironment env;
-        env.insert("LANG", "C");
+        env.insert("LANG", "C.UTF-8");
 
         QProcess process;
         process.setProcessEnvironment(env);
@@ -1843,7 +1858,7 @@ QDomDocument VmDataCollector::getDomCapabilitiesXml(const QString& machine){
     QDomDocument vmXmlDoc;
 
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("LANG", "C");
+    env.insert("LANG", "C.UTF-8");
 
     QProcess process;
     process.setProcessEnvironment(env);

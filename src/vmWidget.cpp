@@ -13,12 +13,12 @@ VmWidget::VmWidget(const VMachine& inVm, QWidget* parent){
     m_vmVTextLayout = new QVBoxLayout();
     m_vmVTextLayout->setSpacing(0);
 
-    // Virtual machine name
-    m_vmName  = new QLabel(this);
-    setName(inVm.name);
+    // Virtual machine display name (vm.name or vm.title)
+    m_vmDisplayName  = new QLabel(this);
+    setDisplayName(inVm.getDisplayName());
 
     m_vmVTextLayout->addStretch();
-    m_vmVTextLayout->addWidget(m_vmName);
+    m_vmVTextLayout->addWidget(m_vmDisplayName);
     m_vmVTextLayout->addSpacing(4);
 
     // Virtual machine status
@@ -88,13 +88,13 @@ void VmWidget::setLoadingFlag(bool isLoad){
 }
 
 void VmWidget::setProperties(const VMachine& inVm){
-    setName(inVm.name);
+    setDisplayName(inVm.getDisplayName());
     setState(inVm.state);
     setStateIcon(inVm.state);
 }
 
-void VmWidget::setName(const QString& vmName){
-    m_vmName->setText("<b>" + vmName + "</b>");
+void VmWidget::setDisplayName(const QString& displayName){
+    m_vmDisplayName->setText("<b>" + displayName + "</b>");
 }
 
 void VmWidget::setState(const QString& inVmState){
