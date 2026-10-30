@@ -127,6 +127,7 @@ class QAppWindow : public QMainWindow {
         void btnManageTake();
         void snapTreeViewManage();
         void vmInfoWidgetManage();
+        void vmInfoWidgetSetReadOnlyImgBtn();
         void snapInfoWidgetManage();
 
         void onTreeItemChanged(const QModelIndex& currentIndex,

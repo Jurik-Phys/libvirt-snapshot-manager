@@ -543,11 +543,20 @@ void VmInfoWidget::setStorageList(const QStringList& mountStorages){
 
     storageList->setFixedHeight(newHeight);
 
-    storageList->setText(listData.join("\n"));
 
-    // *** Обновление числа примонтированных дисков (Mounted drives) *** //
-    qobject_cast<QLabel*>(m_colBWidgets[7])
+    if (storageList->toPlainText() != listData.join("\n")){
+        // *** Установка списка примонтированных дисков только *** //
+        // при фактическом изменении данных. Необходимо для фикса  //
+        // воможной смены позиции горизонтального скролла между    //
+        // началом построения дерева снимков и окончанием, когда   //
+        // идёт добавление недостающей информации в vmInfoWidget.  //
+        // ******************************************************* //
+        storageList->setText(listData.join("\n"));
+
+        // *** Обновление числа примонтированных дисков (Mounted drives) *** //
+        qobject_cast<QLabel*>(m_colBWidgets[7])
                                     ->setText(QString::number(listData.size()));
+    }
 }
 
 void VmInfoWidget::setDriveBusTypeList(const QStringList& driveBusTypes){
@@ -740,7 +749,7 @@ void VmInfoWidget::setReadOnly(bool roState){
     m_editCpuTopologyBtn->setEnabled(!roState);
     m_editOsBtn->setEnabled(!roState);
 
-    QString roToolTip = "Can edit only when VM is shut off";
+    QString roToolTip = "Editable when VM is shut off";
     QString blankToolTip = "";
 
     if (roState){
@@ -751,6 +760,10 @@ void VmInfoWidget::setReadOnly(bool roState){
         title->setToolTip(blankToolTip);
         description->setToolTip(blankToolTip);
     }
+}
+
+void VmInfoWidget::setReadOnlyImgBtn(bool roState){
+    m_editImagesBtn->setEnabled(!roState);
 }
 
 void VmInfoWidget::clearData(){

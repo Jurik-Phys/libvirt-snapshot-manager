@@ -51,6 +51,7 @@ class VmInfoWidget : public QFrame {
         void setOsName(const QString&);
         void setVmName(const QString&);
         void setReadOnly(bool);
+        void setReadOnlyImgBtn(bool);
         void clearData();
 
     signals:

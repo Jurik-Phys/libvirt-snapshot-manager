@@ -48,6 +48,14 @@ struct VMachine {
             return title;
         }
     }
+    bool isOkStorageNow() const {
+        if (mountStorages.size() != 0 ){
+            if (mountStorages.size() != rootVirtSizes.size()){
+                return false;
+            }
+        }
+        return true;
+    }
 };
 
 struct VmImageRawInfo {

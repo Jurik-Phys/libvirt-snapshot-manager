@@ -614,7 +614,9 @@ void QAppWindow::updSnapTree(){
     // информацию в виджете отображения информации о VM т.к., построение   //
     // идёт уже для новой (активной в текущий момент) виртуальной машины.  //
     // Пока строится дерево снапшотов, пользователь уже может оценить      //
-    // параметры VM.                                                       //
+    // параметры VM. После построения дерева снапшотов информация будет    //
+    // дополнена размером применяемых хранилищ и числом потомков диска.    //
+    // ******************************************************************* //
     m_vmInfoWidget->setData(m_vmDataCollector->getVmShortInfo(activeVm.uuid));
 
     QElapsedTimer snapDataLoadingTimer;
@@ -675,8 +677,16 @@ void QAppWindow::updSnapTree(){
                 // *** Установка данных в глобальный сборщик. *** //
                 //     Необходимо для того, чтобы не собирать     //
                 //     дважды информацию про гостевую ОС.         //
+                // ********************************************** //
                 m_vmDataCollector->setData(result);
-                // qDebug() << "[II] Данные получены и выведены (finished)";
+
+                // *** После построения дерева доступна информация *** //
+                // о числе потомков и размере примонтированных дисков, //
+                // которая используется в диалоге удаления файлов.     //
+                // Поэтому идёт обновление данных в виджете информации //
+                // о ВМ. Диалог удаления файла берёт там информацию.   //
+                // *************************************************** //
+                m_vmInfoWidget->setData(result);
 
                 // *** On/Off buttons *** //
                 btnManageGoDel();
@@ -687,6 +697,15 @@ void QAppWindow::updSnapTree(){
                 snapTreeViewManage();
                 vmInfoWidgetManage();
                 snapInfoWidgetManage();
+
+                // *** При ошибке сбора данных необходимо отключить *** //
+                // возможность создавать/удалять диски в ВМ т.к., может //
+                // быть полнейшая каша из-за самых разнообразных ошибок //
+                // получения данных.                                    //
+                // **************************************************** //
+                if (!result.isOkStorageNow()){
+                    vmInfoWidgetSetReadOnlyImgBtn();
+                }
 
                 thread->quit();
                 thread->wait();
@@ -1266,13 +1285,16 @@ void QAppWindow::snapTreeViewManage(){
 }
 
 void QAppWindow::vmInfoWidgetManage(){
-
     if (m_vmList[m_selectedVmIndex].state == "shut off"){
         m_vmInfoWidget->setReadOnly(false);
     }
     else {
         m_vmInfoWidget->setReadOnly(true);
     }
+}
+
+void QAppWindow::vmInfoWidgetSetReadOnlyImgBtn(){
+    m_vmInfoWidget->setReadOnlyImgBtn(true);
 }
 
 void QAppWindow::snapInfoWidgetManage(){

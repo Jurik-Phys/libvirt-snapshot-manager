@@ -36,7 +36,7 @@
 #endif
 
 #ifndef APP_AUTHOR_SITE
-#define APP_AUTHOR_SITE "https://jurik-phys.net"
+#define APP_AUTHOR_SITE "https://jurik-phys.net.ru"
 #endif
 
 QString AppInfo::appBaseName(){
