@@ -608,8 +608,6 @@ void QAppWindow::updSnapTree(){
         vmWidget->setLoadingFlag(true);
     }
 
-    VMachine activeVm = getActiveVm();
-
     // *** Перед длительным построением дерева снапшотов надо обновить *** //
     // информацию в виджете отображения информации о VM т.к., построение   //
     // идёт уже для новой (активной в текущий момент) виртуальной машины.  //
@@ -617,7 +615,9 @@ void QAppWindow::updSnapTree(){
     // параметры VM. После построения дерева снапшотов информация будет    //
     // дополнена размером применяемых хранилищ и числом потомков диска.    //
     // ******************************************************************* //
-    m_vmInfoWidget->setData(m_vmDataCollector->getVmShortInfo(activeVm.uuid));
+    VMachine& activeVm =  m_vmList[m_selectedVmIndex];
+    activeVm = m_vmDataCollector->getVmShortInfo(activeVm.uuid);
+    m_vmInfoWidget->setData(activeVm);
 
     QElapsedTimer snapDataLoadingTimer;
     snapDataLoadingTimer.start();
@@ -627,6 +627,8 @@ void QAppWindow::updSnapTree(){
     VmDataCollector* vmDataCollector = new VmDataCollector(activeVm, this);
     QObject::connect(vmDataCollector, &VmDataCollector::errorMsg, this,
                                                 &QAppWindow::showErrorMessage);
+    QObject::connect(vmDataCollector, &VmDataCollector::errorMsg, this,
+                                     [&](){ activeVm.storageDataError = true;});
     QObject::connect(vmDataCollector, &VmDataCollector::snapChainDataLoading,
                                      this, &QAppWindow::onSnapChainDataLoading);
     vmDataCollector->moveToThread(thread);
@@ -697,15 +699,6 @@ void QAppWindow::updSnapTree(){
                 snapTreeViewManage();
                 vmInfoWidgetManage();
                 snapInfoWidgetManage();
-
-                // *** При ошибке сбора данных необходимо отключить *** //
-                // возможность создавать/удалять диски в ВМ т.к., может //
-                // быть полнейшая каша из-за самых разнообразных ошибок //
-                // получения данных.                                    //
-                // **************************************************** //
-                if (!result.isOkStorageNow()){
-                    vmInfoWidgetSetReadOnlyImgBtn();
-                }
 
                 thread->quit();
                 thread->wait();
@@ -1285,8 +1278,16 @@ void QAppWindow::snapTreeViewManage(){
 }
 
 void QAppWindow::vmInfoWidgetManage(){
+    VMachine& vm = m_vmList[m_selectedVmIndex];
     if (m_vmList[m_selectedVmIndex].state == "shut off"){
         m_vmInfoWidget->setReadOnly(false);
+        // *** При ошибке сбора данных о хранилищах необходимо отключить *** //
+        // возможность создавать/удалять диски в ВМ т.к., может быть жуткая  //
+        // каша из-за самых разнообразных ошибок получения данных.           //
+        // ***************************************************************** //
+        if (vm.storageDataError){
+            vmInfoWidgetSetReadOnlyImgBtn();
+        }
     }
     else {
         m_vmInfoWidget->setReadOnly(true);

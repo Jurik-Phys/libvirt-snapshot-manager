@@ -760,10 +760,23 @@ void VmInfoWidget::setReadOnly(bool roState){
         title->setToolTip(blankToolTip);
         description->setToolTip(blankToolTip);
     }
+
+    // *** Очистка ToolTip'а после его изменения в setReadOnlyImgBtn() *** //
+    m_editImagesBtn->setToolTip(blankToolTip);
 }
 
 void VmInfoWidget::setReadOnlyImgBtn(bool roState){
     m_editImagesBtn->setEnabled(!roState);
+
+    QString roToolTip = "Disabled due to a failure to retrieve VM image data";
+    QString blankToolTip = "";
+
+    if (roState){
+        m_editImagesBtn->setToolTip(roToolTip);
+    }
+    else {
+        m_editImagesBtn->setToolTip(blankToolTip);
+    }
 }
 
 void VmInfoWidget::clearData(){

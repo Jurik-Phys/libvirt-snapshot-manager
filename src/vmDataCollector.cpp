@@ -206,6 +206,9 @@ VMachine VmDataCollector::getVmShortInfo(const QString& uuid, bool* isOk){
     vm.machine = getVmMachineType(vmXml);
     vm.cpu["max"] = getVmMaxCpu(vm.machine);
 
+    // *** Флаг наличия проблем при чтении информации о дисках ВМ *** //
+    vm.storageDataError = false;
+
     QDomElement devices = vmXml.firstChildElement("devices");
     QDomNodeList diskNodes  = devices.elementsByTagName("disk");
     for (int i = 0; i < diskNodes.count(); ++i){

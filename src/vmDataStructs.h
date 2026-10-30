@@ -40,6 +40,7 @@ struct VMachine {
     QStringList rootFullName;  // Полные имена корневых файлов цепочек состояний
     QStringList snapshotsDirs; // Каталоги хранения цепочек сохранения состояний
     QVector<ChainNode> vmStateChain; // Узлы цепочки сохранения состояний ВМ
+    bool storageDataError;     // Флаг проблем при получении данных о дисках ВМ
     QString getDisplayName() const {
         if (title.trimmed().isEmpty()){
             return name;
@@ -47,14 +48,6 @@ struct VMachine {
         else {
             return title;
         }
-    }
-    bool isOkStorageNow() const {
-        if (mountStorages.size() != 0 ){
-            if (mountStorages.size() != rootVirtSizes.size()){
-                return false;
-            }
-        }
-        return true;
     }
 };
 
