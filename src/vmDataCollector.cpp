@@ -727,11 +727,53 @@ void VmDataCollector::loadVmImagesRawInfoOverQEMU(
         //     пользователю, например, при первом запуске программы         //
         if (isVMachineImage(fileFullName) || mntImgs.contains(fileFullName)){
             vmDiskCount++;
+            QString backingFail;
+            bool isOkBackFullName = true;
             VmImageRawInfo vmImageRawInfo;
             vmImageRawInfo.imageBasePath = snapshotsDir;
             vmImageRawInfo.imageFullName = fileFullName;
             vmImageRawInfo.backFullName = getBackFullNameQEMU(vmImageRawInfo,
-                                                            backFullNamesCache);
+                             backFullNamesCache, backingFail, isOkBackFullName);
+
+            // *** В getBackFullNameQEMU под капотом используется команда *** //
+            // qemu-img info -U --backing-chain --output=json <f.qcow2>       //
+            // При отсутсвии хотя бы одного файла в цепочке снапшотов имя     //
+            // отсутствующего файла будет записано в backingFail, a флаг      //
+            // isOkBackFullName будет установлен в false.                     //
+            // Также в backingFail попадёт диск, к которому нет доступа, но   //
+            // это может быть примонтированный к ВМ диск, что допустимо.      //
+            // Такой случай не должен устанавливать флаг неудачной загрузки   //
+            // и не должен выдавать всплывающее окно с ошибкой доступа.       //
+            // ************************************************************** //
+            if (!isOkBackFullName && !mntImgs.contains(backingFail)){
+                emit errorMsg("File access error",
+                        "Please check your access to the backing file:\n"
+                            + QString(" - File name: ") + QFileInfo(backingFail)
+                                                                .fileName()+"\n"
+                            + QString(" - Base path: ") + QFileInfo(backingFail)
+                                                               .absolutePath());
+                *isOkLoadRawInfo = false;
+                break;
+            }
+
+            // *** По факту здесь идёт поиск backing файлов для *** //
+            // примонтированных файлов. Если к файлу нет доступа,   //
+            // команда getBackFullNameQEMU() вернёт пустую строку.  //
+            // Файлы с признаками                                   //
+            // - 1. Существует                                      //
+            // - 2. У файла нет id                                  //
+            // - 3. Подключен к ВМ,                                 //
+            // - 4. getBackFullNameQEMU вернуло пустую строку,      //
+            // очевидно претендуют быть вершиной дерева снапшотов   //
+            // т.е., не иметь backing файлов backFullName = "-1"    //
+            // **************************************************** //
+            if (vmImageRawInfo.backFullName.isEmpty()){
+                int id = getFileNameId(fileFullName);
+                if (id == -1 && mntImgs.contains(fileFullName)){
+                    vmImageRawInfo.backFullName = "-1";
+                }
+            }
+
             // backFullName может быть символической ссылкой на реальный файл.
             // необходимо это проверить и разрешить путь при необходиомсти.
             // Предполагается, что реальный файл находится в этом же каталоге
@@ -936,8 +978,15 @@ QVector<VmImageRawInfo> VmDataCollector::rmExtBackingInfo(
 }
 
 QString VmDataCollector::getBackFullNameQEMU(const VmImageRawInfo& vmImgRawInf,
-                                   QHash<QString, QString>& backFullNamesCache){
+                                  QHash<QString, QString>& backFullNamesCache,
+                                  QString& backingFail, bool& isOkBackFullName){
     QString backingFile = "-1";
+    // *** qemu-img info -U --backing-chain --output=json <f.qcow2> *** //
+    // При отсутсвии файла в цепочке сразу выдаёт его имя в stdErr.     //
+    //      План такой, при наличии ошибки:                             //
+    //      - isOkBackFullName = false;                                 //
+    //      - возвращать backingFail                                    //
+    // **************************************************************** //
 
     QString cacheBackingFile;
     cacheBackingFile = getBackFullNameFromCache(vmImgRawInf, backFullNamesCache);
@@ -949,7 +998,11 @@ QString VmDataCollector::getBackFullNameQEMU(const VmImageRawInfo& vmImgRawInf,
     else {
         // *** qemu-img info -U --backing-chain --output=json <f.qcow2> *** //
         QByteArray qemuImgOut;
-        qemuImgOut = getQemuImgBackingChain(vmImgRawInf.imageFullName);
+        qemuImgOut = getQemuImgBackingChain(vmImgRawInf.imageFullName,
+                                                                   backingFail);
+        if (qemuImgOut.isEmpty()&& !backingFail.isEmpty()){
+            isOkBackFullName = false;
+        }
         backingFile = getBackFullNameFromQemuImgChain(qemuImgOut);
 
         // При ошибке парсинга backingFile будет пустым, повторный парсинг
@@ -962,20 +1015,35 @@ QString VmDataCollector::getBackFullNameQEMU(const VmImageRawInfo& vmImgRawInf,
     return backingFile;
 }
 
-QByteArray VmDataCollector::getQemuImgBackingChain(const QString& fullFileName){
-    QByteArray qemuImgOut;
+QByteArray VmDataCollector::getQemuImgBackingChain(const QString& fullFileName,
+                                                          QString& backingFail){
+    QByteArray qemuImgOut, qemuImgErr;
+
+    QEventLoop loop;
+    QProcessEnvironment env;
+    env.insert("LANG", "C.UTF-8");
 
     QProcess process;
-    QEventLoop loop;
+    process.setProcessEnvironment(env);
 
     QObject::connect(&process, &QProcess::finished, &loop, &QEventLoop::quit);
     QObject::connect(&process, &QProcess::readyReadStandardOutput,
                             [&](){
                                 qemuImgOut += process.readAllStandardOutput();
                             });
+    QObject::connect(&process, &QProcess::readyReadStandardError,
+                            [&]() {
+                                qemuImgErr += process.readAllStandardError();
+                            });
+
     process.start("qemu-img", {"info", "-U", "--backing-chain", "--output=json",
                                                                  fullFileName});
-    loop.exec(); // qemu-img отработал, весь stdout получен *** //
+    loop.exec(); // qemu-img отработал, весь stdout & stderr получен *** //
+
+    if (!qemuImgErr.isEmpty()){
+        backingFail = QString(qemuImgErr).split('\'')[1];
+        return QByteArray();
+    }
 
     return qemuImgOut;
 }
@@ -1030,6 +1098,10 @@ QString VmDataCollector::getBackFullNameFromCache(const VmImageRawInfo& vmImg,
 QString VmDataCollector::getBackFullNameFromQemuImgChain(const QByteArray&
                                                                     qemuImgOut){
     QString backingFile = "-1";
+
+    if (qemuImgOut.isEmpty()){
+        return QString();
+    }
 
     QJsonParseError error;
     QJsonDocument doc = QJsonDocument::fromJson(qemuImgOut, &error);
@@ -1494,6 +1566,43 @@ bool VmDataCollector::checkImageExistsAndReadble(const QString& fileFullName){
     if (fileInfo.exists() && fileInfo.isFile() && fileInfo.isReadable()){
         isOk = true;
     }
+    else {
+        // *** Возможна ситуация, когда к виртуальной машине подключен *** //
+        //     диск с правами -rw-------, прав на чтение данных через      //
+        //     qemu-img info <imageFullName> нет, чтения от данной         //
+        //     программы тоже нет, но в ВМ может быть успешно запущена,    //
+        //     поэтому пробуем перепроверить доступность файла через       //
+        //     virsh vol-info ... Из ограничений - файл должен лежать      //
+        //     в одном из томов (pool), а не в произвольном месте диска    //
+        // *************************************************************** //
+        isOk = checkImageExistsAndReadbleByVirsh(fileFullName);
+    }
+    return isOk;
+}
+
+bool VmDataCollector::checkImageExistsAndReadbleByVirsh(const QString&
+                                                                  fileFullName){
+    bool isOk = false;
+
+    QProcessEnvironment env;
+    env.insert("LANG", "C.UTF-8");
+    QProcess process;
+    process.setProcessEnvironment(env);
+
+    QEventLoop loop;
+    QObject::connect(&process, &QProcess::finished, [&](){
+
+            QString output = process.readAllStandardOutput();
+            if (!output.contains("error:")) {
+                isOk = true;
+            }
+            loop.quit();
+        });
+
+    process.start("virsh", {"--connect=" + m_libVirtConnectURI,
+                                                     "vol-info", fileFullName});
+    loop.exec();
+
     return isOk;
 }
 

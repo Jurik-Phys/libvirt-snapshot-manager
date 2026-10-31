@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(libvirt-snapshot-manager VERSION 0.3.1)
+project(libvirt-snapshot-manager VERSION 0.3.2)
 
 # *** Application version info *** #
 #         ${APP_VERSION}           #

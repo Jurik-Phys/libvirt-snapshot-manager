@@ -95,10 +95,12 @@ class VmDataCollector : public QObject {
         QVector<VmImageRawInfo> rmExtBackingInfo(const QVector<VmImageRawInfo>&,
                                               const QStringList& mountStorages);
         QString getBackFullNameQEMU(const VmImageRawInfo&,
-                                   QHash<QString, QString>& backFullNamesCache);
+                                  QHash<QString, QString>& backFullNamesCache,
+                                  QString& backingFail, bool& isOkBackFullName);
         void updateBackFullNamesCache(const QByteArray& qemuImgOut,
                                    QHash<QString, QString>& backFullNamesCache);
-        QByteArray getQemuImgBackingChain(const QString& fullFileName);
+        QByteArray getQemuImgBackingChain(const QString& fullFileName,
+                                                          QString& backingFail);
         QString getBackFullNameFromQemuImgChain(const QByteArray& qemuImgOut);
         QString getBackFullNameFromCache(const VmImageRawInfo&,
                                                       QHash<QString, QString>&);
@@ -124,6 +126,7 @@ class VmDataCollector : public QObject {
                                 const QSet<int>& idSet,
                                 const QStringList& mountStorages);
         bool checkImageExistsAndReadble(const QString& fileFullName);
+        bool checkImageExistsAndReadbleByVirsh(const QString& fileFullName);
         QWidget* parentWindow;
         QTimer*  m_getListTimer;
         QTimer*  m_getActualVmGeneralInfoTimer;
