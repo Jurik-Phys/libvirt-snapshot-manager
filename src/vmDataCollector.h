@@ -104,6 +104,8 @@ class VmDataCollector : public QObject {
         QString getBackFullNameFromQemuImgChain(const QByteArray& qemuImgOut);
         QString getBackFullNameFromCache(const VmImageRawInfo&,
                                                       QHash<QString, QString>&);
+        bool isEqualFileNamePattern(const QString& imageFullName,
+                                            const QString& backingFileFullName);
         QString getBackFullNameFast(const QString& fullFileName);
         QString getRootFullName(const QString& fileFullName);
         QString getRootVirtSize(const QString& fileFullName);
@@ -123,8 +125,8 @@ class VmDataCollector : public QObject {
         bool checkBackingFile(const QVector<VmImageRawInfo>& imgsRawInfo,
                                                     const QString& backingFile);
         bool checkNodeFilesCount(const QVector<VmImageRawInfo>& imgsRawInfo,
-                                const QSet<int>& idSet,
                                 const QStringList& mountStorages);
+        QSet<int> getIdSet(const QVector<VmImageRawInfo>& imgsRawInfo);
         bool checkImageExistsAndReadble(const QString& fileFullName);
         bool checkImageExistsAndReadbleByVirsh(const QString& fileFullName);
         QWidget* parentWindow;

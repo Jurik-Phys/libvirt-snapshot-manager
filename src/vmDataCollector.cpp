@@ -352,29 +352,7 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
         return vm;
     }
 
-    // ****************************** Теория ******************************  //
-    // > Тезис. В цепочке снапшотов необходимо не учитывать ранее созданные  //
-    //   цепочки из backing-файлов используемых хранилищ.                    //
-    //                                                                       //
-    // > Объяснение. Ранее созданные backing-файлы для разных хранилищ       //
-    //   не обязаны быть синхронизированы между собой т.е., у одного диска   //
-    //   цепочка сохранений может быть  из одного backing-файла, а у другого //
-    //   диска из трёх файлов, созданных внешними средствами или вручную.    //
-    //                                                                       //
-    // > Реализация. Отсечь выше стоящую ветку сохранений по отсутствию id.  //
-    //   Добавлять в цепочку сохранений только файлы у которых:              //
-    //   - у самих есть id;                                                  //
-    //   - у самих нет id, но они примонтированы                             //
-    //   - у самих нет id, но являются родителем/backing-файлом              //
-    //                   для кого-то с id; (крайний без id, корень цепочки)  //
-    //                                                                       //
-    // > Этап реализации. После сбора сырых данных в vmImagesRawInfo, этот   //
-    //   вектор можно редуцировать с учётом выполнения описанных требований. //
-    //   В итоге libvirt-snap-manager будет оперировать крайними точками     //
-    //   внешних цепочек сохранения.                                         //
-    // ********************************************************************  //
-
-    m_vmImagesRawInfo = rmExtBackingInfo(vmImagesRawInfo, vm.mountStorages);
+    m_vmImagesRawInfo = vmImagesRawInfo;
 
     // *** Проверка наличия примонтированных файлов в списке файлов *** //
     // > Актуально для случая единственного примонтированного файла     //
@@ -785,6 +763,12 @@ void VmDataCollector::loadVmImagesRawInfoOverQEMU(
             vmImagesRawInfo.push_back(vmImageRawInfo);
         }
     }
+
+    // *** Проверка числа файлов в снапшотах (актуально для "листьев") *** //
+    if (!checkNodeFilesCount(vmImagesRawInfo, mntImgs)){
+        vmImagesRawInfo.clear();
+        *isOkLoadRawInfo = false;
+    }
 }
 
 QStringList VmDataCollector::getMountImageNamePatterns(const QStringList& imgs){
@@ -885,98 +869,6 @@ QVector<QDateTime> VmDataCollector::getVmFilesCreationTime(const QStringList&
     return vmFilesCreationTime;
 }
 
-QVector<VmImageRawInfo> VmDataCollector::rmExtBackingInfo(
-                                const QVector<VmImageRawInfo>& imgsRawInfo,
-                                            const QStringList& mountStorages) {
-    // > Реализация. Отсечь выше стоящую ветку сохранений по отсутствию id.  //
-    //   Добавлять в цепочку сохранений только файлы у которых:              //
-    //   - у самих есть id;                                                  //
-    //   - у самих нет id, но они примонтированы                             //
-    //   - у самих нет id, но являются родителем/backing-файлом              //
-    //                   для кого-то с id; (крайний без id, корень цепочки)  //
-
-    QVector<VmImageRawInfo> res;
-    QSet<int> idSet;
-
-    for (int i = 0; i < imgsRawInfo.size(); ++i){
-        QString imageFullName = imgsRawInfo[i].imageFullName;
-        idSet.insert(getFileNameId(imageFullName));
-        // есть id
-        if (getFileNameId(imageFullName) > 0){
-            // *** Проверка на существования родителя добавляемого файла *** //
-            bool ok = false;
-            ok = checkBackingFile(imgsRawInfo, imgsRawInfo[i].backFullName);
-
-            if (ok){
-                // *** Родитель существует, всё хорошо *** //
-                res.push_back(imgsRawInfo[i]);
-            }
-            else {
-                // *** Родитель не найден, возрват пустых данных *** //
-                res.clear();
-                return res;
-            }
-        }
-        // нет id
-        else {
-            bool mountFlag = false;
-            for (int j = 0; j < mountStorages.size(); ++j){
-                // нет id, но примонтированы к VM
-                if (imageFullName == mountStorages[j]){
-                    // *** Проверка внешней скрываемой цепочки *** //
-                    QString backFullName  = imgsRawInfo[i].backFullName;
-                    bool ok = true;
-                    ok = checkExtBackChainFiles(imgsRawInfo, backFullName);
-
-                    if (ok){
-                        // *** Скрываемая цепочка файлов в порядке *** //
-                        res.push_back(imgsRawInfo[i]);
-                        mountFlag = true;
-                    }
-                    else {
-                        // Ошибки в скрываемой цепочке, возрат пустых данных
-                        res.clear();
-                        return res;
-                    }
-                }
-            }
-
-            if (!mountFlag){
-                for (int k = 0; k < imgsRawInfo.size(); ++k){
-                    QString childBackingFile = imgsRawInfo[k].backFullName;
-                    QString childImageFullName = imgsRawInfo[k].imageFullName;
-                    // нет id, но являются родителем для кого-то с id;
-                    if (imageFullName == childBackingFile
-                                     && getFileNameId(childImageFullName) > 0 ){
-                        QString backFullName  = imgsRawInfo[i].backFullName;
-                        bool ok = true;
-                        ok = checkExtBackChainFiles(imgsRawInfo, backFullName);
-
-                        if (ok){
-                            // *** Скрываемая цепочка файлов в порядке *** //
-                            res.push_back(imgsRawInfo[i]);
-                            res.last().backFullName = "-1";
-                        }
-                        else {
-                            // Ошибки в скрываемой цепочке, возрат пустых данных
-                            res.clear();
-                            return res;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // *** Проверка числа файлов в снапшотах (актуально для "листьев") *** //
-    bool isOkNodeFiles = checkNodeFilesCount(imgsRawInfo, idSet, mountStorages);
-    if (!isOkNodeFiles){
-        res.clear();
-    }
-
-    return res;
-}
-
 QString VmDataCollector::getBackFullNameQEMU(const VmImageRawInfo& vmImgRawInf,
                                   QHash<QString, QString>& backFullNamesCache,
                                   QString& backingFail, bool& isOkBackFullName){
@@ -1005,9 +897,28 @@ QString VmDataCollector::getBackFullNameQEMU(const VmImageRawInfo& vmImgRawInf,
         }
         backingFile = getBackFullNameFromQemuImgChain(qemuImgOut);
 
-        // При ошибке парсинга backingFile будет пустым, повторный парсинг
-        // в updateBackFullNamesCache() аналогичным образом не сработает
         if (!backingFile.isEmpty()){
+
+            // *** backingFile может оказаться с шаблоном имени, отличным *** //
+            // от шаблона имени imageFullName. Это является признаком наличия //
+            // у данного файла предыдущей цепочки сохранения т.е., вручную    //
+            // или иными способами созданной последовательности qcow2 файлов. //
+            //     Такую последовательность оставляем за рамкамми работы со   //
+            // снапшотами. В начальный узел войдёт только образ, у которого   //
+            // сохраняется паттерн в имени, характерный для смонтированного   //
+            // к ВМ диска.                                                    //
+            //     Для того, чтобы скрыть от программы ранее существовавшую   //
+            // последовательность сохранений, текущему imageFullName          //
+            // назначается флаг отсутствия backing файлов т.е., "-1"          //
+            // *************************************************************  //
+            if (!isEqualFileNamePattern(vmImgRawInf.imageFullName,backingFile)){
+                backingFile = "-1";
+            }
+
+            // *** При ошибке парсинга backingFile будет пустым, парсинг *** //
+            // парсинг qemuImgOut в updateBackFullNamesCache() аналогично    //
+            // даст тот же пустой результат, который нет смысла кешировать.  //
+            // ************************************************************* //
             updateBackFullNamesCache(qemuImgOut, backFullNamesCache);
         }
     }
@@ -1081,12 +992,43 @@ void VmDataCollector::updateBackFullNamesCache(const QByteArray& qemuImgOut,
         QString val = fileObj["full-backing-filename"].toString();
 
         if (!backFullNamesCache.contains(key)){
+            // *** backingFile может оказаться с шаблоном имени, отличным *** //
+            // от шаблона имени imageFullName. Это является признаком наличия //
+            // у данного файла предыдущей цепочки сохранения т.е., вручную    //
+            // или иными способами созданной последовательности qcow2 файлов. //
+            //     Такую последовательность оставляем за рамкамми работы со   //
+            // снапшотами. В начальный узел войдёт только образ, у которого   //
+            // сохраняется паттерн в имени, характерный для смонтированного   //
+            // к ВМ диска.                                                    //
+            //     Для того, чтобы скрыть от программы ранее существовавшую   //
+            // последовательность сохранений, текущему imageFullName          //
+            // назначается флаг отсутствия backing файлов т.е., "-1"          //
+            // *************************************************************  //
+            if (!isEqualFileNamePattern(rawKey, val)){
+                val = "-1";
+            }
+
             if (val.isEmpty()){
                 val = "-1";
             }
             backFullNamesCache.insert(key, val);
         }
     }
+}
+
+bool VmDataCollector::isEqualFileNamePattern(const QString& imageFullName,
+                                            const QString& backingFileFullName){
+    bool isEqNamePattern = true;
+    QString imgPattern, bckPattern;
+
+    imgPattern = getFileNamePattern(imageFullName);
+    bckPattern = getFileNamePattern(backingFileFullName);
+
+    if (imgPattern != bckPattern){
+        isEqNamePattern = false;
+    }
+
+    return isEqNamePattern;
 }
 
 QString VmDataCollector::getBackFullNameFromCache(const VmImageRawInfo& vmImg,
@@ -1457,9 +1399,19 @@ bool VmDataCollector::checkBackingFile(const QVector<VmImageRawInfo>&
     return res;
 }
 
+QSet<int> VmDataCollector::getIdSet(const QVector<VmImageRawInfo>& imgsRawInfo){
+    QSet<int> idSet;
+
+    for (int i = 0; i < imgsRawInfo.size(); ++i){
+        QString imageFullName = imgsRawInfo[i].imageFullName;
+        idSet.insert(getFileNameId(imageFullName));
+    }
+
+    return idSet;
+}
+
 bool VmDataCollector::checkNodeFilesCount(
                                 const QVector<VmImageRawInfo>& imgsRawInfo,
-                                const QSet<int>& idSet,
                                 const QStringList& mountStorages){
 
     // ****************************** Теория ******************************  //
@@ -1481,81 +1433,72 @@ bool VmDataCollector::checkNodeFilesCount(
 
     bool res = true;
 
+    // *** Формирование списка уникальных идентификаторов *** //
+    QSet<int> idSet = getIdSet(imgsRawInfo);
+
+    // *** Число файлов imageFullName c каждым id должно быть равно *** //
+    // числу примонтированных дисков mountStorage.size(), если файлов   //
+    // меньше, значит есть недоступные файлы из точки сохранения.       //
+    // **************************************************************** //
+
     for (QSet<int>::const_iterator it = idSet.begin(); it != idSet.end(); ++it){
         int id  = *it;
-        int problemId;
-        // *** "-1" всегда выявится на проверке backing файла, пропуск *** //
-        if (id == -1){
-            continue;
-        }
-
-        int counter = 0;
-        bool skipRoot = false;
-        for (int i = 0; i < imgsRawInfo.size(); ++i){
-            // *** Даже если у файла есть физически id, но по факту *** //
-            //     у него нет родителей, то он корневой и его id = -1   //
-            int tmpId;
-            if (imgsRawInfo[i].backFullName == "-1"){
-                tmpId = -1;
-                skipRoot = true;
-            }
-            else {
-                tmpId = getFileNameId(imgsRawInfo[i].imageFullName);
-            }
-
-            if (tmpId == id && tmpId != -1){
-                counter++;
+        int counter  = 0;
+        // *** Перебор по найденным файлам сохранений  *** //
+        for (int j = 0; j < imgsRawInfo.size(); ++j){
+            // *** Если файл - корень цепочки, то не важно, *** //
+            //     какой у него в названии id.                  //
+            if (imgsRawInfo[j].backFullName != "-1"){
+                if (id == getFileNameId(imgsRawInfo[j].imageFullName)){
+                    counter++;
+                }
             }
         }
 
-        if (skipRoot){
-            continue;
-        }
-
-        if (counter != mountStorages.size()){
-            problemId = id;
-            QStringList existImageFullName;
-
-            // Формирование списка существующих файлов с проблемным id
+        if (counter > 0 && counter < mountStorages.size()){
+            QVector<VmImageRawInfo> exImagesRawInfo;
+            // *** Формирование ветора существующих|доступных файлов *** //
             for (int j = 0; j < imgsRawInfo.size(); ++j){
-                if (problemId == getFileNameId(imgsRawInfo[j].imageFullName)){
-                    existImageFullName.push_back(imgsRawInfo[j].imageFullName);
-                }
-            }
-
-            for (int k = 0; k < mountStorages.size(); ++k){
-                QString mountStorage = mountStorages[k];
-                // *** Выдление общей части в названии файла *** //
-                mountStorage.remove(QRegularExpression("-id-\\d{10}"));
-                if (mountStorage.endsWith(".qcow2", Qt::CaseInsensitive)){
-                    mountStorage.chop(QString(".qcow2").size());
-                }
-
-                bool inside = false;
-                for (int m = 0; m < existImageFullName.size(); ++m){
-                    if (existImageFullName[m].contains(mountStorage)) {
-                        inside = true;
+                if (imgsRawInfo[j].backFullName != "-1"){
+                    if (id == getFileNameId(imgsRawInfo[j].imageFullName)){
+                        exImagesRawInfo.push_back(imgsRawInfo[j]);
                     }
                 }
+            }
 
-                // Если общая часть названия точки монтирования не входит
-                // в существующие файлы с проблемным id, значит файл потерян
-                if (!inside){
-                    QString problemImage = mountStorage + "-id-"
-                                        + QString::number(problemId) + ".qcow2";
-                    emit errorMsg("File access error",
-                     "Please check your access to the workpoint file:\n"
-                        + QString(" - File name: ") + QFileInfo(problemImage)
-                                                                .fileName()+"\n"
-                        + QString(" - Base path: ") + QFileInfo(problemImage)
-                                                               .absolutePath());
+            QStringList locMountStorages = mountStorages;
+            for (int j = locMountStorages.size() - 1; j >= 0; --j){
+                // *** При равенстве паттернов названий, идёт удаление из *** //
+                // списка примонтированных дисков.                            //
+                // То, что останетя и будет недостающим звеном, очевидно.     //
+                // ********************************************************** //
+                for (int i = 0; i < exImagesRawInfo.size(); ++i){
+                    QString imgFName = exImagesRawInfo[i].imageFullName;
+                    if (isEqualFileNamePattern(imgFName, locMountStorages[j])){
+                        locMountStorages.removeAt(j);
+                    }
                 }
             }
 
+            // *** В предупреждении достаточно сообщения об одном файле *** //
+            QString lostFile = locMountStorages.first();
+            lostFile.remove(QRegularExpression("-id-\\d{10}"));
+            if (lostFile.endsWith(".qcow2", Qt::CaseInsensitive)){
+                    lostFile.chop(QString(".qcow2").size());
+            }
+            lostFile = lostFile + "-id-" + QString::number(id) + ".qcow2";
+
+            emit errorMsg("File access error",
+                     "Please check your access to the workpoint file:\n"
+                        + QString(" - File name: ") + QFileInfo(lostFile)
+                                                                .fileName()+"\n"
+                        + QString(" - Base path: ") + QFileInfo(lostFile)
+                                                               .absolutePath());
             res = false;
-            break;
         }
+
     }
+
     return res;
 }
 
