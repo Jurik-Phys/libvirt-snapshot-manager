@@ -295,14 +295,10 @@ VMachine VmDataCollector::getVmFullInfo(const VMachine& vmIn){
     m_vmImagesRawInfo.clear();
     QVector<VmImageRawInfo> vmImagesRawInfo;
     bool isOkLoadRawInfo = true;
-    for ( int i = 0; i < vm.snapshotsDirs.size(); ++i ){
-        QString dir = vm.snapshotsDirs[i];
-        loadVmImagesRawInfoOverQEMU(vmImagesRawInfo, dir, vm.mountStorages,
-                                                              &isOkLoadRawInfo);
-        // *** Прекращение работы при первой же ошибке получения данных *** //
-        if (!isOkLoadRawInfo){
+    loadVmImagesRawInfoOverQEMU(vmImagesRawInfo, vm.snapshotsDirs,
+                                            vm.mountStorages, &isOkLoadRawInfo);
+    if (!isOkLoadRawInfo){
             return vm;
-        }
     }
 
     // *** Проверка на наличие вновь примонтированных хранилищ *** //
@@ -636,131 +632,144 @@ bool VmDataCollector::isVMachineImage(const QString& imageFullName){
 
 void VmDataCollector::loadVmImagesRawInfoOverQEMU(
                                        QVector<VmImageRawInfo>& vmImagesRawInfo,
-                                                    const QString& snapshotsDir,
-                                                    const QStringList& mntImgs,
+                                             const QStringList& snapDirectories,
+                                                     const QStringList& mntImgs,
                                                          bool* isOkLoadRawInfo){
+    // *** Каталогов сохранения цепочек состояния может быть несколько *** //
+    int progressCounter;
 
-    // Получение списка всех файлов из каталога цепочки сохранения состояний
-    // /* только имена файлов */
-    QStringList basePathFiles = QDir(snapshotsDir).entryList(QDir::Files
+    for (int i = 0; i < snapDirectories.size(); ++i){
+        QString snapshotsDir = snapDirectories[i];
+        // *** Получение списка файлов из каталогов с цепочками состояний *** //
+        QStringList bPathFiles = QDir(snapshotsDir).entryList(QDir::Files
                                 | QDir::NoSymLinks | QDir::Hidden, QDir::Name);
 
-    // Проверка на доступность (файлы всегда должны быть по логике программы)
-    if (basePathFiles.size() == 0){
-        qDebug() << "[EE] Error open directory:" << snapshotsDir;
-        emit errorMsg("Directory access error",
-                 "Please check your access to the directory:\n" + snapshotsDir);
-        *isOkLoadRawInfo = false;
-        return;
-    }
-
-    QStringList mntImgsNamePatterns = getMountImageNamePatterns(mntImgs);
-    QStringList basePathVmFiles = filterFilesByImageNamePatterns(basePathFiles,
-                                                           mntImgsNamePatterns);
-    basePathVmFiles = sortVmFilesByCreateTime(snapshotsDir, basePathVmFiles);
-
-    // В 'snapshotsDir' символические ссылки отбрасыаются:
-    // - симмволическая ссылка может вести в другой каталог, что вызовет "кашу"
-    //   снапшотов;
-    // - если символическая ссылка ведёт на файл в текущем каталоге,
-    //   то возникнет очевидный дубль.
-    // Символические ссылки необходимо учитывать при определении 'mountStorage'
-
-    // *** Чтение данных из *.qcow2 через qemu-img - дорогая операция *** //
-    // поэтому используется связка из "--backing-chain" и кеша запросов   //
-    // ****************************************************************** //
-    QHash<QString, QString> backFullNamesCache;
-    backFullNamesCache.reserve(basePathVmFiles.size());
-
-    // Загружаем информацию о qcow2 файлах из каталога цепочки сохранения
-    int progressCounter, oldProgressCounter = 0;
-    for (int i = 0, vmDiskCount = -1; i < basePathVmFiles.size(); ++i){
-        // *** В случае большого числа примонтированных файлов (n), *** //
-        // а тажкже большого числа узлов в дереве снапшотов (m), число  //
-        // используемых файлов возрастает до n*m, что может занять      //
-        // ощутимое время при чтении данных с диска. Для удобства       //
-        // вводится индикатор построения дерева снапшотов (по факту     //
-        // индикатор чтения информации из qcow2 файлов (в процентах).   //
-        // ************************************************************ //
-        progressCounter = 100 * (i + 1) / basePathVmFiles.size();
-        if (oldProgressCounter != progressCounter){
-            emit snapChainDataLoading(progressCounter);
-            oldProgressCounter = progressCounter;
-        }
-
-        QString fileFullName = getFileFullName(snapshotsDir,basePathVmFiles[i]);
-
-        // *** Проверка на возможность чтения файла c диска *** //
-        if (!checkImageExistsAndReadble(fileFullName)){
-            emit errorMsg("File access error",
-                     "Please check your access to the file:\n"
-                        + QString(" - File name: ") + basePathVmFiles[i] + "\n"
-                        + QString(" - Base path: ") + snapshotsDir);
+        // *** Проверка доступности файлов в каталоге цепочки сохранения *** //
+        // Файлы здесь всегда должны быть по логике работы программы.        //
+        // ***************************************************************** //
+        if (bPathFiles.size() == 0){
+            qDebug() << "[EE] Error open directory:" << snapshotsDir;
+            emit errorMsg("Directory access error",
+                     "Please check your access to the directory:\n" + snapshotsDir);
             *isOkLoadRawInfo = false;
             return;
         }
 
-        // *** mntImgs.contains(fileFullName) отрабатывет случай, когда *** //
-        //     в виртуальной машине файлы недоступны для чтения текущему    //
-        //     пользователю, например, при первом запуске программы         //
-        if (isVMachineImage(fileFullName) || mntImgs.contains(fileFullName)){
-            vmDiskCount++;
-            QString backingFail;
-            bool isOkBackFullName = true;
-            VmImageRawInfo vmImageRawInfo;
-            vmImageRawInfo.imageBasePath = snapshotsDir;
-            vmImageRawInfo.imageFullName = fileFullName;
-            vmImageRawInfo.backFullName = getBackFullNameQEMU(vmImageRawInfo,
-                             backFullNamesCache, backingFail, isOkBackFullName);
+        QStringList mntImgsNamePatterns = getMountImageNamePatterns(mntImgs);
+        QStringList bPathVmFiles = filterFilesByImageNamePatterns(bPathFiles,
+                                                           mntImgsNamePatterns);
+        bPathVmFiles = sortVmFilesByCreateTime(snapshotsDir, bPathVmFiles);
 
-            // *** В getBackFullNameQEMU под капотом используется команда *** //
-            // qemu-img info -U --backing-chain --output=json <f.qcow2>       //
-            // При отсутсвии хотя бы одного файла в цепочке снапшотов имя     //
-            // отсутствующего файла будет записано в backingFail, a флаг      //
-            // isOkBackFullName будет установлен в false.                     //
-            // Также в backingFail попадёт диск, к которому нет доступа, но   //
-            // это может быть примонтированный к ВМ диск, что допустимо.      //
-            // Такой случай не должен устанавливать флаг неудачной загрузки   //
-            // и не должен выдавать всплывающее окно с ошибкой доступа.       //
-            // ************************************************************** //
-            if (!isOkBackFullName && !mntImgs.contains(backingFail)){
+        // *** В 'snapshotsDir' символические ссылки отбрасыаются: *** //
+        // - симмволическая ссылка может вести в другой каталог,       //
+        //   что вызовет "кашу" снапшотов;                             //
+        // - если символическая ссылка ведёт на файл в текущем         //
+        //   каталоге, то возникнет очевидный дубль qcow2 файлов.      //
+        // Ссылки необходимо учитывать при определении 'mountStorage'  //
+        // *********************************************************** //
+
+        // *** Чтение данных из *.qcow2 через qemu-img - дорогая операция *** //
+        // поэтому используется связка из "--backing-chain" и кеша запросов   //
+        // ****************************************************************** //
+        QHash<QString, QString> backFullNamesCache;
+        backFullNamesCache.reserve(bPathVmFiles.size());
+
+        int oldProgressCounterInDir = 0;
+        // Загружаем информацию о qcow2 файлах из каталога цепочки сохранения
+        for (int j = 0, vmDiskCount = -1; j < bPathVmFiles.size(); ++j){
+            // *** В случае большого числа примонтированных файлов (n), *** //
+            // а тажкже большого числа узлов в дереве снапшотов (m), число  //
+            // используемых файлов возрастает до n*m, что может занять      //
+            // ощутимое время при чтении данных с диска. Для удобства       //
+            // вводится индикатор построения дерева снапшотов (по факту     //
+            // индикатор чтения информации из qcow2 файлов (в процентах).   //
+            // ************************************************************ //
+            int progressCounterInDir = (100 * (j + 1) / bPathVmFiles.size());
+            progressCounter =  i * 100 + progressCounterInDir;
+            if (oldProgressCounterInDir != progressCounterInDir){
+                int progressPercent = progressCounter / snapDirectories.size();
+                emit snapChainDataLoading(progressPercent);
+                oldProgressCounterInDir = progressCounterInDir;
+            }
+
+            QString fileFullName = getFileFullName(snapshotsDir,
+                                                               bPathVmFiles[j]);
+
+            // *** Проверка на возможность чтения файла c диска *** //
+            if (!checkImageExistsAndReadble(fileFullName)){
                 emit errorMsg("File access error",
+                         "Please check your access to the file:\n"
+                            + QString(" - File name: ") + bPathVmFiles[j] + "\n"
+                            + QString(" - Base path: ") + snapshotsDir);
+                *isOkLoadRawInfo = false;
+                return;
+            }
+
+            // *** mntImgs.contains(fileFullName) отрабатывет случай, *** //
+            // когда в виртуальной машине файлы недоступны для чтения     //
+            // текущему пользователю.                                     //
+            // ********************************************************** //
+            if (isVMachineImage(fileFullName) || mntImgs.contains(fileFullName)){
+                vmDiskCount++;
+                QString backingFail;
+                bool isOkBackFullName = true;
+                VmImageRawInfo vmImageRawInfo;
+                vmImageRawInfo.imageBasePath = snapshotsDir;
+                vmImageRawInfo.imageFullName = fileFullName;
+                vmImageRawInfo.backFullName =
+                    getBackFullNameQEMU(vmImageRawInfo, backFullNamesCache,
+                                                 backingFail, isOkBackFullName);
+
+                // *** В getBackFullNameQEMU по факту выполняется команда *** //
+                // qemu-img info -U --backing-chain --output=json <f.qcow2>   //
+                // При отсутсвии хотя бы одного файла в цепочке снапшотов имя //
+                // отсутствующего файла будет записано в backingFail, a флаг  //
+                // isOkBackFullName будет установлен в false.                 //
+                // Также в backingFail попадёт диск, к которому нет доступа,  //
+                // но это может быть подкюченный к ВМ диск, что допустимо.    //
+                // Такой случай не должен устанавливать флаг неудачной        //
+                // загрузки и не должен вызывать всплывающее окно с ошибкой.  //
+                // ********************************************************** //
+                if (!isOkBackFullName && !mntImgs.contains(backingFail)){
+                    emit errorMsg("File access error",
                         "Please check your access to the backing file:\n"
                             + QString(" - File name: ") + QFileInfo(backingFail)
                                                                 .fileName()+"\n"
                             + QString(" - Base path: ") + QFileInfo(backingFail)
                                                                .absolutePath());
-                *isOkLoadRawInfo = false;
-                break;
-            }
-
-            // *** По факту здесь идёт поиск backing файлов для *** //
-            // примонтированных файлов. Если к файлу нет доступа,   //
-            // команда getBackFullNameQEMU() вернёт пустую строку.  //
-            // Файлы с признаками                                   //
-            // - 1. Существует                                      //
-            // - 2. У файла нет id                                  //
-            // - 3. Подключен к ВМ,                                 //
-            // - 4. getBackFullNameQEMU вернуло пустую строку,      //
-            // очевидно претендуют быть вершиной дерева снапшотов   //
-            // т.е., не иметь backing файлов backFullName = "-1"    //
-            // **************************************************** //
-            if (vmImageRawInfo.backFullName.isEmpty()){
-                int id = getFileNameId(fileFullName);
-                if (id == -1 && mntImgs.contains(fileFullName)){
-                    vmImageRawInfo.backFullName = "-1";
+                    *isOkLoadRawInfo = false;
+                    break;
                 }
-            }
 
-            // backFullName может быть символической ссылкой на реальный файл.
-            // необходимо это проверить и разрешить путь при необходиомсти.
-            // Предполагается, что реальный файл находится в этом же каталоге
-            QFileInfo file(vmImageRawInfo.backFullName);
-            if (file.isSymLink()){
-                vmImageRawInfo.backFullName = snapshotsDir +"/"+
-                                 QFileInfo(file.canonicalFilePath()).fileName();
+                // *** По факту здесь идёт поиск backing файлов для *** //
+                // примонтированных файлов. Если к файлу нет доступа,   //
+                // команда getBackFullNameQEMU() вернёт пустую строку.  //
+                // Файлы с признаками                                   //
+                // - 1. Существует                                      //
+                // - 2. У файла нет id                                  //
+                // - 3. Подключен к ВМ,                                 //
+                // - 4. getBackFullNameQEMU вернуло пустую строку,      //
+                // очевидно претендуют быть вершиной дерева снапшотов   //
+                // т.е., не иметь backing файлов backFullName = "-1"    //
+                // **************************************************** //
+                if (vmImageRawInfo.backFullName.isEmpty()){
+                    int id = getFileNameId(fileFullName);
+                    if (id == -1 && mntImgs.contains(fileFullName)){
+                        vmImageRawInfo.backFullName = "-1";
+                    }
+                }
+
+                // *** backFullName может быть символической ссылкой *** //
+                // на файл. Необходимо это проверить и разрешить путь.   //
+                // Предполагается, что файл находится в этом же каталоге //
+                // ***************************************************** //
+                QFileInfo file(vmImageRawInfo.backFullName);
+                if (file.isSymLink()){
+                    vmImageRawInfo.backFullName = snapshotsDir +"/"+
+                                     QFileInfo(file.canonicalFilePath()).fileName();
+                }
+                vmImagesRawInfo.push_back(vmImageRawInfo);
             }
-            vmImagesRawInfo.push_back(vmImageRawInfo);
         }
     }
 
@@ -1029,6 +1038,20 @@ bool VmDataCollector::isEqualFileNamePattern(const QString& imageFullName,
     }
 
     return isEqNamePattern;
+}
+
+bool VmDataCollector::isEqualAbsolutePath(const QString& imageFullNameA,
+                                                 const QString& imageFullNameB){
+    bool isEqualAsolutePath = true;
+
+    QString absPathA = QFileInfo(imageFullNameA).absolutePath();
+    QString absPathB = QFileInfo(imageFullNameB).absolutePath();
+
+    if (absPathA != absPathB){
+        isEqualAsolutePath = false;
+    }
+
+    return isEqualAsolutePath;
 }
 
 QString VmDataCollector::getBackFullNameFromCache(const VmImageRawInfo& vmImg,
@@ -1440,7 +1463,6 @@ bool VmDataCollector::checkNodeFilesCount(
     // числу примонтированных дисков mountStorage.size(), если файлов   //
     // меньше, значит есть недоступные файлы из точки сохранения.       //
     // **************************************************************** //
-
     for (QSet<int>::const_iterator it = idSet.begin(); it != idSet.end(); ++it){
         int id  = *it;
         int counter  = 0;
@@ -1475,7 +1497,14 @@ bool VmDataCollector::checkNodeFilesCount(
                 for (int i = 0; i < exImagesRawInfo.size(); ++i){
                     QString imgFName = exImagesRawInfo[i].imageFullName;
                     if (isEqualFileNamePattern(imgFName, locMountStorages[j])){
-                        locMountStorages.removeAt(j);
+                        // *** Если файлы расположены в разных каталогах, *** //
+                        // то они могут иметь одинаковые имена, поэтому далее //
+                        // дополнительная проверка на совпадение пути к файлу.//
+                        // ************************************************** //
+                        if (isEqualAbsolutePath(imgFName, locMountStorages[j])){
+                            locMountStorages.removeAt(j);
+                            break;;
+                        }
                     }
                 }
             }

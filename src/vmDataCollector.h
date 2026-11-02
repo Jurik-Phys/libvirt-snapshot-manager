@@ -89,7 +89,7 @@ class VmDataCollector : public QObject {
         void setChildrenData(VMachine& vm);
         bool isVMachineImage(const QString& imageFullName);
         void loadVmImagesRawInfoOverQEMU(QVector<VmImageRawInfo>&,
-                                            const QString& dir,
+                                            const QStringList& snapDirectories,
                                             const QStringList& mountStorages,
                                             bool* isOkLoadRawInfo);
         QVector<VmImageRawInfo> rmExtBackingInfo(const QVector<VmImageRawInfo>&,
@@ -104,8 +104,10 @@ class VmDataCollector : public QObject {
         QString getBackFullNameFromQemuImgChain(const QByteArray& qemuImgOut);
         QString getBackFullNameFromCache(const VmImageRawInfo&,
                                                       QHash<QString, QString>&);
-        bool isEqualFileNamePattern(const QString& imageFullName,
-                                            const QString& backingFileFullName);
+        bool isEqualFileNamePattern(const QString& imageFullNameA,
+                                                 const QString& imageFullNameB);
+        bool isEqualAbsolutePath(const QString& imageFullNameA,
+                                                 const QString& imageFullNameB);
         QString getBackFullNameFast(const QString& fullFileName);
         QString getRootFullName(const QString& fileFullName);
         QString getRootVirtSize(const QString& fileFullName);
