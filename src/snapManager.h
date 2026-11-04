@@ -45,6 +45,7 @@ class SnapManager : public QObject {
                                const int& insertDriveIndex);
     private:
         VMachine m_vm;
+        int m_dialogDone = 1050;
         QWidget* parentWindow;
 
         QString getSnapName(const QString& imgName, const QString& id);
@@ -53,8 +54,8 @@ class SnapManager : public QObject {
         bool rebaseImages(const QStringList& parentImages,
                                 const QStringList& idImages,
                                     const QVector<QStringList>& childrenImages);
-        void doNewRoot(const QStringList& idImgs, const QStringList& childImgs);
-
+        void doNewRoot(const QStringList& deletedImgs,
+                                                  const QStringList& childImgs);
 
         bool checkWriteAccessToDirs(const QStringList& dirsForWriteCheck,
                                             QStringList* noWriteDirs = nullptr);
@@ -74,6 +75,8 @@ class SnapManager : public QObject {
                                         const QStringList& snapshotsFullNames);
         void turnOnOffVirtualMachine(const QString& vmName);
         QString removeVmXmlNetwork(const QString& vmXml);
+
+        QString getBackFileFromHiddenChain(const QString& deletedImage);
 };
 
 #endif

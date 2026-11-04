@@ -107,7 +107,7 @@ QStringList SnapManager::doSnapshotOverQemuImg(const QString& vmName,
     // *** Закрытие диалогового окна с прогрессом создания снапшота *** //
     //     Перед закрытием диалог повисит со 100%, чтобы не было        //
     //     лишнего "мельтешения" в случае короткой по времени операции  //
-    this->sleep(1250);
+    this->sleep(m_dialogDone);
     progress->close();
     progress->deleteLater();
 
@@ -184,7 +184,7 @@ QStringList SnapManager::doSnapshotOverVirsh(const QString& vmName,
     // *** Закрытие диалогового окна с прогрессом создания снапшота *** //
     //     Перед закрытием диалог повисит со 100%, чтобы не было        //
     //     лишнего "мельтешения" в случае короткой по времени операции  //
-    this->sleep(1250);
+    this->sleep(m_dialogDone);
     progress->close();
     progress->deleteLater();
 
@@ -341,7 +341,7 @@ void SnapManager::createQcow2Images(const QVector<ChainNode>& vmNodes,
     // *** Закрытие диалогового окна с прогрессом операции *** //
     //     Перед закрытием диалог повисит со 100%, чтобы       //
     //     не было "мельтешения" в случае быстрой операции     //
-    this->sleep(1250);
+    this->sleep(m_dialogDone);
     progress->close();
     progress->deleteLater();
 }
@@ -400,8 +400,9 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const QString& snapName,
                                 parentWindow, "Delete confirmation",
                                 "Do you really want to delete the snapshot "
                                                   "\"" + snapName + "\"?\n\n"
-                        "Info: Deleting root snapshot may take a long time \n"
-                               "and temporarily require additional disk space.",
+                    "Info: Deleting the root snapshot may take a long time \n"
+                            "and temporarily require additional disk space \n"
+                             "of up to the total size of all virtual disks.",
                                             QMessageBox::Yes | QMessageBox::No);
             if (reply == QMessageBox::No) {
                 return false;
@@ -410,9 +411,9 @@ bool SnapManager::deleteSnapshot(const QString& vmName, const QString& snapName,
             // Есть корневой узел с одним потомком. Удаление корневого узла,
             // есть конвертация потомка в независимый диск, который станет новым
             // корневым узлом цепочки сохранения состояний
-            QStringList idImages = node.imagesFullNames;
-            QStringList childImages = node.childrenImagesFullNames.first();
-            doNewRoot(idImages, childImages);
+            QStringList deletedImages = node.imagesFullNames;
+            QStringList childImages   = node.childrenImagesFullNames.first();
+            doNewRoot(deletedImages, childImages);
 
             return true;
         }
@@ -663,14 +664,14 @@ bool SnapManager::rebaseImages(const QStringList& parentImages,
     //        Отображение 100% индикатора в течение 1,25 с
     info = partInfo.arg(100, 3, 10, QChar('0'));
     progress->setLabelText(info);
-    this->sleep(1250);
+    this->sleep(m_dialogDone);
 
     progress->close();
     progress->deleteLater();
     return true;
 }
 
-void SnapManager::doNewRoot(const QStringList& idImgs,
+void SnapManager::doNewRoot(const QStringList& deletedImages,
                                                 const QStringList& childImgs){
     QProgressDialog* progress = nullptr;
     progress = createNewQProgressDialog(100*childImgs.size(), parentWindow);
@@ -679,14 +680,14 @@ void SnapManager::doNewRoot(const QStringList& idImgs,
     progress->show();
     QString partInfo, info;
 
-    for (int i = 0; i < idImgs.size(); ++i){
+    for (int i = 0; i < deletedImages.size(); ++i){
         // *** Вывод информации во всплывающее окно *** //
         partInfo = QString("Moving required data to the new snapshot tree root\n"
             "DANGER: Manually canceling this process may corrupt or cause data "
             "loss!\n Please wait…\n"
                             "Processing file %1 of %2 (%4%) \n '%3'")
                                .arg(i+1, 3)
-                               .arg(idImgs.size(),  3)
+                               .arg(deletedImages.size(),  3)
                                .arg(QFileInfo(childImgs[i]).fileName());
         info = partInfo.arg(0, 3, 10, QChar('0'));
         progress->setLabelText(info);
@@ -714,18 +715,35 @@ void SnapManager::doNewRoot(const QStringList& idImgs,
                 }
             });
 
-        QStringList qemuArgs = {"convert", "-O", "qcow2", "-p",
+        QStringList qemuArgs;
+        QString delImgBackFile = getBackFileFromHiddenChain(deletedImages[i]);
+
+        if (delImgBackFile.isEmpty()){
+            // *** У корневого qcow2 файла дерева снапшотов нет родителей *** //
+            // Параметр convert применяется т.к., commit не возможен из-за    //
+            // ограничения прав на запись для примонтированного к ВМ файла    //
+            // ************************************************************** //
+            qemuArgs = {"convert", "-O", "qcow2", "-p",
                               childImgs[i], childImgs[i] + ".temp-copy.qcow2" };
+        }
+        else {
+            // *** У корневого файла есть скрытая цепочка сохранений *** //
+            // Родительский файл (backing file) указывается через        //
+            // параметр "-B", а параметр "-F" указывает его тип.         //
+            // ********************************************************* //
+            qemuArgs = {"convert", "-O", "qcow2", "-p",
+                              childImgs[i], childImgs[i] + ".temp-copy.qcow2",
+                                           "-F", "qcow2", "-B", delImgBackFile};
+        }
 
         process.start("qemu-img", qemuArgs);
-
         loop.exec();
     }
 
     // *** Really move snapshot files *** //
-    for (int k = 0; k < idImgs.size(); ++k){
+    for (int k = 0; k < deletedImages.size(); ++k){
         // Delete old root node
-        QFile file(idImgs[k]);
+        QFile file(deletedImages[k]);
         if (file.exists()){
             file.remove();
         }
@@ -743,7 +761,7 @@ void SnapManager::doNewRoot(const QStringList& idImgs,
     progress->setValue(childImgs.size()*100);
 
     // *** Задержка с отобржаением 100% прогресса операции *** //
-    this->sleep(1250);
+    this->sleep(m_dialogDone);
     progress->close();
     progress->deleteLater();
 }
@@ -845,5 +863,36 @@ void SnapManager::sleep(const int& msTimer){
     QEventLoop dlgLoop;
     QTimer::singleShot(msTimer, &dlgLoop, &QEventLoop::quit);
     dlgLoop.exec();
+}
+
+QString SnapManager::getBackFileFromHiddenChain(const QString& deletedImage){
+    QString res;
+
+    QProcess process;
+    QEventLoop loop;
+
+    QByteArray qemuImgOut;
+    QObject::connect(&process, &QProcess::finished, &loop, &QEventLoop::quit);
+    QObject::connect(&process, &QProcess::finished, [&](){
+                                  qemuImgOut += process.readAllStandardOutput();
+                                });
+    process.start("qemu-img", {"info", "--output=json", deletedImage});
+    loop.exec();
+
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(qemuImgOut, &error);
+
+    if (error.error == QJsonParseError::NoError){
+        QJsonObject root = doc.object();
+        QString backFile = QFileInfo(root["full-backing-filename"].toString())
+                                                                    .fileName();
+        QString basePath = QFileInfo(deletedImage).absolutePath();
+
+        if (!backFile.isEmpty()){
+            res = basePath + "/" + backFile;
+        }
+    }
+
+    return res;
 }
 // End snapManager.cpp
