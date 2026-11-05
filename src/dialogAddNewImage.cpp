@@ -20,7 +20,7 @@ DialogAddNewImage::DialogAddNewImage(QWidget* parent) : QDialog(parent){
     QLabel* dirPathLabel = new QLabel("Directory:");
     dirPathLabel->setFixedWidth(m_leftWidth);
     m_dirPathEdit = new QLineEdit();
-    m_dirPathEdit->setText("/var/lib/libvirt/images");
+    m_dirPathEdit->setText(m_newImageDirectory);
     QToolButton* dirPathBrowseBtn = new QToolButton();
     dirPathBrowseBtn->setText("Browse…");
     hDirPathLayout->addWidget(dirPathLabel);
@@ -207,9 +207,12 @@ void DialogAddNewImage::selectDir(){
     QString dir = QFileDialog::getExistingDirectory(
                 this,
                 "Select Folder",
-                "/var/lib/libvirt/images",
+                m_newImageDirectory,
                 QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
-    m_dirPathEdit->setText(dir);
+    if (!dir.isEmpty()){
+        m_newImageDirectory = dir;
+        m_dirPathEdit->setText(dir);
+    }
 }
 
 QString DialogAddNewImage::getImageFullName(){

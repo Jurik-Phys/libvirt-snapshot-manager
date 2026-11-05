@@ -34,6 +34,7 @@ class DialogAddNewImage : public QDialog {
         QLabel*         m_errorOut;
         QComboBox*      m_controllerBox;
         int m_leftWidth = 100;
+        QString m_newImageDirectory = "/var/lib/libvirt/images";
 };
 
 
