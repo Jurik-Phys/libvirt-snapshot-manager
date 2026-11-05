@@ -152,7 +152,7 @@ void DialogAddNewImage::checkSelectedPath(){
 
     // *** Проверка на существование файла *** //
     QFile imageFile(imageBasePath + "/" + fName);
-    if (imageFile.exists()){
+    if (isExistsFile(imageFile.fileName())){
         m_errorOut->setText("The file already exists!");
         return;
     }
@@ -201,6 +201,41 @@ bool DialogAddNewImage::isValidDirPath(const QString& dir){
     }
 
     return res;
+}
+
+bool DialogAddNewImage::isExistsFile(const QString& fileFullName){
+    // *** Поскольку введённое имя файла будет реплицироваться на все *** //
+    // уже существующие узлы дерева снапшота и превратится в              //
+    // filename-id-XXXXXXXXXX.qcow2, то возможен случай, когда ранее уже  //
+    // существовал корневой узел с таким же именем filename.qcow2,        //
+    // а затем был удалён в рамках удаления корневого узла дерева         //
+    // снапшотов.                                                         //
+    // В итоге будет существовать filename-id-XXXXXXXXXX.qcow2, но сам    //
+    // filename.qcow2 формально не существует и, если ограничится         //
+    // проверкой только filename.qcow2, то можно попасть в ситуац., когда //
+    // уже существующие файлы filename-id-XXXXXXXXXX.qcow2 будут заменены //
+    // чистыми заглушкамми без данных, что недопустимо.                   //
+    // В результате, проверять надо совпадения в базовых частях имен      //
+    // файлов т.е., совпадения без id-XXXXXXXXXX и расширений файлов.     //
+    // ****************************************************************** //
+    bool isExistsFile = false;
+    QString directory    = QFileInfo(fileFullName).absolutePath();
+    QString baseFileName = QFileInfo(fileFullName).completeBaseName();
+    baseFileName.remove(QRegularExpression(m_idRegExp));
+
+    QStringList fList = QDir(directory).entryList(QDir::Files
+                                 | QDir::NoSymLinks | QDir::Hidden, QDir::Name);
+    for (int i = 0; i < fList.size(); ++i){
+        QString lBaseFileName = QFileInfo(fList[i]).completeBaseName();
+        lBaseFileName.remove(QRegularExpression(m_idRegExp));
+        // *** Совпадение базовых имён файлов т.е., имён без id суфикса *** //
+        // **************************************************************** //
+        if (lBaseFileName == baseFileName){
+            isExistsFile = true;
+        }
+    }
+
+    return isExistsFile;
 }
 
 void DialogAddNewImage::selectDir(){

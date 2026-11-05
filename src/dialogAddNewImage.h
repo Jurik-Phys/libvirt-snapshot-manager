@@ -28,13 +28,16 @@ class DialogAddNewImage : public QDialog {
         void selectDir();
         bool isValidFileName(const QString& fName);
         bool isValidDirPath(const QString& dir);
+        bool isExistsFile(const QString& fullFileName);
+
         QLineEdit*      m_fileNameEdit;
         QLineEdit*      m_dirPathEdit;
         QDoubleSpinBox* m_capacitySpinBox;
         QLabel*         m_errorOut;
         QComboBox*      m_controllerBox;
-        int m_leftWidth = 100;
-        QString m_newImageDirectory = "/var/lib/libvirt/images";
+        QString         m_idRegExp = "-id-\\d+";
+        QString         m_newImageDirectory = "/var/lib/libvirt/images";
+        int             m_leftWidth = 100;
 };
 
 
