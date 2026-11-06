@@ -78,4 +78,19 @@ void SnapTreeView::onActionGoto(){
     emit gotoSnapshot();
 }
 
+void SnapTreeView::resetSnapTreeSelection(){
+    // *** clearSelection() снимает выделение, но не гарантирует сброс *** //
+    // текущего индекса, а значит вызова сигнала currentChanged не будет.  //
+    // ******************************************************************* //
+    this->clearSelection();
+
+    if (this->selectionModel()) {
+        // *** сброс текущего индекса приведёт к тому, что при следующем *** //
+        // клике по строке в дереве снапшотов изменится текущий индекс       //
+        // и сигнал currentChanged будет подан, как и задумывалось.          //
+        // ***************************************************************** //
+        this->selectionModel()->clearCurrentIndex();
+    }
+}
+
 // End snapTreeView.cpp

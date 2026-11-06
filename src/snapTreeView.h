@@ -13,6 +13,7 @@ class SnapTreeView : public QTreeView {
     public:
         SnapTreeView(QWidget* parent = nullptr);
         bool isSelectItem();
+        void resetSnapTreeSelection();
 
     signals:
         void doSnapshot();

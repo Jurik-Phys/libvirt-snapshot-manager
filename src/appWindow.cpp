@@ -602,6 +602,9 @@ void QAppWindow::modVmIntoFrame(const QVector<VMachine>& toModVmList){
 }
 
 void QAppWindow::updSnapTree(){
+
+    m_snapTreeView->resetSnapTreeSelection();
+
     QObject* s = sender();
     VmWidget* vmWidget = qobject_cast<VmWidget *>(s);
     if (vmWidget) {
@@ -651,7 +654,6 @@ void QAppWindow::updSnapTree(){
                                     &QItemSelectionModel::currentChanged,
                              this, &QAppWindow::btnManageGoDelOnTreeItemChanged,
                                                           Qt::UniqueConnection);
-                m_snapTreeView->clearSelection();
 
                 // *** Если время перед началом сбора данных и получением *** //
                 // мало, то для улучшения UI добавляется небольшая  задержка, //
