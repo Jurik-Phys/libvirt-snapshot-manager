@@ -652,7 +652,7 @@ VMachine VmInfoWidget::getData(){
                                                  ->property("model").toString();
     vm.cpu["max"] = qobject_cast<QLabel*>(m_colBWidgets[4])
                                                    ->property("max").toString();
-    vm.ram = qobject_cast<QLabel*>(m_colBWidgets[5])->text();
+    vm.ram = getRawRam();
     vm.os.name = getVmOS();
 
     return vm;
@@ -690,6 +690,7 @@ void VmInfoWidget::setMaxCPUs(const QString& newMaxCPUs){
 void VmInfoWidget::setRam(const QString& newRam){
     QString ruHumanMemory = humanMemory(newRam).replace(".", ",");
     qobject_cast<QLabel*>(m_colBWidgets[5])->setText(ruHumanMemory);
+    m_rawRam = newRam;
 }
 
 void VmInfoWidget::setOsName(const QString& newOsName){
@@ -988,6 +989,9 @@ QString VmInfoWidget::getVmName(){
     return getFullTextFromLabel(vmNameLabel);
 }
 
+QString VmInfoWidget::getRawRam(){
+    return m_rawRam;
+}
 
 QString VmInfoWidget::getVmCpuTopology(){
     QString cpuTopology;

@@ -99,6 +99,7 @@ class VmInfoWidget : public QFrame {
         void manageDeleteItem();
 
         QString m_uuid;
+        QString m_rawRam;
         QStringList m_mountStorages;
         QStringList m_driveBusTypes;
         QStringList m_driveDevNames;
@@ -138,6 +139,7 @@ class VmInfoWidget : public QFrame {
         QString getVmCpuTopology();
         QString getVmCpuModel();
         QString getVmMaxCPUs();
+        QString getRawRam();
 
         void setTextToLabel(QLabel*, const QString&);
         QString getFullTextFromLabel(QLabel*);
