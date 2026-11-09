@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Libvirt Snapshot Manager
+Comment=Lightweight tool for managing external snapshots of virtual machines using libvirt and QEMU
+Icon=libvirt-snapshot-manager
+Exec=libvirt-snapshot-manager
+Type=Application
+Terminal=false
+Categories=Utility;
