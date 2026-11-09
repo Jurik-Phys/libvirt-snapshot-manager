@@ -111,6 +111,7 @@ class VmDataCollector : public QObject {
         QString getBackFullNameFast(const QString& fullFileName);
         QString getRootFullName(const QString& fileFullName);
         QString getRootVirtSize(const QString& fileFullName);
+        void refreshStoragePools(const QStringList& poolList);
         QVector<VmImageRawInfo> m_vmImagesRawInfo;
         int getFileNameId(const QString& imgFileName);
         QString getFileFullName(const QString& basePath, const QString& fName);

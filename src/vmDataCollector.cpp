@@ -1156,7 +1156,16 @@ QString VmDataCollector::getRootVirtSize(const QString& imageFullName){
                     //     диск с правами -rw-------, прав на чтение данных   //
                     //     через qemu-img info <imageFullName> нет. Далее     //
                     //     попытка получить данные через virsh vol-info ...   //
+                    // ****************************************************** //
+
                     QStringList poolList = this->getPoolList();
+
+                    // *** Файл может быть незарегистрирован в пуле, что *** //
+                    // приведёт к ошибке получения информации о нём, поэтому //
+                    // пусть virsh перед обращением к файлу обновит пул.     //
+                    // ***************************************************** //
+                    refreshStoragePools(poolList);
+
                     res = getVirtSize(imageFullName, poolList);
                 }
                 else {
@@ -1194,6 +1203,18 @@ QStringList VmDataCollector::getPoolList(){
     loop.exec();
 
     return res;
+}
+
+void VmDataCollector::refreshStoragePools(const QStringList& pools){
+    for (int i = 0; i < pools.size(); ++i){
+        QProcess process;
+        QEventLoop loop;
+        QObject::connect(&process, &QProcess::finished,
+                                                      &loop, &QEventLoop::quit);
+        process.start("virsh",
+                {"--connect=" + m_libVirtConnectURI, "pool-refresh", pools[i]});
+        loop.exec();
+    }
 }
 
 QString VmDataCollector::getVirtSize(const QString& imageFullName,
@@ -1547,6 +1568,15 @@ bool VmDataCollector::checkImageExistsAndReadble(const QString& fileFullName){
         //     virsh vol-info ... Из ограничений - файл должен лежать      //
         //     в одном из томов (pool), а не в произвольном месте диска    //
         // *************************************************************** //
+
+        QStringList poolList = this->getPoolList();
+
+        // *** Файл может быть незарегистрирован в пуле, что *** //
+        // приведёт к ошибке получения информации о нём, поэтому //
+        // пусть virsh перед обращением к файлу обновит пул.     //
+        // ***************************************************** //
+        refreshStoragePools(poolList);
+
         isOk = checkImageExistsAndReadbleByVirsh(fileFullName);
     }
     return isOk;
