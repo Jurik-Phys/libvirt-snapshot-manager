@@ -40,7 +40,7 @@ class DialogDeleteImage : public QDialog {
 
         QStandardItemModel* m_tableDataModel;
         QTableView*         m_tableDataView;
-        void deletePermissionChanged(Qt::CheckState);
+        void deletePermissionChanged(bool checked);
         void doDelete();
 };
 

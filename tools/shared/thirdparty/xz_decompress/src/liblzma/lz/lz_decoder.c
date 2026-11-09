@@ -16,6 +16,7 @@
 // part decodes from the input buffer to the dictionary.
 
 
+#include <stdio.h>
 #include "lz_decoder.h"
 
 
@@ -92,7 +93,6 @@ decode_buffer(lzma_coder *coder,
 				+ my_min(out_size - *out_pos,
 					coder->dict.size - coder->dict.pos);
 
-#include <stdio.h>
 if (!coder) {
     fprintf(stderr, "[ERROR] [coder]\n");
     return LZMA_MEM_ERROR;

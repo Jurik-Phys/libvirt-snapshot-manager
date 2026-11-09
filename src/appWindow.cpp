@@ -880,7 +880,8 @@ bool QAppWindow::isLibvirtPolkitEnabled(){
             QByteArray line = libvirtConfFile.readLine();
             QString trStr = line.trimmed();
             if (trStr.size() > 0){
-                if (trStr.at(0) != "#" && trStr.contains("auth_unix_rw")
+                if (trStr.at(0) != QLatin1Char('#')
+			       	&& trStr.contains("auth_unix_rw")
                                                   && !trStr.contains("polkit")){
                     res = false;
                 }

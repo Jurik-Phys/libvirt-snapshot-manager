@@ -91,8 +91,8 @@ DialogManageRam::DialogManageRam(const QString& osNameIn, const QString& vmRam,
     // >>>
     double hostRamDouble = hostRam.split(" ").first().toDouble();
     QString roundHostRam = QString::number(hostRamDouble, 'f', 1);
-    QString ruHostRam = (roundHostRam
-                            + " " + hostRam.split(" ").last()).replace(".",",");
+    QString ruHostRamT = roundHostRam + " " + hostRam.split(" ").last();
+    QString ruHostRam = ruHostRamT.replace(".",",");
     QLabel* hostRamValue = new QLabel(ruHostRam);
     hostRamValue->setFixedWidth(rightWidth);
     hostRamValue->setAlignment(Qt::AlignRight);
@@ -148,8 +148,9 @@ DialogManageRam::DialogManageRam(const QString& osNameIn, const QString& vmRam,
     sliderVLayout->addWidget(m_vmRamSlider);
 
     // *** [2.6] Slider details *** //
-    QString vmRamDownLimitStr = (QString::number(vmRamDownLimit, 'f', 1)
-                           + " " + minRam.split(" ").last()).replace(".",",");
+    QString vmRamDownLimitStrT = QString::number(vmRamDownLimit, 'f', 1)
+                           + " " + minRam.split(" ").last();
+    QString vmRamDownLimitStr = vmRamDownLimitStrT.replace(".",",");
     QLabel* sliderMinValue = new QLabel(vmRamDownLimitStr);
     float avgRamBytes = hostRamToBytes(hostRam)/2.0;
     float avgVal = getVmAvgRam(minRam, avgRamBytes);
@@ -157,8 +158,9 @@ DialogManageRam::DialogManageRam(const QString& osNameIn, const QString& vmRam,
                                                + " " + minRam.split(" ").last();
     QString ruAvgRam = avgRam.replace(".", ",");
     QLabel* sliderAvgValue = new QLabel(ruAvgRam);
-    QString vmRamUpLimitStr = (QString::number(vmRamUpLimit, 'f', 1)
-                             + " " + minRam.split(" ").last()).replace(".",",");
+    QString vmRamUpLimitStrT = QString::number(vmRamUpLimit, 'f', 1)
+                             + " " + minRam.split(" ").last();
+    QString vmRamUpLimitStr = vmRamUpLimitStrT.replace(".",",");
     QLabel* sliderMaxValue = new QLabel(vmRamUpLimitStr);
     // >>
     QHBoxLayout* sliderDetailsHLayout = new QHBoxLayout();

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.18)
 
 project(libvirt-snapshot-manager VERSION 0.3.2)
 
@@ -41,11 +41,10 @@ add_compile_definitions(
     APP_GIT_DIRTY="${GIT_DIRTY}"
 )
 
-set(CMAKE_CXX_STANDART 17)
-set(CMAKE_CXX_STANDART_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_AUTOMOC ON)
-set(CMAKE_BUILD_TYPE Debug)
 
 option(BUILD_OSINFO_LOADER "Build osinfo loader utility" ON)
 
@@ -84,3 +83,16 @@ target_link_libraries(libvirt-snapshot-manager PRIVATE src-lib
                                                        Qt6::Widgets
                                                        Qt6::Network
                                                        Qt6::Xml)
+
+install(TARGETS libvirt-snapshot-manager
+    RUNTIME DESTINATION bin
+)
+
+install(FILES packaging/libvirt-snapshot-manager.desktop
+    DESTINATION share/applications
+)
+
+install(FILES res/app-logo.svg
+    DESTINATION share/icons/hicolor/scalable/apps
+    RENAME libvirt-snapshot-manager.svg
+)

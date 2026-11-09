@@ -61,7 +61,7 @@ DialogDeleteImage::DialogDeleteImage(QWidget* parent) : QDialog(parent){
     m_rmConfirmation->setEnabled(false);
     dlgBtnFrameHLayout->addWidget(m_rmConfirmation);
     m_rmConfirmation->setText("Delete confirmation checkbox");
-    QObject::connect(m_rmConfirmation, &QCheckBox::checkStateChanged,
+    QObject::connect(m_rmConfirmation, &QCheckBox::toggled,
                              this, &DialogDeleteImage::deletePermissionChanged);
 
     dlgBtnFrameHLayout->addStretch();
@@ -186,9 +186,9 @@ void DialogDeleteImage::rowSelect(const QItemSelection& selected){
     }
 }
 
-void DialogDeleteImage::deletePermissionChanged(Qt::CheckState state){
+void DialogDeleteImage::deletePermissionChanged(bool checked){
     QPushButton* okButton = m_dlgBtnBox->button(QDialogButtonBox::Ok);
-    if (state == Qt::Checked){
+    if (checked){
         okButton->setEnabled(true);
     }
     else {
