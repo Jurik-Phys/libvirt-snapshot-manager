@@ -15,7 +15,6 @@
    xml:space="preserve"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg"><defs
      id="defs303"><inkscape:path-effect
@@ -131,23 +130,15 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      showgrid="false"
-     inkscape:zoom="2.0845495"
-     inkscape:cx="195.48588"
-     inkscape:cy="197.64462"
+     inkscape:zoom="0.73699954"
+     inkscape:cx="-23.0665"
+     inkscape:cy="453.18888"
      inkscape:window-width="1850"
      inkscape:window-height="1163"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
-     inkscape:current-layer="layer1" /><image
-     width="365.97467"
-     height="204.56494"
-     preserveAspectRatio="none"
-     style="display:none;stroke-width:0.344634;image-rendering:optimizeSpeed"
-     xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHUAAABMCAIAAADcE2+OAAAAA3NCSVQICAjb4U/gAAAChElEQVR4&#10;nO3bMa6iUBiGYZiMFXTakVjZQXEa6S3cBQ0boHMBtroIGpfBCrwFJLRU1ppYSEmYwox6j8AE5eNw&#10;ne8p/S/ew6tBNKCXZakRzC/VC/hwv+sGp9MpSZIkSS6XS58LepNpmkIIIcR4PFa9Fk3TNK18UhRF&#10;EASq1/WuIAiKonjeu57JfeM4tm1bdZxu2LYdx7GSrDff+hZF8TFxr2zbVvsu/tb3Aw4Lz4IgUBW3&#10;LEu9/Ht+djqdJpOJtDjP82azWe9NXpdl2W63kx48Ho/KPu5upaMokkZpmqp74V+Xpqm0I1EUqVrM&#10;/fw3SZLHNXme5zgO6EWFchzH87zHR6Rd69O9r3Se+7MOCxJp8QpP4dt9f8vzvPLx8/lcN/rPteib&#10;5/l6vdarLBaL9XpduVUYhpWbXIVhWLmV67p1m7iu+8qOKtKir2EY2+22cpQkSd3ocDg0PGfd9Ovr&#10;q26ThtEA8fcdLPbFYl8s9sViXyz2xWJfLPbFYl8s9sViXyz2xWJfLPbFYl8s9sViXyz2xWrR93w+&#10;N0yFEG8v5gO16DsajVarVeVICLFcLitH0+m04TnrpvP5vG6ThtEA1V7/+8wwjM1ms9lsWv0D3/d9&#10;32+5Km2/37fdZJh4/MW69zVN83GQZVnvi+mMtHhp13p1uxKN1/ch8PpUsMfYvL66c7w/AIv3t2Dx&#10;/iys++ebhPcXdqM5f/MfvzO1LOs2siyrw+mg1L5/r3RdlxoNfzoo/H6Mxb5Y7IvFvljsi6Wsr3SO&#10;1eF0UP5xfkZv4vEBi32x2BeLfbHYF4t9sdgXi32x2BeLfbHYF4t9sdgXi32x2BeLfbHYF4t9sdgX&#10;i32x2BeLfbHYF+sP4L6m7biLOgIAAAAASUVORK5CYII=&#10;"
-     id="image1"
-     x="0.71246386"
-     y="64.213913" /><g
+     inkscape:current-layer="svg299" /><g
      inkscape:groupmode="layer"
      id="layer1"
      inkscape:label="SVG"
