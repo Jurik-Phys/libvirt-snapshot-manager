@@ -134,6 +134,9 @@ class VmInfoWidget : public QFrame {
 
         void setEditBtnStyle(QToolButton*);
 
+        QString getVmTitle();
+        QString getVmDescription();
+        QString getVmUuid();
         QString getVmName();
         QString getVmOS();
         QString getVmCpuTopology();

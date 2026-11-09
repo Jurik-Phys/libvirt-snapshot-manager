@@ -643,15 +643,13 @@ bool VmInfoWidget::eventFilter(QObject *obj, QEvent* event){
 VMachine VmInfoWidget::getData(){
     VMachine vm;
 
-    vm.title = qobject_cast<QTextEdit*>(m_colBWidgets[0])->toPlainText();
-    vm.description = qobject_cast<QTextEdit*>(m_colBWidgets[1])->toPlainText();
-    vm.uuid = qobject_cast<QLabel*>(m_colBWidgets[2])->text();
+    vm.title = getVmTitle();
+    vm.description = getVmDescription();
+    vm.uuid = getVmUuid();
     vm.name = getVmName();
-    vm.cpu["topology"] = qobject_cast<QLabel*>(m_colBWidgets[4])->text();
-    vm.cpu["model"] = qobject_cast<QLabel*>(m_colBWidgets[4])
-                                                 ->property("model").toString();
-    vm.cpu["max"] = qobject_cast<QLabel*>(m_colBWidgets[4])
-                                                   ->property("max").toString();
+    vm.cpu["topology"] = getVmCpuTopology();
+    vm.cpu["model"] = getVmCpuModel();
+    vm.cpu["max"] = getVmMaxCPUs();
     vm.ram = getRawRam();
     vm.os.name = getVmOS();
 
@@ -982,15 +980,23 @@ QString VmInfoWidget::getVmOS(){
     return getFullTextFromLabel(guestOsLabel);
 }
 
+QString VmInfoWidget::getVmTitle(){
+    return qobject_cast<QTextEdit*>(m_colBWidgets[0])->toPlainText();
+}
+
+QString VmInfoWidget::getVmDescription(){
+    return qobject_cast<QTextEdit*>(m_colBWidgets[1])->toPlainText();
+}
+
+QString VmInfoWidget::getVmUuid(){
+    return qobject_cast<QLabel*>(m_colBWidgets[2])->text();
+}
+
 QString VmInfoWidget::getVmName(){
     QWidget* widget = m_colBWidgets[3];
     QLabel* vmNameLabel = qobject_cast<QLabel*>(widget);
 
     return getFullTextFromLabel(vmNameLabel);
-}
-
-QString VmInfoWidget::getRawRam(){
-    return m_rawRam;
 }
 
 QString VmInfoWidget::getVmCpuTopology(){
@@ -1013,6 +1019,11 @@ QString VmInfoWidget::getVmMaxCPUs(){
                                                    ->property("max").toString();
     return vmMaxCPUs;
 }
+
+QString VmInfoWidget::getRawRam(){
+    return m_rawRam;
+}
+
 
 void VmInfoWidget::onRequestVmOsInfoUpdate(){
     // *** m_vmInfoWidget посылает сигнал о необходимости обновить БД *** //
