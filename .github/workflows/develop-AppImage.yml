@@ -10,21 +10,38 @@ jobs:
   build-appimage:
     runs-on: ubuntu-22.04
 
+    container:
+      image: debian:11
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - name: Configure Debian repositories
+        run: |
+          cat > /etc/apt/sources.list <<'EOF'
+          deb http://archive.debian.org/debian bullseye main
+          deb http://archive.debian.org/debian bullseye-updates main
+          deb http://archive.debian.org/debian bullseye-backports main
+          deb http://archive.debian.org/debian-security bullseye-security main
+          EOF
+
+          apt-get -o Acquire::Check-Valid-Until=false update
 
       - name: Install build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          apt-get install -y \
             build-essential \
-            cmake \
             qt6-base-dev \
+            qt6-svg-dev \
             libgl-dev \
-            libqt6svg6-dev \
+            cmake \
             curl \
-            fuse
+            file \
+            git
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Trust checked-out repository
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Configure project
         run: |
@@ -58,9 +75,10 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Build AppImage
-        env:
-          QMAKE: /usr/lib/qt6/bin/qmake
         run: |
+          # Debian 11 run in a container,
+          # so FUSE is unavailable
+          export APPIMAGE_EXTRACT_AND_RUN=1
           linuxdeploy \
             --appdir packaging/AppDir/ \
             --plugin qt \
@@ -76,4 +94,3 @@ jobs:
           path: "*.AppImage"
           if-no-files-found: error
           retention-days: 7
-
