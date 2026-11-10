@@ -1298,8 +1298,8 @@ QString VmDataCollector::getNodeUuid(const QString& fName, bool isRoot){
         }
     }
 
-    QUuid uuid = QUuid::createUuidV5(QUuid::fromString(
-                                    "{12329e42e-d24e-4ad0-84dd-9e03b8b33e7}"),
+    QUuid uuid = QUuid::createUuidV5(QUuid::fromString(QStringLiteral(
+                                    "{12329e42-d24e-4ad0-84dd-9e03b8b33e79}")),
                                                                       baseData);
     return uuid.toString(QUuid::WithoutBraces);
 }

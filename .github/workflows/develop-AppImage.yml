@@ -1,0 +1,79 @@
+name: Build AppImage (develop)
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  build-appimage:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            qt6-base-dev \
+            libgl-dev \
+            libqt6svg6-dev \
+            curl \
+            fuse
+
+      - name: Configure project
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build project
+        run: cmake --build build --parallel
+
+      - name: Install project into AppDir
+        run: |
+          DESTDIR="$GITHUB_WORKSPACE/packaging/AppDir" \
+            cmake --install build --prefix /usr
+
+      - name: Install linuxdeploy
+        run: |
+          mkdir -p "$HOME/.local/bin"
+
+          curl -fL \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage \
+            -o "$HOME/.local/bin/linuxdeploy"
+
+          curl -fL \
+            https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-x86_64.AppImage \
+            -o "$HOME/.local/bin/linuxdeploy-plugin-qt"
+
+          chmod +x \
+            "$HOME/.local/bin/linuxdeploy" \
+            "$HOME/.local/bin/linuxdeploy-plugin-qt"
+
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Build AppImage
+        env:
+          QMAKE: /usr/lib/qt6/bin/qmake
+        run: |
+          linuxdeploy \
+            --appdir packaging/AppDir/ \
+            --plugin qt \
+            --output appimage
+
+      - name: Show package
+        run: ls -lh *.AppImage
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v7
+        with:
+          name: libvirt-snapshot-manager-develop
+          path: "*.AppImage"
+          if-no-files-found: error
+          retention-days: 7
+

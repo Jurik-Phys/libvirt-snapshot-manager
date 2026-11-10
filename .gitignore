@@ -22,3 +22,8 @@
 
 # vim-gutentags
 **/.gutentags
+
+# Build AppImage
+*.AppImage
+packaging/AppDir/*
+!packaging/AppDir/*.png
