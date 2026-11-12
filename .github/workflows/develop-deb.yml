@@ -1,0 +1,76 @@
+name: Build Debian package (develop)
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container:
+      image: debian:11
+
+    steps:
+      - name: Configure Debian repositories
+        run: |
+          cat > /etc/apt/sources.list <<'EOF'
+          deb http://archive.debian.org/debian bullseye main
+          deb http://archive.debian.org/debian bullseye-updates main
+          deb http://archive.debian.org/debian bullseye-backports main
+          deb http://archive.debian.org/debian-security bullseye-security main
+          EOF
+
+          apt-get -o Acquire::Check-Valid-Until=false update
+
+      - name: Install dependencies
+        run: |
+          apt-get install -y \
+            debhelper \
+            qt6-base-dev \
+            qt6-svg-dev \
+            libgl-dev \
+            cmake \
+            git
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Trust checked-out repository
+        run: |
+          git config --system --add safe.directory "$GITHUB_WORKSPACE"
+          git config --system --get-all safe.directory
+
+      - name: Fetch development branches
+        run: |
+          git fetch origin main
+          git fetch origin develop
+          git show-ref --verify --quiet refs/heads/main || git branch main origin/main
+          git show-ref --verify --quiet refs/heads/develop || git branch develop origin/develop
+          git config --global --add safe.directory /__w/libvirt-snapshot-manager/libvirt-snapshot-manager
+
+      - name: Build package
+        run: ./scripts/build-deb.sh
+
+      - name: Show Debian changelog
+        run: cat debian/changelog
+
+      - name: Show package
+        run: ls -lh ../*.deb
+
+      - name: Collect Debian packages
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/packages"
+          cp ../*.deb "$GITHUB_WORKSPACE/packages/"
+
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: libvirt-snapshot-manager-develop
+          path: packages/*.deb
+          if-no-files-found: error
+          retention-days: 7
