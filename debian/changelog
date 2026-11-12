@@ -1,0 +1,171 @@
+libvirt-snapshot-manager (0.3.2-1) unstable; urgency=medium
+
+  * Init "LibVirt External Snapshot GUI" project
+  * Add initial draft (read & view storage info)
+  * Add correct read & view snapshots tree
+  *  Add QThread to read & view snapshots tree
+  * Add snapshot creation for current VM state
+  * Add goto snapshot, start VM, delete work state
+  * Add children data of each node
+  * Add delete node (root, snap, work)
+  * Move to simple id qcow2 files. Start QTreeView mng
+  * Add first iteration of "Delete node" without blink
+  * Update backing file names after snapshot delete
+  * Add QTreeView branch & prefix over item delegate
+  * Add insert snapshot without blink and fix bugs
+  * Add take snap without blink; fix rebase global bug
+  * Fix qemu-img create commit; move to loop & connect
+  * Small changes in the name of the project
+  * Disable clicks to VM while loading snapshot data
+  * Fix failure when refusing to create snapshot
+  * Add context menu on snapshot TreeView
+  * Add "uuid" into vmList, compare VMs over uuid
+  * Sync VM list on name, state change, add, delete VM
+  * Implemented functionality for all control buttons
+  * Fix get backing file on locked files running VM
+  * Fix buttons activity (enable|disable) on event
+  * Improve shutdown menu
+  * Add block information about current VM
+  * Add write&sync info block (general info w/o drives)
+  * Add read-only mode for Info Widget when running VM
+  * Add template of block information about snapshot
+  * Add reading snapshot info from VM XML file
+  * Add write snapshot info to VM XML file
+  * Fix XML rewrite on external title/description change
+  * Fix some UI bugs
+  * Add icon files & increase list of snapshot names
+  * Fix list of snapshot names (remove duplicates)
+  * Fix write snapshot info without selected snapshot
+  * Support external removal of VMs
+  * Add check for write permission on snapshot creation
+  * Add write checker & use it to del & take snapshots
+  * Add clean of raw data from external backing files
+  * Add handling of missing qcow2 files in snaps chain
+  * Add icon to VM & snapshot managment buttons
+  * Add icons to VmWidgets in list of VM
+  * Add icons to snapshot tree popup menu
+  * Switch to 48x48 & 16x16 icons for take & delete
+  * Add missing 48x48 & 16x16 png files
+  * Fix goto snapshot 16x16 icon
+  * Change node uuid & name to be based on full file path
+  * Add change focus by Tab in title fields
+  * Add app icon & replace some png to svg icons
+  * Add gradient to app-logo and change fill color
+  * Fix exit confirmation on window close [x] and Alt+F4
+  * Add feature to remove empty snapshot information
+  * Fix start VM problem with open VManager window
+  * Add first iteration of checkExternalVmUtilities()
+  * Add checkLocalHypervisorConnection (polkit & other)
+  * Fix don't show main window bug & "--connect=" misprint
+  * Fix remove env variable (Bad  status VM)
+  * Fix closed VManager window after close application
+  * Add dynamic font size into Vm&Snap Info Widgets
+  * Fix vm cpu info big line bug
+  * Fix vmWidget height bug
+  * Improve cpu info output
+  * Fix small misprint in previous commit
+  * Add check for VM mounted image file accessibility
+  * Del three dots in title of message window
+  * Fix unset --connect=qemu:///system
+  * Fix vmWidget height when add to list new VM
+  * Improve & fix bug of data transfer dialog
+  * Fix rebase progress calculation
+  * Add more information to dialog windows
+  * Improve check missing files & external storage attachments
+  * Set "Base" color of SnapTreeView to white (as other)
+  * Change node uuid & name to be based on file id & vm.uuid (root)
+  * Fix take & goto snapshot bug with new node name & uuid method
+  * Add comment to explaining the fix for "Hypervisor access denied"
+  * Fix wrong root id when take snapshot & set --connect settings in snapManager
+  * Add new storage feature (gui & some logic)
+  * Small improve height of infoWidgets
+  * Fix line spacing in infoWidgets
+  * Fix infoWidgets spacing
+  * Add create & mount new storage feature
+  * Improve create & mount new storage feature
+  * Add feature "Delete drive from VM"
+  * Add icons (New & Del) to Mounted drives action menu
+  * Fix some Delete progress bug
+  * Add get sizes of files with no accessed via qemu-img
+  * Fix permission problem with init files (-rw------)
+  * Add keyboard navigation on snapshot tree
+  * Fix "Go", "Del" button manage bug by mouse click
+  * Add edit menu to CPU, RAM, OS on VmInfoWidget (no real acton)
+  * Add initial osinfoloader skeleton
+  * Add osinfo-loader utility and generated libOsInfo.
+  * Add the use of libosinfo-db for naming guest OS
+  * Add unknown libosinfo id support
+  * Add processing of unknown (N/A) and long OS names
+  * Complete guest OS management with online OS db update
+  * Complete VM RAM management with libOsInfo
+  * Add lost files "nodeInfoProvider.*"
+  * Complete virtual machine vCPU management
+  * Split dialogs.cpp to different dialog*.cpp files
+  * Fix input file name rewrite if file already exists
+  * Fix incorrect eliding of long OS names
+  * Fix incorrect eliding of long VM canonical names
+  * Fix missing request timeout check in OsInfoLoader
+  * Add VM resume icon and fix resume button issue
+  * Add license & About dialogs (app, third-party, Qt)
+  * Fix freaky <br> in About Application dialog
+  * Small fix in About Application dialog
+  * Improve about application dialog
+  * Skip reading qcow2 info from unreleated VM
+  * Add sort qcow2 files to more effective using qemu-img info in future
+  * Add cache for qcow2 file processing
+  * Fix image id check when creating a node
+  * Add snapshot chain data loading progress
+  * Fix VM info widget update when building snapshot tree
+  * Add VM title support to the VM list
+  * Fix deprecated osinfo-db release URL
+  * Fix qcow2 image deletion issue
+  * ReFix qcow2 image deletion issue
+  * Fix some qcow2 file access and checking of missing backing files
+  * Fix algorithm for finding missing QCOW2 images
+  * Fix loading data from different directories
+  * Fix removing the root node when qcow2 files have a hidden chain
+  * Fix new images directory reset when file dialog is canceled
+  * Fix incomplete file existence check
+  * Fix snapshot info update for root node
+  * Remove raster layer from some SVG resources
+  * Fix unnecessary RAM value update in VmInfoWidget
+  * Improve readability of VmInfoWidget::getData()
+  * Refresh storage pools before geting info via virsh
+  * Add libvirt-snapshot-manager.desktop file
+  * Add local AppImage build support
+  * Fix build on Debian 11 Bullseye
+  * Add AppImage artifacts to .gitignore
+  * Add develop AppImage build with GitHub Actions
+  * Fix develop AppImage build with GitHub Actions
+  * Fix develop AppImage build with GitHub Action, 02
+  * Fix develop AppImage build with GitHub Action, 03
+  * Fix develop AppImage build with GitHub Action, 04
+  * Fix develop AppImage build with GitHub Action, 05
+  * Fix develop AppImage build with GitHub Action, 06
+  * Fix develop AppImage build with GitHub Action, 07
+  * Fix develop AppImage build with GitHub Action, 08
+  * Fix develop AppImage build with GitHub Action, 09
+  * Fix develop AppImage build with GitHub Action, 10
+  * Fix develop AppImage build with GitHub Action, 11
+  * Fix develop AppImage build with GitHub Action, 12
+  * Update GitHub Actions to Node.js 24-compatible versions
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (02)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (03)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (04)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (05)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (06)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (07)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (08)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (09)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (10)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (11)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (12)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (13)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (14)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (15)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (16)
+  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (OK)
+  * Add Debian package build system
+
+ -- Yury Ovsyannikov <jurik.phys@gmail.com>  Thu, 12 Nov 2026 14:36:23 +0300

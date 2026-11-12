@@ -1,0 +1,22 @@
+Source: libvirt-snapshot-manager
+Section: misc
+Priority: optional
+Maintainer: Yury Ovsyannikov <jurik.phys@gmail.com>
+Build-Depends: debhelper-compat (= 13),
+               cmake,
+               qt6-base-dev,
+               qt6-svg-dev,
+               libgl-dev
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+
+Package: libvirt-snapshot-manager
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends}
+Description: Manage libvirt virtual machine external snapshots
+ A graphical lightweight tool for managing external snapshots
+ of virtual machines using libvirt and QEMU. It also offers
+ basic configuration capabilities for virtual machines,
+ including setting the guest operating system type,
+ allocated memory size, and CPU topology and model.
