@@ -12,6 +12,7 @@ CHANGELOG_FILE="${REPO_ROOT}/debian/changelog"
 # Проверка текущей ветки (для дальнейшей работы необходима release/x.y.z)
 if [[ ! "$CURRENT_BRANCH" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "[II] Changelog update skipped (not a release branch)." >&2
+    exit 1
 fi
 
 # Получение версии проекта из названия ветки (release/x.y.z => x.y.z)
@@ -29,6 +30,7 @@ fi
 
 if [[ "$GIT_VERSION" != "$CMAKE_VERSION" ]]; then
     echo "[EE] Release version on git $GIT_VERSION does not match CMake version $CMAKE_VERSION." >&2
+    exit 1
 else
     VERSION=${CMAKE_VERSION}
 fi
