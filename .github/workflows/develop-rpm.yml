@@ -45,8 +45,13 @@ jobs:
           git show-ref --verify --quiet refs/heads/main || git branch main origin/main
           git show-ref --verify --quiet refs/heads/develop || git branch develop origin/develop
 
+      - name: Prepare build user
+        run: |
+          useradd --create-home -s /bin/bash rpm-builder
+          chown -R rpm-builder:rpm-builder "$GITHUB_WORKSPACE"
+
       - name: Build package
-        run: ./scripts/build-rpm.sh
+        run: su rpm-builder -c './scripts/build-rpm.sh'
 
       - name: Show package
         run: ls -lh ./packaging/rpmbuild/RPMS/x86_64/*.rpm
