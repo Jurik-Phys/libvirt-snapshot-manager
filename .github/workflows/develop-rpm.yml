@@ -23,6 +23,7 @@ jobs:
             gcc \
             make \
             qt6-base-devel \
+            qt6-svg \
             qt6-svg-devel \
             libGL-devel \
             cmake \
