@@ -133,39 +133,9 @@ libvirt-snapshot-manager (0.3.2-1) unstable; urgency=medium
   * Refresh storage pools before geting info via virsh
   * Add libvirt-snapshot-manager.desktop file
   * Add local AppImage build support
-  * Fix build on Debian 11 Bullseye
-  * Add AppImage artifacts to .gitignore
   * Add develop AppImage build with GitHub Actions
-  * Fix develop AppImage build with GitHub Actions
-  * Fix develop AppImage build with GitHub Action, 02
-  * Fix develop AppImage build with GitHub Action, 03
-  * Fix develop AppImage build with GitHub Action, 04
-  * Fix develop AppImage build with GitHub Action, 05
-  * Fix develop AppImage build with GitHub Action, 06
-  * Fix develop AppImage build with GitHub Action, 07
-  * Fix develop AppImage build with GitHub Action, 08
-  * Fix develop AppImage build with GitHub Action, 09
-  * Fix develop AppImage build with GitHub Action, 10
-  * Fix develop AppImage build with GitHub Action, 11
-  * Fix develop AppImage build with GitHub Action, 12
-  * Update GitHub Actions to Node.js 24-compatible versions
   * Switch AppImage build from Ubuntu 22.04 to Debian 11
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (02)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (03)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (04)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (05)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (06)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (07)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (08)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (09)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (10)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (11)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (12)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (13)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (14)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (15)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (16)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11 (OK)
   * Add Debian package build system
+  * Add GitHub Actions debian package build (develop)
 
- -- Yury Ovsyannikov <jurik.phys@gmail.com>  Thu, 12 Nov 2026 14:36:23 +0300
+ -- Yury Ovsyannikov <jurik.phys@gmail.com>  Sun, 22 Nov 2026 22:18:02 +0300

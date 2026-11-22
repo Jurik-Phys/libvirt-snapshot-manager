@@ -27,3 +27,4 @@
 *.AppImage
 packaging/AppDir/*
 !packaging/AppDir/*.png
+packaging/rpmbuild/*

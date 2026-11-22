@@ -2,7 +2,7 @@
 
 ## License
 
-This project is licensed under the GNU General Public License version 3 (GPL-3.0).
+This project is licensed under the GNU General Public License version 3 (GPL-3.0-or-later).
 
 See the LICENSE file for the full license text.
 
