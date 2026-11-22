@@ -51,7 +51,6 @@ jobs:
           git fetch origin develop
           git show-ref --verify --quiet refs/heads/main || git branch main origin/main
           git show-ref --verify --quiet refs/heads/develop || git branch develop origin/develop
-          git config --global --add safe.directory /__w/libvirt-snapshot-manager/libvirt-snapshot-manager
 
       - name: Build package
         run: ./scripts/build-deb.sh

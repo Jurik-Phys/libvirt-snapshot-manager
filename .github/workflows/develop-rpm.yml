@@ -1,0 +1,60 @@
+name: Build RPM package (develop)
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container:
+      image: alt:p10
+
+    steps:
+
+      - name: Install dependencies
+        run: |
+          apt-get -o Acquire::Check-Valid-Until=false update
+          apt-get install -y \
+            rpm-build \
+            gcc \
+            make \
+            qt6-base-devel \
+            qt6-svg-devel \
+            libGL-devel \
+            cmake \
+            git
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Trust checked-out repository
+        run: |
+          git config --system --add safe.directory "$GITHUB_WORKSPACE"
+          git config --system --get-all safe.directory
+
+      - name: Fetch development branches
+        run: |
+          git fetch origin main
+          git fetch origin develop
+          git show-ref --verify --quiet refs/heads/main || git branch main origin/main
+          git show-ref --verify --quiet refs/heads/develop || git branch develop origin/develop
+
+      - name: Build package
+        run: ./scripts/build-rpm.sh
+
+      - name: Show package
+        run: ls -lh ./packaging/rpmbuild/RPMS/x86_64/*.rpm
+
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: libvirt-snapshot-manager-develop
+          path: packaging/rpmbuild/RPMS/x86_64/*.rpm
+          if-no-files-found: error
+          retention-days: 7

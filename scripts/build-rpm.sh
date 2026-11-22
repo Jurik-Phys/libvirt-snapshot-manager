@@ -9,7 +9,7 @@ VERSION=$(sed -nE \
     "$CMAKE_FILE")
 
 if [[ -z "${PROJECT_NAME}" || -z "${VERSION}" ]]; then
-    echo "Error: failed to determine project name or version" >&2
+    echo "[EE] Failed to determine project name or version. Exit" >&2
     exit 1
 fi
 
