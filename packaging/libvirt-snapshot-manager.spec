@@ -1,6 +1,6 @@
 Name:           libvirt-snapshot-manager
 Version:        0.3.2
-Release:        1 
+Release:        1
 
 Summary:        Manage libvirt virtual machine external snapshots
 License:        GPL-3.0-or-later
@@ -38,4 +38,7 @@ DESTDIR=%{buildroot} cmake --install build
 %{_datadir}/icons/hicolor/scalable/apps/libvirt-snapshot-manager.svg
 
 %changelog
+* Tue Nov 24 2026 Yury Ovsyannikov <jurik.phys@gmail.com> 0.3.2-1
+- Initial build
+- Project under development
 

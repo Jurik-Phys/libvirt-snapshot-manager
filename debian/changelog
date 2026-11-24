@@ -1,8 +1,6 @@
 libvirt-snapshot-manager (0.3.2-1) unstable; urgency=medium
 
-  * Init "LibVirt External Snapshot GUI" project
-  * Add initial draft (read & view storage info)
-  * Switch AppImage build from Ubuntu 22.04 to Debian 11
-  * Add Debian package build system
-  * Add GitHub Actions debian package build (develop)
- -- Yury Ovsyannikov <jurik.phys@gmail.com>  Sun, 22 Nov 2026 22:18:02 +0300
+  * Initial build
+  * Project under development
+
+ -- Yury Ovsyannikov <jurik.phys@gmail.com>  Tue, 24 Nov 2026 15:39:42 +0300
