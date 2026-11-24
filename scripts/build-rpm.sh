@@ -1,9 +1,9 @@
 #!/bin/bash
 
-PROJECT_NAME="libvirt-snapshot-manager"
 REPO_ROOT=$(git rev-parse --show-toplevel)
 RPMBUILD_DIR="${REPO_ROOT}/packaging/rpmbuild"
 CMAKE_FILE="${REPO_ROOT}/CMakeLists.txt"
+PROJECT_NAME=$(grep -m1 -oE 'project\([A-Za-z0-9_.-]+' ${CMAKE_FILE} | cut -d'(' -f2)
 VERSION=$(sed -nE \
     "s/^project\(${PROJECT_NAME}[[:space:]]+VERSION[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+).*/\1/p" \
     "$CMAKE_FILE")

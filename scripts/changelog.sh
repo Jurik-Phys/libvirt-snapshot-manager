@@ -1,12 +1,12 @@
 #!/bin/bash
 
-PROJECT_NAME="libvirt-snapshot-manager"
 MAINTAINER_NAME="Yury Ovsyannikov"
 MAINTAINER_EMAIL="jurik.phys@gmail.com"
 
 CURRENT_BRANCH=$(git branch --show-current)
 REPO_ROOT=$(git rev-parse --show-toplevel)
 CMAKE_FILE="${REPO_ROOT}/CMakeLists.txt"
+PROJECT_NAME=$(grep -m1 -oE 'project\([A-Za-z0-9_.-]+' ${CMAKE_FILE} | cut -d'(' -f2)
 CHANGELOG_FILE="${REPO_ROOT}/debian/changelog"
 
 # Получение версии проекта из CMakeList.txt
@@ -44,7 +44,8 @@ PREVIOUS_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname | 
 if [[ -n "$PREVIOUS_TAG" ]]; then
     COMMITS=$(git log "${PREVIOUS_TAG}..HEAD" --no-merges --pretty=format:'%s' --reverse)
 else
-    COMMITS=$(git log HEAD --no-merges --pretty=format:'%s' --reverse)
+    # Предыдущих тегов нет, следовательно, данный релиз будет первым
+    COMMITS="Initial public release"
 fi
 
 if [[ -z "$COMMITS" ]]; then
