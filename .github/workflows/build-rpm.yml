@@ -1,10 +1,12 @@
-name: Build RPM package (develop)
+name: Build RPM package
 
 on:
-  push:
-    branches:
-      - develop
-  workflow_dispatch:
+  workflow_call:
+    input:
+      artifact-name:
+        description: Name of the uploaded artifact
+        required: true
+        type: string
 
 jobs:
   build:
@@ -61,7 +63,7 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
-          name: libvirt-snapshot-manager-develop
+          name: ${{ inputs.artifact-name }}
           path: packaging/rpmbuild/RPMS/x86_64/*.rpm
           if-no-files-found: error
           retention-days: 7

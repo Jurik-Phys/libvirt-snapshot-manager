@@ -1,0 +1,23 @@
+name: Build packages (develop)
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  deb:
+    uses: ./.github/workflows/build-deb.yml
+    with:
+      artifact-name: debian-package
+
+  rpm:
+    uses: ./github/workflows/build-rpm.yml
+    with:
+      artifact-name: rpm-package
+
+  AppImage:
+    uses: ./github/workflows/build-AppImage.yml
+    with:
+      artifact-name: AppImage-package
