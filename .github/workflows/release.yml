@@ -48,8 +48,8 @@ jobs:
 
       - name: Remove debug package
         run: |
-          rm -f release-assets/${{ steps.package.outputs.name }}-dbgsym_*.deb
-          rm -f release-assets/${{ steps.package.outputs.name }}-debuginfo-*.rpm
+          rm -f release-assets/*-dbgsym_*.deb
+          rm -f release-assets/*-debuginfo-*.rpm
 
       - name: Show release assets
         run: ls -lh release-assets/
