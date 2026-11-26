@@ -1,0 +1,54 @@
+name: Build and publish release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  deb:
+    uses: ./.github/workflows/build-deb.yml
+    with:
+      artifact-name: debian-package
+
+  rpm:
+    uses: ./.github/workflows/build-rpm.yml
+    with:
+      artifact-name: rpm-package
+
+  AppImage:
+    uses: ./.github/workflows/build-AppImage.yml
+    with:
+      artifact-name: AppImage-package
+
+  release:
+    needs: [deb, rpm, AppImage]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download packages
+        uses: actions/download-artifact@v7
+        with:
+          pattern: '*-package'
+          path: release-assets
+          merge-multiple: true
+
+      - name: Extract release notes
+        run: |
+          {
+            echo "## Changes and fixes"
+            dpkg-parsechangelog -S Changes | sed '1,3d; s/^  \* /- /'
+          } > release-notes.md
+
+      - name: Show release assets
+        run: ls -lh release-assets/
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: ${{ github.ref_name }}
+          body_path: release-notes.md
+          files: release-assets/*
