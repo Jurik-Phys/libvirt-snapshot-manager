@@ -46,6 +46,10 @@ jobs:
             dpkg-parsechangelog -S Changes | sed '1,3d; s/^  \* /- /'
           } > release-notes.md
 
+      - name: Remove debug symbols package
+        run: |
+          rm -f ../${{ steps.package.outputs.name }}-dbgsym_*.deb
+
       - name: Show release assets
         run: ls -lh release-assets/
 
