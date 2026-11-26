@@ -2,7 +2,7 @@ name: Build Debian package
 
 on:
   workflow_call:
-    input:
+    inputs:
       artifact-name:
         description: Name of the uploaded artifact
         required: true
