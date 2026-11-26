@@ -1,4 +1,4 @@
-name: Build packages for develop
+name: Build packages (develop)
 
 on:
   push:
@@ -21,3 +21,4 @@ jobs:
     uses: ./.github/workflows/build-AppImage.yml
     with:
       artifact-name: AppImage-package
+
